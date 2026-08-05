@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="en" style="color-scheme:light;">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="light">
+<title>Ange's Golf</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,500&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&family=Quicksand:wght@500;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root{
+    --paper:#FBF8F0; --paper-tan:#F0E9D4; --ink:#28321F;
+    --fairway:#33553B; --fairway-light:#527456; --sand:#CBAE78; --flag:#A8402F; --line:#d8cfae;
+    --font-display:'Fraunces',serif; --font-body:'Inter',sans-serif; --font-mono:'IBM Plex Mono',monospace;
+    --radius:0px; --card-shadow:none;
+  }
+  html[data-theme="wii"]{
+    --paper:#EAF5FC; --paper-tan:#FFFFFF; --ink:#3C4A52;
+    --fairway:#21ABDE; --fairway-light:#4EBCFF; --sand:#8D9095; --flag:#26B0D3; --line:#8B8C91;
+    --font-display:'Quicksand',sans-serif; --font-body:'Poppins',sans-serif; --font-mono:'Poppins',sans-serif;
+    --radius:22px; --card-shadow:0 6px 0 rgba(60,74,82,0.10);
+  }
+  *{box-sizing:border-box;}
+  html,body{background:var(--paper) !important;color-scheme:light;}
+  body{margin:0;color:var(--ink);font-family:var(--font-body);transition:background .25s ease,color .25s ease;position:relative;overflow-x:hidden;}
+  html[data-theme="wii"] body{background:linear-gradient(180deg,#CDEBFB 0%,#EAF5FC 260px,#EAF5FC 100%) !important;}
+  .wrap{max-width:920px;margin:0 auto;padding:28px 18px 80px;position:relative;z-index:2;}
+
+  .sky{position:absolute;top:0;left:0;width:100%;height:230px;overflow:hidden;pointer-events:none;z-index:1;display:none;}
+  html[data-theme="wii"] .sky{display:block;}
+  .bird{position:absolute;top:40px;opacity:0.85;animation:fly 26s linear infinite;}
+  .bird svg{width:34px;height:16px;display:block;}
+  .bird.b1{top:34px;animation-duration:22s;animation-delay:0s;}
+  .bird.b2{top:70px;animation-duration:30s;animation-delay:-8s;}
+  .bird.b3{top:20px;animation-duration:26s;animation-delay:-16s;}
+  .bird.b4{top:100px;animation-duration:34s;animation-delay:-4s;}
+  @keyframes fly{from{transform:translateX(-60px);}to{transform:translateX(calc(100vw + 60px));}}
+  .cloud{position:absolute;opacity:0.9;}
+  .cloud.c1{top:18px;left:8%;width:64px;} .cloud.c2{top:96px;right:10%;width:48px;} .cloud.c3{top:150px;left:38%;width:56px;}
+  @media (prefers-reduced-motion: reduce){.bird{animation:none;left:10%;}}
+
+  .wii-only{display:none;} html[data-theme="wii"] .wii-only{display:inline-block;}
+  .wii-only.block{display:none;} html[data-theme="wii"] .wii-only.block{display:block;}
+
+  .theme-toggle{display:flex;justify-content:flex-end;margin-bottom:10px;position:relative;z-index:2;}
+  #themeBtn{font-family:var(--font-mono);font-size:12px;letter-spacing:0.06em;text-transform:uppercase;background:var(--paper-tan);color:var(--fairway);border:1.5px solid var(--fairway);border-radius:var(--radius);padding:8px 14px;cursor:pointer;box-shadow:var(--card-shadow);}
+  html[data-theme="wii"] #themeBtn{border-radius:999px;border:2px solid var(--fairway);font-family:var(--font-display);font-weight:700;}
+
+  header.hero{border-bottom:3px solid var(--fairway);padding-bottom:20px;margin-bottom:28px;border-radius:var(--radius);position:relative;z-index:2;display:flex;gap:16px;align-items:flex-start;}
+  html[data-theme="wii"] header.hero{border-bottom:none;}
+  .hero-text{flex:1;min-width:0;}
+  .eyebrow{font-family:var(--font-mono);font-size:12px;letter-spacing:0.14em;text-transform:uppercase;color:var(--fairway-light);display:flex;justify-content:space-between;margin-bottom:10px;}
+  h1{font-family:var(--font-display);font-weight:600;font-size:clamp(34px,7vw,54px);line-height:0.98;margin:0 0 6px;color:var(--fairway);}
+  html[data-theme="wii"] h1{font-weight:700;}
+  h1 em{font-style:normal;font-weight:400;color:var(--flag);}
+  html[data-theme="wii"] h1 em{font-style:normal;font-weight:700;}
+  .sub{font-size:15px;color:#5b5747;max-width:56ch;}
+  html[data-theme="wii"] .sub{color:#5C86A0;font-weight:500;}
+  .mii-hero{flex-shrink:0;width:64px;height:64px;}
+
+  .strip{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:22px 0 8px;}
+  .cell{background:var(--paper-tan);padding:16px 12px;text-align:center;border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--card-shadow);}
+  .cell .icon-row{font-size:18px;margin-bottom:4px;display:none;} html[data-theme="wii"] .cell .icon-row{display:block;}
+  .cell .num{font-family:var(--font-mono);font-weight:600;font-size:clamp(22px,5vw,32px);color:var(--fairway);}
+  html[data-theme="wii"] .cell .num{font-family:var(--font-display);font-weight:700;color:var(--ink);}
+  .cell.flag .num{color:var(--flag);}
+  .cell .lbl{font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:#8a8368;margin-top:4px;}
+  html[data-theme="wii"] .cell .lbl{color:#7C97A8;font-weight:600;}
+  .trend-arrow{font-size:14px;margin-left:4px;}
+  .rounds-footnote{font-size:11px;color:#8a8368;text-align:center;margin:8px 0 0;font-family:var(--font-mono);}
+  html[data-theme="wii"] .rounds-footnote{color:#7C97A8;font-weight:500;}
+
+  section{margin:44px 0;position:relative;z-index:2;}
+  h2{font-family:var(--font-display);font-size:22px;font-weight:600;color:var(--fairway);margin:0 0 4px;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;}
+  html[data-theme="wii"] h2{font-weight:700;color:var(--ink);}
+  .h2-row{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;}
+  h2 .idx{font-family:var(--font-mono);font-size:11px;color:#8a8368;font-weight:400;}
+  html[data-theme="wii"] h2 .idx{color:#7C97A8;font-weight:500;}
+  p.note{font-size:13.5px;color:#6b6752;margin:0 0 18px;max-width:60ch;}
+  html[data-theme="wii"] p.note{color:#5C86A0;font-weight:500;}
+
+  .chart-box{background:var(--paper-tan);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--card-shadow);padding:16px 12px 8px;}
+  canvas{max-width:100%;}
+
+  .btn{font-family:var(--font-mono);font-size:12.5px;letter-spacing:0.04em;background:var(--fairway);color:#fff;border:none;border-radius:calc(var(--radius)/2 + 6px);padding:9px 16px;cursor:pointer;}
+  html[data-theme="wii"] .btn{font-family:var(--font-display);font-weight:700;border-radius:999px;}
+  .btn.secondary{background:transparent;color:var(--fairway);border:1.5px solid var(--fairway);}
+
+  .proj-panel{background:var(--paper-tan);border:1px solid var(--sand);border-radius:var(--radius);box-shadow:var(--card-shadow);color:var(--ink);padding:24px 20px;display:flex;flex-wrap:wrap;gap:20px;align-items:center;justify-content:space-between;}
+  .proj-panel label{font-family:var(--font-mono);font-size:12px;letter-spacing:0.08em;text-transform:uppercase;display:block;margin-bottom:6px;color:var(--fairway-light);}
+  html[data-theme="wii"] .proj-panel label{color:#7C97A8;font-weight:600;}
+  .proj-panel input[type=date]{font-family:var(--font-mono);font-size:15px;padding:8px 10px;border:1px solid var(--sand);background:var(--paper);color:var(--ink);border-radius:calc(var(--radius)/3 + 2px);}
+  .proj-date-readout{font-size:12px;color:var(--fairway-light);margin-top:6px;font-family:var(--font-mono);}
+  html[data-theme="wii"] .proj-date-readout{color:#7C97A8;}
+  .proj-result{text-align:right;}
+  .proj-result .big{font-family:var(--font-display);font-size:40px;font-weight:600;line-height:1;color:var(--flag);}
+  html[data-theme="wii"] .proj-result .big{font-weight:700;}
+  .proj-result .cap{font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:#8a8368;}
+  html[data-theme="wii"] .proj-result .cap{color:#7C97A8;font-weight:600;}
+
+  table{width:100%;border-collapse:collapse;font-size:13.5px;}
+  thead th{text-align:left;font-family:var(--font-mono);font-size:10.5px;letter-spacing:0.08em;text-transform:uppercase;color:#8a8368;border-bottom:2px solid var(--fairway);padding:8px 8px;}
+  html[data-theme="wii"] thead th{color:#5C86A0;font-weight:700;}
+  tbody td{padding:9px 8px;border-bottom:1px solid var(--line);vertical-align:top;}
+  tbody tr{cursor:pointer;}
+  tbody tr:hover{background:var(--paper-tan);}
+  .score-tag{font-family:var(--font-mono);font-weight:600;display:inline-block;margin-top:3px;}
+  .date-cell{font-size:11.5px;color:#7a7461;}
+  html[data-theme="wii"] .date-cell{color:#7C97A8;}
+  .badge{font-family:var(--font-mono);font-size:10px;padding:1px 5px;border-radius:6px;display:inline-block;}
+  .badge.b18{background:var(--fairway);color:#fff;} .badge.b9{background:var(--sand);color:var(--ink);}
+  .badge.detail{background:transparent;border:1px solid var(--fairway-light);color:var(--fairway-light);}
+  .diff-cell{font-family:var(--font-mono);text-align:right;}
+  .course-name{color:#4a4838;} html[data-theme="wii"] .course-name{color:#5C86A0;font-weight:500;}
+  .chevron{color:#aaa39c;float:right;}
+
+  footer{margin-top:50px;padding-top:16px;border-top:1px solid var(--line);font-size:11.5px;color:#948d70;font-family:var(--font-mono);position:relative;z-index:2;}
+  html[data-theme="wii"] footer{color:#7C97A8;font-weight:500;}
+
+  /* ---- Modals ---- */
+  .overlay{position:fixed;inset:0;background:rgba(20,20,20,0.55);display:none;align-items:flex-start;justify-content:center;padding:26px 14px;overflow-y:auto;z-index:50;}
+  .overlay.open{display:flex;}
+  .modal{background:var(--paper);border-radius:calc(var(--radius) + 6px);max-width:520px;width:100%;padding:22px;position:relative;box-shadow:0 20px 50px rgba(0,0,0,0.25);}
+  .modal-close{position:absolute;top:14px;right:14px;background:none;border:none;font-size:20px;cursor:pointer;color:var(--ink);}
+  .modal h3{font-family:var(--font-display);color:var(--fairway);margin:0 0 4px;font-size:20px;}
+  html[data-theme="wii"] .modal h3{color:var(--ink);font-weight:700;}
+  .modal .mii-row{display:flex;align-items:center;gap:12px;margin-bottom:10px;}
+
+  /* dark scorecard, mirrors the native app card */
+  .scorecard-dark{background:linear-gradient(135deg,#12121c,#1c1830,#101826);color:#fff;border-radius:20px;padding:18px 16px;margin-top:12px;}
+  .sc-meta{display:flex;gap:18px;flex-wrap:wrap;font-size:12.5px;color:#c9c9d6;margin-bottom:10px;}
+  .sc-meta b{color:#fff;}
+  .sc-top{display:flex;justify-content:space-between;align-items:center;border-top:1px solid rgba(255,255,255,0.12);border-bottom:1px solid rgba(255,255,255,0.12);padding:14px 0;margin-bottom:10px;}
+  .sc-top .lab{font-size:11px;color:#9d9dab;text-transform:uppercase;letter-spacing:0.08em;}
+  .sc-top .val{font-family:var(--font-mono);font-size:26px;font-weight:700;}
+  .sc-grid{display:grid;grid-template-columns:repeat(9,1fr) auto;gap:4px;align-items:center;margin-bottom:8px;}
+  .sc-hole{text-align:center;}
+  .sc-hole .hn{font-size:10px;color:#9d9dab;margin-bottom:3px;}
+  .sc-hole .hs{font-family:var(--font-mono);font-size:15px;padding:5px 0;border-radius:5px;background:rgba(255,255,255,0.08);}
+  .sc-hole .hs.par{background:rgba(255,255,255,0.08);}
+  .sc-hole .hs.birdie{border-radius:50%;border:2px solid #6FCF97;background:rgba(111,207,151,0.15);}
+  .sc-hole .hs.eagle{border-radius:50%;border:2px solid #6FCF97;box-shadow:0 0 0 3px #12121c, 0 0 0 5px #6FCF97;background:rgba(111,207,151,0.2);}
+  .sc-hole .hs.bogey{border-radius:4px;border:2px solid #F2C744;background:rgba(242,199,68,0.12);}
+  .sc-hole .hs.double{border-radius:4px;border:2px solid #EB5757;background:rgba(235,87,87,0.15);}
+  .sc-hole .hs.triple{border-radius:4px;border:2px solid #EB5757;background:rgba(235,87,87,0.3);}
+  .sc-legend{display:flex;flex-wrap:wrap;gap:12px;font-size:10.5px;color:#c9c9d6;margin-top:10px;}
+  .sc-legend span{display:flex;align-items:center;gap:5px;}
+  .sc-legend i{width:12px;height:12px;display:inline-block;border-radius:50%;}
+  .sc-total{font-family:var(--font-mono);font-size:20px;font-weight:700;text-align:right;padding-left:6px;}
+  .sc-noscore{font-size:13px;color:#cfd3e0;padding:16px 4px;text-align:center;}
+
+  .btn.danger{background:#B23A2E;color:#fff;}
+
+  /* add-round form */
+  .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px;}
+  .form-grid .full{grid-column:1/-1;}
+  .form-grid label{font-family:var(--font-mono);font-size:10.5px;letter-spacing:0.06em;text-transform:uppercase;color:var(--fairway-light);display:block;margin-bottom:4px;}
+  html[data-theme="wii"] .form-grid label{color:#7C97A8;font-weight:600;}
+  .form-grid input,.form-grid select{width:100%;font-family:var(--font-body);font-size:14px;padding:7px 9px;border:1px solid var(--line);border-radius:calc(var(--radius)/3 + 4px);background:var(--paper-tan);color:var(--ink);}
+  .form-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px;}
+  .form-error{font-size:12px;color:var(--flag);margin-top:6px;display:none;}
+
+  @media (max-width:600px){
+    .strip{grid-template-columns:repeat(2,1fr);}
+    .proj-panel{flex-direction:column;align-items:stretch;}
+    .proj-result{text-align:left;}
+    .form-grid{grid-template-columns:1fr;}
+    .sc-grid{grid-template-columns:repeat(9,minmax(22px,1fr)) auto;}
+  }
+</style>
+</head>
+<body>
+
+<div class="sky" aria-hidden="true">
+  <div class="cloud c1"><svg viewBox="0 0 64 28" fill="#FFFFFF"><ellipse cx="16" cy="18" rx="16" ry="10"/><ellipse cx="34" cy="12" rx="18" ry="12"/><ellipse cx="50" cy="18" rx="13" ry="9"/></svg></div>
+  <div class="cloud c2"><svg viewBox="0 0 48 22" fill="#FFFFFF"><ellipse cx="12" cy="14" rx="12" ry="8"/><ellipse cx="26" cy="9" rx="14" ry="9"/><ellipse cx="38" cy="14" rx="10" ry="7"/></svg></div>
+  <div class="cloud c3"><svg viewBox="0 0 56 24" fill="#FFFFFF"><ellipse cx="14" cy="15" rx="14" ry="9"/><ellipse cx="30" cy="10" rx="15" ry="10"/><ellipse cx="44" cy="15" rx="11" ry="8"/></svg></div>
+  <div class="bird b1"><svg viewBox="0 0 34 16"><path d="M1,10 Q9,1 17,9 Q25,1 33,10" fill="none" stroke="#3C4A52" stroke-width="2" stroke-linecap="round"/></svg></div>
+  <div class="bird b2"><svg viewBox="0 0 34 16"><path d="M1,10 Q9,1 17,9 Q25,1 33,10" fill="none" stroke="#4FA8DE" stroke-width="2" stroke-linecap="round"/></svg></div>
+  <div class="bird b3"><svg viewBox="0 0 34 16"><path d="M1,10 Q9,1 17,9 Q25,1 33,10" fill="none" stroke="#3C4A52" stroke-width="2" stroke-linecap="round"/></svg></div>
+  <div class="bird b4"><svg viewBox="0 0 34 16"><path d="M1,10 Q9,1 17,9 Q25,1 33,10" fill="none" stroke="#4EBCFF" stroke-width="2" stroke-linecap="round"/></svg></div>
+</div>
+
+<div class="wrap">
+  <div class="theme-toggle"><button id="themeBtn" type="button">🎮 Switch to Wii Golf</button></div>
+
+  <header class="hero">
+    <div class="hero-text">
+      <div class="eyebrow"><span>GHIN #13698012</span><span id="today-tag">—</span></div>
+      <h1>Ange's <em>Golf</em></h1>
+    </div>
+    <div class="mii-hero wii-only" id="miiHero"></div>
+  </header>
+
+  <div class="strip">
+    <div class="cell"><div class="icon-row">⛳</div><div class="num" id="stat-index">—</div><div class="lbl">Current Trend Index</div></div>
+    <div class="cell flag"><div class="icon-row">📈</div><div class="num" id="stat-trend">—</div><div class="lbl">Change / 30 days</div></div>
+    <div class="cell"><div class="icon-row">🐦</div><div class="num" id="stat-lowdiff">—</div><div class="lbl">Best Differential</div></div>
+    <div class="cell flag"><div class="icon-row">🏆</div><div class="num" id="stat-since-start">—</div><div class="lbl">Change Since Start</div></div>
+  </div>
+  <p class="rounds-footnote" id="rounds-footnote"></p>
+
+  <section>
+    <h2><span class="wii-only">📊</span>Best n⁄2 Trend <span class="idx">avg. of the best n⁄2 of n nine-hole segments, running total</span></h2>
+    <p class="note">Every round adds 1 segment (9 holes) or 2 segments (18 holes) to the pool. This line is the average of the lowest half of every segment differential posted so far. Dashed line is the linear regression through it.</p>
+    <div class="chart-box"><canvas id="trendChart" height="260"></canvas></div>
+  </section>
+
+  <section>
+    <h2><span class="wii-only">⛳</span>Score Differentials <span class="idx">every posted round</span></h2>
+    <div class="chart-box"><canvas id="diffChart" height="220"></canvas></div>
+  </section>
+
+  <section>
+    <h2><span class="wii-only">🔭</span>Project Forward</h2>
+    <p class="note">Extrapolates the regression slope forward. Treat as "if the trend holds," not an official number.</p>
+    <div class="proj-panel">
+      <div><label for="proj-date">Target date</label><input type="date" id="proj-date"><div class="proj-date-readout" id="proj-date-readout"></div></div>
+      <div class="proj-result"><div class="cap">Projected Trend Index</div><div class="big" id="proj-value">—</div></div>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="wii-only">🏆</span>Course Records</h2>
+    <p class="note">Best score, best differential, and expected score for Ange's next round, per course, most-played first.</p>
+    <table>
+      <thead><tr><th>Course</th><th style="text-align:right">Rounds</th><th style="text-align:right">Best Score</th><th style="text-align:right">Avg Score</th><th style="text-align:right">Best Diff.</th><th style="text-align:right">Exp. Score</th></tr></thead>
+      <tbody id="course-record-table"></tbody>
+    </table>
+  </section>
+
+  <section>
+    <div class="h2-row">
+      <h2><span class="wii-only">📋</span>Round-by-Round</h2>
+      <button class="btn" id="addRoundBtn" type="button">+ Add Round</button>
+    </div>
+    <table>
+      <thead><tr><th>Date</th><th>Score</th><th>Course</th><th>Rtg Slope</th><th style="text-align:right">Diff.</th></tr></thead>
+      <tbody id="score-table"></tbody>
+    </table>
+  </section>
+
+  <footer>
+    Built from manually supplied score history · <strong>Ni</strong> = 9-hole round (1 segment), 18-hole rounds count as 2 segments · trend index = avg. of the best n⁄2 of all segment differentials to date, not the official WHS revision
+  </footer>
+</div>
+
+<!-- ROUND DETAIL MODAL -->
+<div class="overlay" id="detailOverlay">
+  <div class="modal" id="detailModal">
+    <button class="modal-close" id="detailClose" aria-label="Close">✕</button>
+    <div class="mii-row wii-only" id="detailMiiRow"></div>
+    <h3 id="detailTitle">Round</h3>
+    <div id="detailBody"></div>
+  </div>
+</div>
+
+<!-- ADD ROUND MODAL -->
+<div class="overlay" id="addOverlay">
+  <div class="modal" id="addModal">
+    <button class="modal-close" id="addClose" aria-label="Close">✕</button>
+    <h3>Add a round</h3>
+    <p class="note" style="margin-top:2px;">Enter the total score — differential is calculated automatically from the rating and slope.</p>
+    <div class="form-grid">
+      <div class="full"><label>Course name</label><input id="f-course" type="text" list="courseList" autocomplete="off" placeholder="e.g. Sligo Creek Golf Course"><datalist id="courseList"></datalist></div>
+      <div><label>Date</label><input id="f-date" type="date"></div>
+      <div><label>Holes</label>
+        <select id="f-holes"><option value="18">18</option><option value="9">9</option></select>
+      </div>
+      <div><label>Course rating</label><input id="f-rating" type="number" step="0.1" placeholder="e.g. 69.8"></div>
+      <div><label>Slope rating</label><input id="f-slope" type="number" step="1" placeholder="e.g. 116"></div>
+      <div class="full"><label>Total score</label><input id="f-score" type="number" step="1" placeholder="e.g. 96"></div>
+    </div>
+    <div class="form-error" id="formError">Fill in the course, date, rating, slope, and total score.</div>
+    <div class="form-actions">
+      <button class="btn secondary" id="addCancel" type="button">Cancel</button>
+      <button class="btn" id="addSave" type="button">Save round</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ================= DATA =================
+const baseRounds = [
+  {score:"103A", date:"2026-08-03", rating:69.8, slope:116, diff:32.3, course:"Enterprise Golf Course", holes:18,
+    detail:{par:72, tee:"White 6335 yds", duration:"2h 51m", net:69,
+      front:[4,5,6,5,5,6,6,4,8], back:[7,6,6,4,8,5,7,6,5]}},
+  {score:"47Ni", date:"2026-08-02", rating:32.5, slope:105, diff:35.2, course:"Northwest GC — Inside Nine", holes:9},
+  {score:"45Ni", date:"2026-08-01", rating:31.0, slope:101, diff:35.5, course:"Sligo Creek Golf Course", holes:9},
+  {score:"100A", date:"2026-07-31", rating:66.2, slope:112, diff:34.1, course:"Laytonsville Golf Course", holes:18},
+  {score:"102A", date:"2026-07-29", rating:68.2, slope:107, diff:35.7, course:"East Potomac Golf Links — Blue", holes:18},
+  {score:"46Ni", date:"2026-07-27", rating:31.0, slope:101, diff:37.1, course:"Sligo Creek Golf Course", holes:9},
+  {score:"50Ni", date:"2026-07-26", rating:31.0, slope:101, diff:41.6, course:"Sligo Creek Golf Course", holes:9},
+  {score:"53Ni", date:"2026-07-24", rating:32.8, slope:112, diff:40.3, course:"Bowie Golf Club", holes:9},
+  {score:"50Ni", date:"2026-07-22", rating:31.0, slope:101, diff:41.2, course:"Sligo Creek Golf Course", holes:9},
+  {score:"50Ni", date:"2026-07-20", rating:31.0, slope:101, diff:40.7, course:"Sligo Creek Golf Course", holes:9},
+  {score:"38Ni", date:"2026-07-17", rating:29.8, slope:93,  diff:30.6, course:"Needwood Executive", holes:9},
+  {score:"49Ni", date:"2026-07-17", rating:30.7, slope:99,  diff:41.5, course:"Rock Creek Golf Course", holes:9},
+  {score:"60Ni", date:"2026-07-04", rating:35.1, slope:130, diff:41.8, course:"Rehoboth Beach Country Club", holes:9},
+  {score:"50Ni", date:"2026-07-15", rating:29.4, slope:85,  diff:47.6, course:"Paint Branch Golf Course", holes:9},
+  {score:"51Ni", date:"2026-07-13", rating:31.0, slope:101, diff:41.8, course:"Sligo Creek Golf Course", holes:9},
+  {score:"51Ni", date:"2026-07-11", rating:31.0, slope:101, diff:41.3, course:"Sligo Creek Golf Course", holes:9},
+  {score:"57Ni", date:"2026-07-11", rating:32.5, slope:105, diff:45.3, course:"Northwest GC — Inside Nine", holes:9},
+  {score:"43Ni", date:"2026-07-10", rating:29.8, slope:93,  diff:35.1, course:"Needwood Executive", holes:9},
+  {score:"57Ni", date:"2026-07-10", rating:31.0, slope:101, diff:48.1, course:"Sligo Creek Golf Course", holes:9},
+  {score:"43Ni", date:"2026-07-08", rating:29.8, slope:93,  diff:35.1, course:"Needwood Executive", holes:9},
+  {score:"49Ni", date:"2026-07-08", rating:31.0, slope:101, diff:39.2, course:"Sligo Creek Golf Course", holes:9},
+  {score:"48Ni", date:"2026-07-06", rating:30.0, slope:96,  diff:40.2, course:"Sligo Creek Golf Course", holes:9},
+];
+
+// rounds the user has added/deleted persist across sessions via the browser's localStorage
+// (works when this file is hosted/opened normally — e.g. GitHub Pages — not inside Claude's artifact sandbox)
+const hasStorage = typeof window !== 'undefined' && !!window.localStorage;
+let addedRounds = [];   // user-added rounds, persisted
+let deletedKeys = [];   // keys of baseRounds the user deleted, persisted
+let rounds = [...baseRounds];
+
+function roundKey(r){ return `${r.date}|${r.course}|${r.score}`; }
+
+function rebuildRoundsArray(){
+  const activeBase = baseRounds.filter(r => !deletedKeys.includes(roundKey(r)));
+  rounds = [...activeBase, ...addedRounds];
+}
+
+function persistAdded(){
+  if(!hasStorage) return;
+  try{ window.localStorage.setItem('anges-golf-rounds-added', JSON.stringify(addedRounds)); }catch(e){}
+}
+function persistDeleted(){
+  if(!hasStorage) return;
+  try{ window.localStorage.setItem('anges-golf-rounds-deleted', JSON.stringify(deletedKeys)); }catch(e){}
+}
+function loadPersisted(){
+  if(hasStorage){
+    try{
+      const raw = window.localStorage.getItem('anges-golf-rounds-added');
+      if(raw) addedRounds = JSON.parse(raw);
+    }catch(e){ addedRounds = []; }
+    try{
+      const raw = window.localStorage.getItem('anges-golf-rounds-deleted');
+      if(raw) deletedKeys = JSON.parse(raw);
+    }catch(e){ deletedKeys = []; }
+  }
+  rebuildRoundsArray();
+  recompute();
+}
+
+const dayNum = d => Math.round(new Date(d).getTime()/86400000);
+let currentTheme = 'default';
+let trendChart, diffChart;
+let t0, trend, reg;
+let courseLookup = {}; // normalized course name -> {name, rating, slope, holes}
+
+function refreshCourseLookup(){
+  courseLookup = {};
+  // sort oldest -> newest so the most recent round at each course wins
+  const chrono = [...rounds].sort((a,b)=> new Date(a.date) - new Date(b.date));
+  chrono.forEach(r=>{
+    const key = r.course.trim().toLowerCase();
+    courseLookup[key] = {name:r.course, rating:r.rating, slope:r.slope, holes:r.holes};
+  });
+  const datalist = document.getElementById('courseList');
+  datalist.innerHTML = Object.values(courseLookup)
+    .map(c => `<option value="${c.name.replace(/"/g,'&quot;')}"></option>`)
+    .join('');
+}
+
+// ================= MII AVATAR =================
+function miiSVG(mood, size){
+  size = size || 64;
+  const skin = '#FFDBAC', hair = '#21ABDE', outline = '#3C4A52', visor = '#FFFFFF';
+
+  let eyes, mouth, brows = '';
+  if(mood === 'happy'){
+    eyes = `<path d="M16,29 Q19,25 22,29" stroke="${outline}" stroke-width="2" fill="none" stroke-linecap="round"/>
+            <path d="M38,29 Q41,25 44,29" stroke="${outline}" stroke-width="2" fill="none" stroke-linecap="round"/>`;
+    mouth = `<path d="M22,39 Q30,44 38,39" stroke="${outline}" stroke-width="2.2" fill="none" stroke-linecap="round"/>`;
+  } else if(mood === 'concerned'){
+    eyes = `<ellipse cx="19" cy="30" rx="2.6" ry="1.7" fill="${outline}"/><ellipse cx="41" cy="30" rx="2.6" ry="1.7" fill="${outline}"/>`;
+    brows = `<path d="M14,25 Q19,22.5 24,25" stroke="${outline}" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+             <path d="M36,25 Q41,22.5 46,25" stroke="${outline}" stroke-width="1.8" fill="none" stroke-linecap="round"/>`;
+    mouth = `<path d="M23,41 Q30,38 37,41" stroke="${outline}" stroke-width="2" fill="none" stroke-linecap="round"/>`;
+  } else {
+    eyes = `<ellipse cx="19" cy="30" rx="2.6" ry="1.7" fill="${outline}"/><ellipse cx="41" cy="30" rx="2.6" ry="1.7" fill="${outline}"/>`;
+    mouth = `<line x1="23" y1="40" x2="37" y2="40" stroke="${outline}" stroke-width="2" stroke-linecap="round"/>`;
+  }
+
+  return `<svg viewBox="0 0 60 60" width="${size}" height="${size}">
+    <ellipse cx="30" cy="33" rx="19" ry="22" fill="${skin}" stroke="${outline}" stroke-width="2"/>
+    <path d="M11,25 Q11,4 30,4 Q49,4 49,25 L49,15 Q30,8 11,15 Z" fill="${hair}"/>
+    <path d="M10,20 Q30,12 50,20" stroke="${visor}" stroke-width="4" fill="none" stroke-linecap="round"/>
+    ${brows}
+    ${eyes}
+    ${mouth}
+  </svg>`;
+}
+
+// ================= DIFFERENTIAL =================
+function computeDiff(grossScore, rating, slope, holes){
+  const raw = (grossScore - rating) * 113 / slope;
+  if(holes === 9){
+    // WHS treats a lone 9-hole score as combined with a synthetic "expected" other 9
+    // (roughly half the player's current index) before it becomes an 18-hole-scale
+    // differential — matches how the historical "Ni" data in this set is scaled.
+    const currentIdx = (trend && trend.length) ? trend[trend.length-1].index : 0;
+    return Math.round((raw + currentIdx/2) * 10) / 10;
+  }
+  return Math.round(raw * 10) / 10;
+}
+
+function scoreOf(r){
+  return parseInt(r.score.replace(/(A|Ni)$/,''), 10);
+}
+
+// ================= CORE RECOMPUTE =================
+function recompute(){
+  const chrono = [...rounds].sort((a,b)=> new Date(a.date) - new Date(b.date));
+  t0 = dayNum(chrono[0].date);
+
+  const segmentDiffs = [];
+  trend = [];
+  for(const r of chrono){
+    const segs = r.holes === 18 ? 2 : 1;
+    for(let s=0;s<segs;s++) segmentDiffs.push(r.diff);
+    const n = segmentDiffs.length;
+    const k = Math.max(1, Math.floor(n/2));
+    const sorted = [...segmentDiffs].sort((a,b)=>a-b);
+    const avg = sorted.slice(0,k).reduce((s,x)=>s+x,0)/k;
+    trend.push({date:r.date, day:dayNum(r.date)-t0, index:Math.round(avg*10)/10});
+  }
+
+  function linreg(points){
+    const n = points.length;
+    const sx = points.reduce((s,p)=>s+p.day,0);
+    const sy = points.reduce((s,p)=>s+p.index,0);
+    const sxy = points.reduce((s,p)=>s+p.day*p.index,0);
+    const sxx = points.reduce((s,p)=>s+p.day*p.day,0);
+    const denom = (n*sxx - sx*sx);
+    const slope = denom !== 0 ? (n*sxy - sx*sy) / denom : 0;
+    const intercept = (sy - slope*sx)/n;
+    return {slope, intercept};
+  }
+  reg = linreg(trend);
+
+  document.getElementById('today-tag').textContent = new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+  const currentIndex = trend[trend.length-1].index;
+  document.getElementById('stat-index').textContent = currentIndex.toFixed(1);
+  const per30 = reg.slope*30;
+  const arrow = per30 < -0.05 ? '▼' : (per30 > 0.05 ? '▲' : '—');
+  document.getElementById('stat-trend').innerHTML = (per30>=0?'+':'')+per30.toFixed(1)+' <span class="trend-arrow">'+arrow+'</span>';
+  document.getElementById('stat-lowdiff').textContent = Math.min(...rounds.map(r=>r.diff)).toFixed(1);
+  const sinceStart = currentIndex - trend[0].index;
+  const sinceArrow = sinceStart < -0.05 ? '▼' : (sinceStart > 0.05 ? '▲' : '—');
+  document.getElementById('stat-since-start').innerHTML = (sinceStart>=0?'+':'')+sinceStart.toFixed(1)+' <span class="trend-arrow">'+sinceArrow+'</span>';
+  document.getElementById('rounds-footnote').textContent = `Based on ${rounds.length} rounds posted`;
+
+  // hero Mii mood: compare avg of most recent 3 segment diffs vs previous 3
+  const allDiffsChrono = chrono.map(r=>r.diff);
+  const last3 = allDiffsChrono.slice(-3);
+  const prev3 = allDiffsChrono.slice(-6,-3);
+  let heroMood = 'neutral';
+  if(prev3.length===3){
+    const a = last3.reduce((s,x)=>s+x,0)/last3.length;
+    const b = prev3.reduce((s,x)=>s+x,0)/prev3.length;
+    heroMood = a < b - 0.5 ? 'happy' : (a > b + 0.5 ? 'concerned' : 'neutral');
+  }
+  document.getElementById('miiHero').innerHTML = miiSVG(heroMood, 64);
+
+  // table — always most recent to oldest, regardless of insertion order
+  const tbody = document.getElementById('score-table');
+  tbody.innerHTML = '';
+  const sortedForTable = [...rounds].sort((a,b)=> new Date(b.date) - new Date(a.date));
+  sortedForTable.forEach((r)=>{
+    const idx = rounds.indexOf(r);
+    const tr = document.createElement('tr');
+    const dateFmt = new Date(r.date+'T00:00:00').toLocaleDateString('en-US',{month:'2-digit',day:'2-digit',year:'numeric'});
+    tr.innerHTML = `
+      <td class="date-cell">${dateFmt}</td>
+      <td><span class="badge ${r.holes===18?'b18':'b9'}">${r.holes===18?'18':'9'}</span><br><span class="score-tag">${r.score.replace(/(A|Ni)$/,'')}</span></td>
+      <td class="course-name">${r.course}</td>
+      <td>${r.rating.toFixed(1)}<br>${r.slope}</td>
+      <td class="diff-cell">${r.diff.toFixed(1)}</td>
+    `;
+    tr.addEventListener('click', ()=>openDetail(idx));
+    tbody.appendChild(tr);
+  });
+
+  renderCourseRecords();
+  refreshCourseLookup();
+  renderCharts(currentTheme);
+  updateProjection();
+}
+
+function renderCourseRecords(){
+  const currentIndex = (trend && trend.length) ? trend[trend.length-1].index : null;
+  const byCourse = {};
+  rounds.forEach(r=>{
+    const key = r.course.trim();
+    if(!byCourse[key]) byCourse[key] = [];
+    byCourse[key].push(r);
+  });
+  const rows = Object.entries(byCourse).map(([course, list])=>{
+    const bestScore = Math.min(...list.map(scoreOf));
+    const bestDiff = Math.min(...list.map(r=>r.diff));
+    const avgScore = list.reduce((s,r)=>s+scoreOf(r),0)/list.length;
+    const latest = [...list].sort((a,b)=> new Date(b.date) - new Date(a.date))[0];
+    const expScore = currentIndex !== null
+      ? (latest.holes === 9
+          ? Math.round((currentIndex/2) * latest.slope / 113 + latest.rating)
+          : Math.round(currentIndex * latest.slope / 113 + latest.rating))
+      : null;
+    return {course, count:list.length, bestScore, bestDiff, avgScore, expScore};
+  }).sort((a,b)=> b.count - a.count || a.bestDiff - b.bestDiff);
+
+  const tbody = document.getElementById('course-record-table');
+  tbody.innerHTML = rows.map(row => `
+    <tr>
+      <td class="course-name">${row.course}</td>
+      <td class="diff-cell">${row.count}</td>
+      <td class="diff-cell">${row.bestScore}</td>
+      <td class="diff-cell">${Math.round(row.avgScore)}</td>
+      <td class="diff-cell">${row.bestDiff.toFixed(1)}</td>
+      <td class="diff-cell">${row.expScore !== null ? row.expScore : '—'}</td>
+    </tr>
+  `).join('');
+}
+
+// ================= CHARTS =================
+function colorsFor(theme){
+  if(theme === 'wii'){
+    return {ink:'#3C4A52', grid:'#8B8C91', trendLine:'#26B0D3', regLine:'#8D9095', c18:'#21ABDE', c9:'#8D9095', font:'Poppins'};
+  }
+  return {ink:'#28321F', grid:'#d8cfae', trendLine:'#33553B', regLine:'#A8402F', c18:'#33553B', c9:'#CBAE78', font:'IBM Plex Mono'};
+}
+
+function renderCharts(theme){
+  const c = colorsFor(theme);
+  const trendLabels = trend.map(p => new Date(p.date+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'}));
+  const regLineData = trend.map(p => reg.slope*p.day + reg.intercept);
+
+  if(trendChart) trendChart.destroy();
+  if(diffChart) diffChart.destroy();
+
+  trendChart = new Chart(document.getElementById('trendChart'), {
+    type:'line',
+    data:{labels: trendLabels, datasets:[
+      {label:'Best n⁄2 Trend', data: trend.map(p=>p.index), borderColor:c.trendLine, backgroundColor:c.trendLine, pointRadius:3, tension:0.15, borderWidth:2.5},
+      {label:'Regression', data: regLineData, borderColor:c.regLine, borderDash:[5,4], borderWidth:1.5, pointRadius:0, tension:0}
+    ]},
+    options:{responsive:true,
+      plugins:{legend:{labels:{color:c.ink,font:{family:c.font,size:11}}}},
+      scales:{
+        y:{title:{display:true,text:'Trend Index',color:c.ink,font:{family:c.font,size:11}},ticks:{color:c.ink,font:{family:c.font,size:10}},grid:{color:c.grid}},
+        x:{ticks:{color:c.ink,font:{family:c.font,size:9},maxRotation:60,minRotation:60},grid:{display:false}}
+      }
+    }
+  });
+
+  diffChart = new Chart(document.getElementById('diffChart'), {
+    type:'scatter',
+    data:{datasets:[
+      {label:'18-hole', data: rounds.filter(r=>r.holes===18).map(r=>({x:dayNum(r.date)-t0, y:r.diff})), backgroundColor:c.c18, pointRadius:6},
+      {label:'9-hole (WHS adjusted)', data: rounds.filter(r=>r.holes===9).map(r=>({x:dayNum(r.date)-t0, y:r.diff})), backgroundColor:c.c9, pointRadius:5}
+    ]},
+    options:{responsive:true,
+      plugins:{legend:{labels:{color:c.ink,font:{family:c.font,size:11}}}},
+      scales:{
+        y:{title:{display:true,text:'Score Differential',color:c.ink,font:{family:c.font,size:11}},ticks:{color:c.ink,font:{family:c.font,size:10}},grid:{color:c.grid}},
+        x:{title:{display:true,text:'Days since first posted round',color:c.ink,font:{family:c.font,size:10}},ticks:{color:c.ink,font:{family:c.font,size:10}},grid:{display:false}}
+      }
+    }
+  });
+}
+
+// ================= THEME TOGGLE =================
+const themeBtn = document.getElementById('themeBtn');
+themeBtn.addEventListener('click', ()=>{
+  const isWii = document.documentElement.getAttribute('data-theme') === 'wii';
+  if(isWii){
+    document.documentElement.removeAttribute('data-theme');
+    themeBtn.textContent = '🎮 Switch to Wii Golf';
+    currentTheme = 'default';
+  }else{
+    document.documentElement.setAttribute('data-theme','wii');
+    themeBtn.textContent = '⛳ Back to Classic';
+    currentTheme = 'wii';
+  }
+  renderCharts(currentTheme);
+});
+
+// ================= PROJECTION =================
+const projInput = document.getElementById('proj-date');
+const projReadout = document.getElementById('proj-date-readout');
+
+function regressionCrossDate(){
+  // Solve reg.slope*day + reg.intercept = 30.0 for day, then convert to a real date.
+  // Only meaningful if the regression is actually declining (slope < 0).
+  if(!reg || reg.slope >= 0) return null;
+  const crossDay = (30.0 - reg.intercept) / reg.slope;
+  const wholeDay = Math.ceil(crossDay);
+  const ms = (t0 + wholeDay) * 86400000;
+  return new Date(ms).toISOString().slice(0,10);
+}
+
+function initProjectionDate(){
+  const chrono = [...rounds].sort((a,b)=> new Date(a.date) - new Date(b.date));
+  const lastDate = chrono[chrono.length-1].date;
+  const crossDate = regressionCrossDate();
+  projInput.min = crossDate && crossDate < chrono[0].date ? crossDate : chrono[0].date;
+  if(!projInput.value){
+    if(crossDate){
+      projInput.value = crossDate;
+    } else {
+      const defaultTarget = new Date(new Date(lastDate).getTime() + 30*86400000);
+      projInput.value = defaultTarget.toISOString().slice(0,10);
+    }
+  }
+}
+function updateProjection(){
+  if(!projInput.value) initProjectionDate();
+  const target = projInput.value;
+  if(!target) return;
+  const targetDay = dayNum(target) - t0;
+  const projected = reg.slope*targetDay + reg.intercept;
+  document.getElementById('proj-value').textContent = projected.toFixed(1);
+  const readable = new Date(target+'T00:00:00').toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
+  const crossDate = regressionCrossDate();
+  const isCrossDate = crossDate && target === crossDate;
+  projReadout.textContent = isCrossDate
+    ? `${readable} — first day the regression is projected to drop below 30.0`
+    : readable;
+}
+projInput.addEventListener('input', updateProjection);
+
+// ================= ROUND DETAIL MODAL =================
+const detailOverlay = document.getElementById('detailOverlay');
+const detailModal = document.getElementById('detailModal');
+document.getElementById('detailClose').addEventListener('click', ()=>detailOverlay.classList.remove('open'));
+detailOverlay.addEventListener('click', e=>{ if(e.target===detailOverlay) detailOverlay.classList.remove('open'); });
+
+function openDetail(idx){
+  const r = rounds[idx];
+  document.getElementById('detailTitle').textContent = r.course;
+  const dateFmt = new Date(r.date+'T00:00:00').toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
+
+  const avgDiff = rounds.reduce((s,x)=>s+x.diff,0)/rounds.length;
+  const mood = r.diff < avgDiff - 2 ? 'happy' : (r.diff > avgDiff + 2 ? 'concerned' : 'neutral');
+  document.getElementById('detailMiiRow').innerHTML = miiSVG(mood, 48) + `<div style="font-size:13px;">${mood==='happy' ? "One of Ange's better rounds!" : mood==='concerned' ? 'A tougher day on the course.' : 'Right around average.'}</div>`;
+
+  let body = `<p class="note" style="margin:2px 0 0;">${dateFmt} · ${r.holes}-hole round · Differential ${r.diff.toFixed(1)} · Rating/Slope ${r.rating.toFixed(1)}/${r.slope}</p>`;
+
+  body += `<div style="text-align:center;margin-top:14px;"><button class="btn danger" id="deleteRoundBtn" type="button">Delete this round</button></div>`;
+
+  document.getElementById('detailBody').innerHTML = body;
+  detailOverlay.classList.add('open');
+
+  const delBtn = document.getElementById('deleteRoundBtn');
+  delBtn.addEventListener('click', function onDeleteClick(){
+    if(delBtn.dataset.armed === '1'){
+      const key = roundKey(r);
+      const addedIdx = addedRounds.findIndex(x => roundKey(x) === key);
+      if(addedIdx !== -1){
+        addedRounds.splice(addedIdx, 1);
+        persistAdded();
+      } else {
+        deletedKeys.push(key);
+        persistDeleted();
+      }
+      rebuildRoundsArray();
+      detailOverlay.classList.remove('open');
+      recompute();
+    } else {
+      delBtn.dataset.armed = '1';
+      delBtn.textContent = 'Tap again to confirm delete';
+    }
+  });
+}
+
+// ================= ADD ROUND MODAL =================
+const addOverlay = document.getElementById('addOverlay');
+document.getElementById('addClose').addEventListener('click', ()=>addOverlay.classList.remove('open'));
+document.getElementById('addCancel').addEventListener('click', ()=>addOverlay.classList.remove('open'));
+addOverlay.addEventListener('click', e=>{ if(e.target===addOverlay) addOverlay.classList.remove('open'); });
+
+document.getElementById('f-course').addEventListener('input', (e)=>{
+  const match = courseLookup[e.target.value.trim().toLowerCase()];
+  if(match){
+    document.getElementById('f-rating').value = match.rating;
+    document.getElementById('f-slope').value = match.slope;
+    document.getElementById('f-holes').value = match.holes;
+  }
+});
+
+function todayISO(){
+  const d = new Date();
+  const tz = d.getTimezoneOffset();
+  return new Date(d.getTime() - tz*60000).toISOString().slice(0,10);
+}
+
+function openAddModal(){
+  document.getElementById('formError').style.display = 'none';
+  document.getElementById('f-course').value = '';
+  document.getElementById('f-date').value = todayISO();
+  document.getElementById('f-holes').value = 18;
+  document.getElementById('f-rating').value = '';
+  document.getElementById('f-slope').value = '';
+  document.getElementById('f-score').value = '';
+  addOverlay.classList.add('open');
+}
+document.getElementById('addRoundBtn').addEventListener('click', openAddModal);
+
+document.getElementById('addSave').addEventListener('click', ()=>{
+  const course = document.getElementById('f-course').value.trim();
+  const date = document.getElementById('f-date').value;
+  const holes = parseInt(document.getElementById('f-holes').value, 10);
+  const rating = parseFloat(document.getElementById('f-rating').value);
+  const slope = parseFloat(document.getElementById('f-slope').value);
+  const gross = parseInt(document.getElementById('f-score').value, 10);
+
+  const valid = course && date && !isNaN(rating) && !isNaN(slope) && !isNaN(gross) && gross > 0;
+  if(!valid){
+    document.getElementById('formError').style.display = 'block';
+    return;
+  }
+
+  const diff = computeDiff(gross, rating, slope, holes);
+  const newRound = {
+    score: gross + (holes===9?'Ni':'A'),
+    date, rating, slope, diff, course, holes
+  };
+
+  addedRounds.unshift(newRound);
+  persistAdded();
+  rebuildRoundsArray();
+  addOverlay.classList.remove('open');
+  recompute();
+});
+
+// ================= INIT =================
+loadPersisted();
+</script>
+</body>
+</html>
