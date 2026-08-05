@@ -41,6 +41,9 @@
   @media (prefers-reduced-motion: reduce){.bird{animation:none;left:10%;}}
 
   .wii-only{display:none;} html[data-theme="wii"] .wii-only{display:inline-block;}
+  .classic-only{display:inline;} html[data-theme="wii"] .classic-only{display:none;}
+  .wii-ange{color:var(--sand);}
+  .wii-golf{font-style:italic;}
   .wii-only.block{display:none;} html[data-theme="wii"] .wii-only.block{display:block;}
 
   .theme-toggle{display:flex;justify-content:flex-end;margin-bottom:10px;position:relative;z-index:2;}
@@ -188,7 +191,7 @@
   <header class="hero">
     <div class="hero-text">
       <div class="eyebrow"><span>GHIN #13698012</span><span id="today-tag">—</span></div>
-      <h1>Ange's <em>Golf</em></h1>
+      <h1><span class="classic-only">Ange's <em>Golf</em></span><span class="wii-only"><span class="wii-ange">Ange</span><span class="wii-golf">Golf</span></span></h1>
     </div>
     <div class="mii-hero wii-only" id="miiHero"></div>
   </header>
@@ -202,14 +205,14 @@
   <p class="rounds-footnote" id="rounds-footnote"></p>
 
   <section>
-    <h2><span class="wii-only">📊</span>Best n⁄2 Trend <span class="idx">avg. of the best n⁄2 of n nine-hole segments, running total</span></h2>
-    <p class="note">Every round adds 1 segment (9 holes) or 2 segments (18 holes) to the pool. This line is the average of the lowest half of every segment differential posted so far. Dashed line is the linear regression through it.</p>
-    <div class="chart-box"><canvas id="trendChart" height="260"></canvas></div>
+    <h2><span class="wii-only">⛳</span>Score Differentials <span class="idx">every posted round</span></h2>
+    <div class="chart-box"><canvas id="diffChart" height="220"></canvas></div>
   </section>
 
   <section>
-    <h2><span class="wii-only">⛳</span>Score Differentials <span class="idx">every posted round</span></h2>
-    <div class="chart-box"><canvas id="diffChart" height="220"></canvas></div>
+    <h2><span class="wii-only">📊</span><span id="trend-title">Best n⁄2 Trend</span> <span class="idx">avg. of the best n⁄2 of n nine-hole segments, running total</span></h2>
+    <p class="note">Every round adds 1 segment (9 holes) or 2 segments (18 holes) to the pool. This line is the average of the lowest half of every segment differential posted so far. Dashed line is the linear regression through it.</p>
+    <div class="chart-box"><canvas id="trendChart" height="260"></canvas></div>
   </section>
 
   <section>
@@ -232,7 +235,7 @@
 
   <section>
     <div class="h2-row">
-      <h2><span class="wii-only">📋</span>Round-by-Round</h2>
+      <h2><span class="wii-only">📋</span>Round History</h2>
       <button class="btn" id="addRoundBtn" type="button">+ Add Round</button>
     </div>
     <table>
@@ -350,6 +353,7 @@ const dayNum = d => Math.round(new Date(d).getTime()/86400000);
 let currentTheme = 'default';
 let trendChart, diffChart;
 let t0, trend, reg;
+let currentBestCount = 1;
 let courseLookup = {}; // normalized course name -> {name, rating, slope, holes}
 
 function refreshCourseLookup(){
@@ -455,6 +459,12 @@ function recompute(){
   document.getElementById('stat-since-start').innerHTML = (sinceStart>=0?'+':'')+sinceStart.toFixed(1)+' <span class="trend-arrow">'+sinceArrow+'</span>';
   document.getElementById('rounds-footnote').textContent = `Based on ${rounds.length} rounds posted`;
 
+  // title reflects the actual best-n/2 count for however many segments are posted right now
+  const totalSegments = rounds.reduce((s,r)=> s + (r.holes===18?2:1), 0);
+  const bestCount = Math.max(1, Math.floor(totalSegments/2));
+  currentBestCount = bestCount;
+  document.getElementById('trend-title').textContent = `Best ${bestCount} Segments Trend`;
+
   // hero Mii mood: compare avg of most recent 3 segment diffs vs previous 3
   const allDiffsChrono = chrono.map(r=>r.diff);
   const last3 = allDiffsChrono.slice(-3);
@@ -545,7 +555,7 @@ function renderCharts(theme){
   trendChart = new Chart(document.getElementById('trendChart'), {
     type:'line',
     data:{labels: trendLabels, datasets:[
-      {label:'Best n⁄2 Trend', data: trend.map(p=>p.index), borderColor:c.trendLine, backgroundColor:c.trendLine, pointRadius:3, tension:0.15, borderWidth:2.5},
+      {label:`Best ${currentBestCount} Segments Trend`, data: trend.map(p=>p.index), borderColor:c.trendLine, backgroundColor:c.trendLine, pointRadius:3, tension:0.15, borderWidth:2.5},
       {label:'Regression', data: regLineData, borderColor:c.regLine, borderDash:[5,4], borderWidth:1.5, pointRadius:0, tension:0}
     ]},
     options:{responsive:true,
