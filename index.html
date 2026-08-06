@@ -37,12 +37,17 @@
   .bird.b3{top:20px;animation-duration:26s;animation-delay:-16s;}
   .bird.b4{top:100px;animation-duration:34s;animation-delay:-4s;}
   @keyframes fly{from{transform:translateX(-60px);}to{transform:translateX(calc(100vw + 60px));}}
-  .cloud{position:absolute;opacity:0.9;}
-  .cloud.c1{top:18px;left:8%;width:64px;} .cloud.c2{top:96px;right:10%;width:48px;} .cloud.c3{top:150px;left:38%;width:56px;}
+  .cloud{position:absolute;opacity:0.9;animation:drift 70s linear infinite;}
+  @keyframes drift{from{transform:translateX(-40px);}to{transform:translateX(calc(100vw + 40px));}}
+  @media (prefers-reduced-motion: reduce){.cloud{animation:none;}}
+  .cloud.c1{top:18px;left:8%;width:64px;animation-duration:65s;animation-delay:0s;}
+  .cloud.c2{top:96px;right:10%;width:48px;animation-duration:85s;animation-delay:-20s;}
+  .cloud.c3{top:150px;left:38%;width:56px;animation-duration:75s;animation-delay:-45s;}
   @media (prefers-reduced-motion: reduce){.bird{animation:none;left:10%;}}
 
   .wii-only{display:none;} html[data-theme="wii"] .wii-only{display:inline-block;}
   .classic-only{display:inline;} html[data-theme="wii"] .classic-only{display:none;}
+  .classic-only.block{display:block;} html[data-theme="wii"] .classic-only.block{display:none;}
   .wii-ange{color:var(--sand);}
   .wii-golf{font-style:italic;}
   .wii-only.block{display:none;} html[data-theme="wii"] .wii-only.block{display:block;}
@@ -63,7 +68,7 @@
   .ghin-tag{font-size:10px;opacity:0.75;}
   h1{font-family:var(--font-display);font-weight:600;font-size:clamp(34px,7vw,54px);line-height:0.98;letter-spacing:0.01em;margin:0 0 6px;color:var(--fairway);}
   html[data-theme="wii"] h1{font-weight:700;letter-spacing:0.015em;}
-  h1 em{font-style:normal;font-weight:400;color:var(--flag);}
+  h1 em{font-style:normal;font-weight:700;color:var(--fairway);}
   html[data-theme="wii"] h1 em{font-style:normal;font-weight:700;}
   .sub{font-size:15px;color:#5b5747;max-width:56ch;}
   html[data-theme="wii"] .sub{color:#5C86A0;font-weight:500;}
@@ -114,13 +119,14 @@
   tbody td{padding:9px 8px;border-bottom:1px solid var(--line);vertical-align:top;}
   tbody tr{cursor:pointer;}
   tbody tr:hover{background:var(--paper-tan);}
-  .score-tag{font-family:var(--font-mono);font-weight:600;display:inline-block;margin-top:3px;}
+  .score-tag{font-family:var(--font-mono);font-weight:600;}
   .topar{font-size:10px;font-weight:400;color:#8a8368;}
   html[data-theme="wii"] .topar{color:#7C97A8;}
   .course-round-list{display:flex;flex-direction:column;gap:2px;}
-  .course-round-row{display:flex;justify-content:space-between;align-items:center;padding:9px 6px;border-bottom:1px solid var(--line);cursor:pointer;font-size:13.5px;}
+  .course-round-row{display:flex;justify-content:space-between;align-items:center;gap:6px;padding:9px 6px;border-bottom:1px solid var(--line);cursor:pointer;font-size:13.5px;}
   .course-round-row:hover{background:var(--paper-tan);}
   .course-round-row:last-child{border-bottom:none;}
+  .crr-mood{font-size:16px;line-height:1;flex-shrink:0;}
   .crr-date{color:#7a7461;font-size:12px;flex:1;}
   html[data-theme="wii"] .crr-date{color:#7C97A8;}
   .crr-score{font-family:var(--font-mono);font-weight:600;flex:1;text-align:center;}
@@ -128,7 +134,7 @@
   .date-cell{font-size:11.5px;color:#7a7461;}
   html[data-theme="wii"] .date-cell{color:#7C97A8;}
   .lowdiff-face{width:20px;height:auto;vertical-align:middle;margin-left:6px;}
-  .badge{font-family:var(--font-mono);font-size:10px;padding:1px 5px;border-radius:6px;display:inline-block;}
+  .badge{font-family:var(--font-mono);font-size:10px;padding:1px 5px;border-radius:6px;display:inline-block;margin-right:6px;vertical-align:middle;}
   .badge.b18{background:var(--fairway);color:#fff;} .badge.b9{background:var(--sand);color:#fff;}
   .badge.detail{background:transparent;border:1px solid var(--fairway-light);color:var(--fairway-light);}
   .diff-cell{font-family:var(--font-mono);text-align:right;}
@@ -219,7 +225,7 @@
           </span>
         </span</span>
       </div>
-      <h1><span class="classic-only">Ange's <em>Golf</em></span><span class="wii-only"><span class="wii-ange">Ange</span><span class="wii-golf">Golf</span></span></h1>
+      <h1><span class="classic-only">Ange's <em>Golf</em> Progress</span><span class="wii-only"><span class="wii-ange">Ange</span><span class="wii-golf">Golf</span></span></h1>
     </div>
   </header>
 
@@ -266,7 +272,7 @@
       <button class="btn" id="addRoundBtn" type="button">+ Add Round</button>
     </div>
     <table>
-      <thead><tr><th>Date</th><th>Score</th><th>Course</th><th>Rtg Slope</th><th style="text-align:right">Diff.</th></tr></thead>
+      <thead><tr><th>Date</th><th>Score</th><th>Course</th><th style="text-align:right">Diff.</th></tr></thead>
       <tbody id="score-table"></tbody>
     </table>
   </section>
@@ -280,7 +286,7 @@
 <div class="overlay" id="detailOverlay">
   <div class="modal" id="detailModal">
     <button class="modal-close" id="detailClose" aria-label="Close">✕</button>
-    <div class="mii-row wii-only" id="detailMiiRow"></div>
+    <div class="mii-row" id="detailMiiRow"></div>
     <h3 id="detailTitle">Round</h3>
     <div id="detailBody"></div>
   </div>
@@ -513,9 +519,8 @@ function recompute(){
     const isLowest = r.diff === lowestDiff;
     tr.innerHTML = `
       <td class="date-cell">${dateFmt}</td>
-      <td><span class="badge ${r.holes===18?'b18':'b9'}">${r.holes===18?'18':'9'}</span><br><span class="score-tag">${r.score.replace(/(A|Ni)$/,'')}<span class="topar">${toParStr(scoreOf(r), r.course)}</span></span></td>
+      <td><span class="badge ${r.holes===18?'b18':'b9'}">${r.holes===18?'18':'9'}</span><span class="score-tag">${r.score.replace(/(A|Ni)$/,'')}<span class="topar">${toParStr(scoreOf(r), r.course)}</span></span></td>
       <td class="course-name">${r.course}${isLowest ? `<img class="lowdiff-face wii-only" src="data:image/png;base64,${lowDiffFaceB64}" alt="Best round">` : ''}</td>
-      <td>${r.rating.toFixed(1)}<br>${r.slope}</td>
       <td class="diff-cell">${r.diff.toFixed(1)}</td>
     `;
     tr.addEventListener('click', ()=>openDetail(idx));
@@ -741,8 +746,10 @@ function openCourseDetail(courseName){
   const rowsHtml = atCourse.map(r => {
     const dateFmt = new Date(r.date+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
     const gross = scoreOf(r);
+    const mood = moodEmoji(r.diff, rounds.map(x=>x.diff));
     return `
       <div class="course-round-row" data-idx="${r.idx}">
+        <span class="crr-mood">${mood.emoji}</span>
         <span class="crr-date">${dateFmt}</span>
         <span class="crr-score">${gross}<span class="topar">${toParStr(gross, r.course)}</span></span>
         <span class="crr-diff">${r.diff.toFixed(1)}</span>
