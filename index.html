@@ -68,8 +68,6 @@
   .ghin-tag{font-size:10px;opacity:0.75;}
   h1{font-family:var(--font-display);font-weight:600;font-size:clamp(34px,7vw,54px);line-height:0.98;letter-spacing:0.01em;margin:0 0 6px;color:var(--fairway);}
   html[data-theme="wii"] h1{font-weight:700;letter-spacing:0.015em;}
-  h1 em{font-style:normal;font-weight:700;color:var(--fairway);}
-  html[data-theme="wii"] h1 em{font-style:normal;font-weight:700;}
   .sub{font-size:15px;color:#5b5747;max-width:56ch;}
   html[data-theme="wii"] .sub{color:#5C86A0;font-weight:500;}
 
@@ -114,6 +112,8 @@
   html[data-theme="wii"] .proj-result .cap{color:#7C97A8;font-weight:600;}
 
   table{width:100%;border-collapse:collapse;font-size:13.5px;}
+  .round-history-table th:nth-child(2), .round-history-table td:nth-child(2){width:30%;}
+  .round-history-table th:nth-child(4), .round-history-table td:nth-child(4){width:1%;white-space:nowrap;}
   thead th{text-align:left;font-family:var(--font-mono);font-size:10.5px;letter-spacing:0.08em;text-transform:uppercase;color:#8a8368;border-bottom:2px solid var(--fairway);padding:8px 8px;}
   html[data-theme="wii"] thead th{color:#5C86A0;font-weight:700;letter-spacing:0.1em;}
   tbody td{padding:9px 8px;border-bottom:1px solid var(--line);vertical-align:top;}
@@ -230,7 +230,7 @@
   </header>
 
   <div class="strip">
-    <div class="cell"><div class="icon-row">⛳</div><div class="num" id="stat-index">—</div><div class="lbl">Current Trend Index</div></div>
+    <div class="cell"><div class="icon-row">⛳</div><div class="num" id="stat-index">—</div><div class="lbl">Proj Next Differential</div></div>
     <div class="cell flag"><div class="icon-row">📈</div><div class="num" id="stat-trend">—</div><div class="lbl">Change / 30 days</div></div>
     <div class="cell"><div class="icon-row">🐦</div><div class="num" id="stat-lowdiff">—</div><div class="lbl">Best Differential</div></div>
     <div class="cell flag"><div class="icon-row">🏆</div><div class="num" id="stat-since-start">—</div><div class="lbl">Change Since Start</div></div>
@@ -253,7 +253,7 @@
     <p class="note">Extrapolates the regression slope forward. Treat as "if the trend holds," not an official number.</p>
     <div class="proj-panel">
       <div><label for="proj-date">Target date</label><input type="date" id="proj-date"><div class="proj-date-readout" id="proj-date-readout"></div></div>
-      <div class="proj-result"><div class="cap">Projected Trend Index</div><div class="big" id="proj-value">—</div></div>
+      <div class="proj-result"><div class="cap">Projected Next Diff</div><div class="big" id="proj-value">—</div></div>
     </div>
   </section>
 
@@ -271,14 +271,14 @@
       <h2><span class="wii-only">📋</span>Round History</h2>
       <button class="btn" id="addRoundBtn" type="button">+ Add Round</button>
     </div>
-    <table>
+    <table class="round-history-table">
       <thead><tr><th>Date</th><th>Score</th><th>Course</th><th style="text-align:right">Diff.</th></tr></thead>
       <tbody id="score-table"></tbody>
     </table>
   </section>
 
   <footer>
-    Built from manually supplied score history · <strong>Ni</strong> = 9-hole round (1 segment), 18-hole rounds count as 2 segments · trend index = avg. of the best n⁄2 of all segment differentials to date, not the official WHS revision
+    Built from manually supplied score history · <strong>Ni</strong> = 9-hole round (1 segment), 18-hole rounds count as 2 segments · handicap = avg. of the best n⁄2 of all segment differentials to date, not the official WHS revision
   </footer>
 </div>
 
@@ -323,10 +323,10 @@ const baseRounds = [
   {score:"103A", date:"2026-08-03", rating:69.8, slope:116, diff:32.3, course:"Enterprise Golf Course", holes:18,
     detail:{par:72, tee:"White 6335 yds", duration:"2h 51m", net:69,
       front:[4,5,6,5,5,6,6,4,8], back:[7,6,6,4,8,5,7,6,5]}},
-  {score:"47Ni", date:"2026-08-02", rating:32.5, slope:105, diff:35.2, course:"Northwest GC — Inside Nine", holes:9},
+  {score:"47Ni", date:"2026-08-02", rating:32.5, slope:105, diff:35.2, course:"Northwest - Inside 9", holes:9},
   {score:"45Ni", date:"2026-08-01", rating:31.0, slope:101, diff:35.5, course:"Sligo Creek Golf Course", holes:9},
   {score:"100A", date:"2026-07-31", rating:66.2, slope:112, diff:34.1, course:"Laytonsville Golf Course", holes:18},
-  {score:"102A", date:"2026-07-29", rating:68.2, slope:107, diff:35.7, course:"East Potomac Golf Links — Blue", holes:18},
+  {score:"102A", date:"2026-07-29", rating:68.2, slope:107, diff:35.7, course:"East Potomac GL", holes:18},
   {score:"46Ni", date:"2026-07-27", rating:31.0, slope:101, diff:37.1, course:"Sligo Creek Golf Course", holes:9},
   {score:"50Ni", date:"2026-07-26", rating:31.0, slope:101, diff:41.6, course:"Sligo Creek Golf Course", holes:9},
   {score:"53Ni", date:"2026-07-24", rating:32.8, slope:112, diff:40.3, course:"Bowie Golf Club", holes:9},
@@ -334,11 +334,11 @@ const baseRounds = [
   {score:"50Ni", date:"2026-07-20", rating:31.0, slope:101, diff:40.7, course:"Sligo Creek Golf Course", holes:9},
   {score:"38Ni", date:"2026-07-17", rating:29.8, slope:93,  diff:30.6, course:"Needwood Executive", holes:9},
   {score:"49Ni", date:"2026-07-17", rating:30.7, slope:99,  diff:41.5, course:"Rock Creek Golf Course", holes:9},
-  {score:"60Ni", date:"2026-07-04", rating:35.1, slope:130, diff:41.8, course:"Rehoboth Beach Country Club", holes:9},
+  {score:"60Ni", date:"2026-07-04", rating:35.1, slope:130, diff:41.8, course:"Rehoboth Beach CC", holes:9},
   {score:"50Ni", date:"2026-07-15", rating:29.4, slope:85,  diff:47.6, course:"Paint Branch Golf Course", holes:9},
   {score:"51Ni", date:"2026-07-13", rating:31.0, slope:101, diff:41.8, course:"Sligo Creek Golf Course", holes:9},
   {score:"51Ni", date:"2026-07-11", rating:31.0, slope:101, diff:41.3, course:"Sligo Creek Golf Course", holes:9},
-  {score:"57Ni", date:"2026-07-11", rating:32.5, slope:105, diff:45.3, course:"Northwest GC — Inside Nine", holes:9},
+  {score:"57Ni", date:"2026-07-11", rating:32.5, slope:105, diff:45.3, course:"Northwest - Inside 9", holes:9},
   {score:"43Ni", date:"2026-07-10", rating:29.8, slope:93,  diff:35.1, course:"Needwood Executive", holes:9},
   {score:"57Ni", date:"2026-07-10", rating:31.0, slope:101, diff:48.1, course:"Sligo Creek Golf Course", holes:9},
   {score:"43Ni", date:"2026-07-08", rating:29.8, slope:93,  diff:35.1, course:"Needwood Executive", holes:9},
@@ -428,12 +428,12 @@ function scoreOf(r){
 let PAR_BY_COURSE = {
   "Sligo Creek Golf Course": 34,
   "Needwood Executive": 29,
-  "Northwest GC — Inside Nine": 34,
+  "Northwest - Inside 9": 34,
   "Enterprise Golf Course": 72,
   "Laytonsville Golf Course": 71,
-  "East Potomac Golf Links — Blue": 72,
+  "East Potomac GL": 72,
   "Bowie Golf Club": 35,
-  "Rehoboth Beach Country Club": 36,
+  "Rehoboth Beach CC": 36,
   "Rock Creek Golf Course": 32,
   "Paint Branch Golf Course": 31,
 };
@@ -599,7 +599,7 @@ function renderCharts(theme){
     options:{responsive:true, maintainAspectRatio:false,
       plugins:{legend:{labels:{color:c.ink,font:{family:c.font,size:13}}}},
       scales:{
-        y:{title:{display:true,text:'Trend Index',color:c.ink,font:{family:c.font,size:14}},ticks:{color:c.ink,font:{family:c.font,size:13}},grid:{color:c.grid}},
+        y:{title:{display:true,text:'Handicap',color:c.ink,font:{family:c.font,size:14}},ticks:{color:c.ink,font:{family:c.font,size:13}},grid:{color:c.grid}},
         x:{ticks:{color:c.ink,font:{family:c.font,size:12},maxRotation:60,minRotation:60},grid:{display:false}}
       }
     }
