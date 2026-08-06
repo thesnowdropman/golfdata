@@ -225,7 +225,7 @@
           </span>
         </span</span>
       </div>
-      <h1><span class="classic-only">Ange's Golf Progress</span><span class="wii-only"><span class="wii-ange">Ange</span><span class="wii-golf">Golf</span></span></h1>
+      <h1><span class="classic-only">Ange's <em>Golf</em> Progress</span><span class="wii-only"><span class="wii-ange">Ange</span><span class="wii-golf">Golf</span></span></h1>
     </div>
   </header>
 
@@ -261,7 +261,7 @@
     <h2><span class="wii-only">🏆</span>Course Records</h2>
     <p class="note">Best score, best differential, and expected score for Ange's next round, per course, most-played first.</p>
     <table>
-      <thead><tr><th>Course</th><th style="text-align:right">Rounds</th><th style="text-align:right">Best Score</th><th style="text-align:right">Avg Score</th><th style="text-align:right">Best Diff.</th><th style="text-align:right">Exp. Score</th></tr></thead>
+      <thead><tr><th>Course (#)</th><th style="text-align:right">Best Score</th><th style="text-align:right">Avg Score</th><th style="text-align:right">Best Diff.</th><th style="text-align:right">Exp. Score</th></tr></thead>
       <tbody id="course-record-table"></tbody>
     </table>
   </section>
@@ -389,6 +389,7 @@ const lowDiffFaceB64 = "iVBORw0KGgoAAAANSUhEUgAAAFoAAACSCAYAAADFE93bAABVp0lEQVR4
 let currentTheme = 'default';
 let trendChart, diffChart;
 let t0, trend, reg;
+let roundNumberOf = {};
 let currentBestCount = 1;
 let courseLookup = {}; // normalized course name -> {name, rating, slope, holes}
 
@@ -461,6 +462,9 @@ function toParStr(score, course){
 function recompute(){
   const chrono = [...rounds].sort((a,b)=> new Date(a.date) - new Date(b.date));
   t0 = dayNum(chrono[0].date);
+
+  roundNumberOf = {};
+  chrono.forEach((r, i)=>{ roundNumberOf[roundKey(r)] = i + 1; });
 
   const segmentDiffs = [];
   trend = [];
@@ -559,8 +563,7 @@ function renderCourseRecords(){
   rows.forEach(row=>{
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td class="course-name">${row.course}</td>
-      <td class="diff-cell">${row.count}</td>
+      <td class="course-name">${row.course} <span class="topar">(${row.count})</span></td>
       <td class="diff-cell">${row.bestScore}<span class="topar">${toParStr(row.bestScore, row.course)}</span></td>
       <td class="diff-cell">${Math.round(row.avgScore)}<span class="topar">${toParStr(Math.round(row.avgScore), row.course)}</span></td>
       <td class="diff-cell">${row.bestDiff.toFixed(1)}</td>
@@ -605,14 +608,14 @@ function renderCharts(theme){
   diffChart = new Chart(document.getElementById('diffChart'), {
     type:'scatter',
     data:{datasets:[
-      {label:'18-hole', data: rounds.filter(r=>r.holes===18).map(r=>({x:dayNum(r.date)-t0, y:r.diff})), backgroundColor:c.c18, pointRadius:5},
-      {label:'9-hole (WHS adjusted)', data: rounds.filter(r=>r.holes===9).map(r=>({x:dayNum(r.date)-t0, y:r.diff})), backgroundColor:c.c9, pointRadius:5}
+      {label:'18-hole', data: rounds.filter(r=>r.holes===18).map(r=>({x:roundNumberOf[roundKey(r)], y:r.diff})), backgroundColor:c.c18, pointRadius:5},
+      {label:'9-hole (WHS adjusted)', data: rounds.filter(r=>r.holes===9).map(r=>({x:roundNumberOf[roundKey(r)], y:r.diff})), backgroundColor:c.c9, pointRadius:5}
     ]},
     options:{responsive:true, maintainAspectRatio:false,
       plugins:{legend:{labels:{color:c.ink,font:{family:c.font,size:13}}}},
       scales:{
         y:{title:{display:true,text:'Score Differential',color:c.ink,font:{family:c.font,size:14}},ticks:{color:c.ink,font:{family:c.font,size:13}},grid:{color:c.grid}},
-        x:{title:{display:true,text:'Days since first posted round',color:c.ink,font:{family:c.font,size:13}},ticks:{color:c.ink,font:{family:c.font,size:13}},grid:{display:false}}
+        x:{title:{display:true,text:'Round number',color:c.ink,font:{family:c.font,size:13}},ticks:{color:c.ink,font:{family:c.font,size:13},stepSize:1},grid:{display:false}}
       }
     }
   });
