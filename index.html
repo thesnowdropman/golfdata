@@ -158,6 +158,8 @@
   .course-round-row:last-child{border-bottom:none;}
   .crr-mood{font-size:16px;line-height:1;flex-shrink:0;}
   .crr-date{color:#7a7461;font-size:12px;flex:1;}
+  .crr-rs{font-family:var(--font-mono);font-size:10px;color:#8a8368;}
+  html[data-theme="wii"] .crr-rs{color:#7C97A8;}
   html[data-theme="wii"] .crr-date{color:#7C97A8;}
   .crr-score{font-family:var(--font-mono);font-weight:600;flex:1;text-align:center;}
   .crr-diff{font-family:var(--font-mono);flex:1;text-align:right;color:var(--fairway);}
@@ -820,13 +822,45 @@ themeBtn.addEventListener('click', ()=>{
 
 // ================= PROJECTION =================
 function regressionCrossDate(){
-  // Solve reg.slope*day + reg.intercept = 30.0 for day, then convert to a real date.
-  // Only meaningful if the regression is actually declining (slope < 0).
-  if(!reg || reg.slope >= 0) return null;
-  const crossDay = (30.0 - reg.intercept) / reg.slope;
-  const wholeDay = Math.ceil(crossDay);
-  const ms = (t0 + wholeDay) * 86400000;
-  return new Date(ms).toISOString().slice(0,10);
+  // The old approach fit the regression against calendar days, which silently assumes
+  // improvement happens continuously even on days with no rounds played. Instead: fit a
+  // regression against SEGMENT NUMBER (1 per 9 holes played), find how many more segments
+  // are needed to cross below 30.0, then convert that into a real date using the player's
+  // actual pace (segments per day) -- measured against TODAY's real date, not the last
+  // round's date. That means every day that passes without a new round pushes the
+  // projected date further out, since the pace keeps dropping while the calendar keeps moving.
+  if(!trend || trend.length === 0) return null;
+
+  const totalSegments = trend.length;
+  const segPoints = trend.map((p, i) => ({ x: i + 1, y: p.index }));
+  const n = segPoints.length;
+  const sx = segPoints.reduce((s,p)=>s+p.x, 0);
+  const sy = segPoints.reduce((s,p)=>s+p.y, 0);
+  const sxy = segPoints.reduce((s,p)=>s+p.x*p.y, 0);
+  const sxx = segPoints.reduce((s,p)=>s+p.x*p.x, 0);
+  const denom = (n*sxx - sx*sx);
+  if(denom === 0) return null;
+  const segSlope = (n*sxy - sx*sy) / denom;
+  const segIntercept = (sy - segSlope*sx) / n;
+
+  if(segSlope >= 0) return null; // not trending down per segment played
+
+  const targetSegmentNum = (30.0 - segIntercept) / segSlope;
+  const segmentsNeeded = Math.max(0, Math.ceil(targetSegmentNum) - totalSegments);
+
+  const today = new Date();
+  if(segmentsNeeded === 0){
+    return today.toISOString().slice(0,10);
+  }
+
+  const firstRoundDate = new Date(trend[0].date+'T00:00:00');
+  const daysSinceFirstRound = Math.max(1, Math.round((today - firstRoundDate) / 86400000));
+  const avgSegmentsPerDay = totalSegments / daysSinceFirstRound;
+  if(avgSegmentsPerDay <= 0) return null;
+
+  const daysNeeded = Math.ceil(segmentsNeeded / avgSegmentsPerDay);
+  const projectedMs = today.getTime() + daysNeeded * 86400000;
+  return new Date(projectedMs).toISOString().slice(0,10);
 }
 
 function updateProjection(){
@@ -1124,7 +1158,7 @@ function openCourseDetail(courseName){
     .filter(r => r.course === courseName)
     .sort((a,b) => new Date(b.date) - new Date(a.date));
 
-  document.getElementById('detailTitle').textContent = courseName;
+  document.getElementById('detailTitle').innerHTML = `${courseName} <span class="crr-rs">${atCourse[0].rating.toFixed(1)}/${atCourse[0].slope}</span>`;
   document.getElementById('detailMiiRow').innerHTML = '';
 
   const buildRow = (r) => {
