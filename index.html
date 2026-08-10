@@ -88,6 +88,22 @@
   html[data-theme="wii"] h2{font-weight:700;color:var(--ink);letter-spacing:0.01em;}
   .h2-row{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;}
   h2 .idx{font-family:var(--font-mono);font-size:11px;color:#8a8368;font-weight:400;}
+  .idx-note{font-family:var(--font-mono);font-size:11px;color:#8a8368;font-weight:400;margin:0 0 18px;}
+  html[data-theme="wii"] .idx-note{color:#7C97A8;font-weight:500;}
+  .scoring-summary-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+  .scoring-bars{display:flex;flex-direction:column;gap:8px;}
+  .scoring-bar-row{display:flex;align-items:center;gap:8px;font-size:12.5px;}
+  .scoring-bar-label{width:64px;flex-shrink:0;font-family:var(--font-mono);color:var(--ink);}
+  .scoring-bar-track{flex:1;height:10px;background:var(--paper-tan);border:1px solid var(--line);border-radius:5px;overflow:hidden;}
+  .scoring-bar-fill{height:100%;background:var(--fairway);}
+  .scoring-bar-fill.bogey{background:var(--sand);}
+  .scoring-bar-fill.double{background:var(--flag);}
+  .scoring-bar-fill.worse{background:#4a4a4a;}
+  .scoring-bar-count{width:56px;flex-shrink:0;text-align:right;font-family:var(--font-mono);font-size:11px;color:#8a8368;}
+  html[data-theme="wii"] .scoring-bar-count{color:#7C97A8;}
+  @media (max-width:600px){
+    .scoring-summary-grid{grid-template-columns:1fr;gap:24px;}
+  }
   html[data-theme="wii"] h2 .idx{color:#7C97A8;font-weight:500;}
   p.note{font-size:13.5px;color:#6b6752;margin:0 0 18px;max-width:60ch;}
   html[data-theme="wii"] p.note{color:#5C86A0;font-weight:500;}
@@ -123,6 +139,18 @@
   .topar{font-size:10px;font-weight:400;color:#8a8368;}
   html[data-theme="wii"] .topar{color:#7C97A8;}
   .course-round-list{display:flex;flex-direction:column;gap:2px;}
+  .hole-scorecard{width:auto;table-layout:fixed;border-collapse:collapse;font-size:12.5px;}
+  .hole-scorecard th,.hole-scorecard td{width:44px;padding:6px 2px;text-align:center;white-space:nowrap;border-bottom:1px solid var(--line);overflow:hidden;text-overflow:ellipsis;}
+  .hole-scorecard th:first-child,.hole-scorecard td:first-child{width:46px;}
+  .hole-scorecard thead th{font-family:var(--font-mono);font-size:10px;letter-spacing:0.04em;text-transform:uppercase;color:#8a8368;border-bottom:2px solid var(--fairway);}
+  html[data-theme="wii"] .hole-scorecard thead th{color:#5C86A0;}
+  .hole-scorecard tbody td:first-child{font-family:var(--font-mono);font-weight:600;text-align:left;color:var(--fairway);}
+  html[data-theme="wii"] .hole-scorecard tbody td:first-child{color:var(--ink);}
+  .hole-scorecard .out-col{font-weight:600;border-left:2px solid var(--line);}
+  .score-mark{display:inline-block;line-height:1.3;min-width:1.3em;}
+  .score-mark.birdie{border-radius:50%;border:1.5px solid currentColor;padding:0 3px;}
+  .score-mark.bogey{border:1.5px solid currentColor;padding:0 3px;}
+  .score-mark.double{border:1.5px solid currentColor;padding:0 3px;box-shadow:0 0 0 2px var(--paper), 0 0 0 3.5px currentColor;margin:0 3px;}
   .course-round-row{display:flex;justify-content:space-between;align-items:center;gap:6px;padding:9px 6px;border-bottom:1px solid var(--line);cursor:pointer;font-size:13.5px;}
   .course-round-row:hover{background:var(--paper-tan);}
   .course-round-row:last-child{border-bottom:none;}
@@ -184,6 +212,13 @@
   .form-grid label{font-family:var(--font-mono);font-size:10.5px;letter-spacing:0.06em;text-transform:uppercase;color:var(--fairway-light);display:block;margin-bottom:4px;}
   html[data-theme="wii"] .form-grid label{color:#7C97A8;font-weight:600;}
   .form-grid input,.form-grid select{width:100%;font-family:var(--font-body);font-size:14px;padding:7px 9px;border:1px solid var(--line);border-radius:calc(var(--radius)/3 + 4px);background:var(--paper-tan);color:var(--ink);}
+  .hole-inputs{display:grid;grid-template-columns:repeat(auto-fill, 34px);justify-content:start;gap:4px;margin-top:4px;}
+  .hole-inputs .hole-box{width:34px;display:flex;flex-direction:column;align-items:center;}
+  .hole-inputs .hole-box .hnum{font-size:9px;color:#8a8368;margin-bottom:2px;}
+  html[data-theme="wii"] .hole-inputs .hole-box .hnum{color:#7C97A8;}
+  .hole-inputs .hole-box input,.hole-inputs .hole-box select{width:34px;height:30px;text-align:center;text-align-last:center;padding:0 2px;font-family:var(--font-mono);font-size:13px;box-sizing:border-box;}
+  .hole-inputs .hole-box .hole-hint{font-size:8px;color:#8a8368;margin-top:2px;line-height:1.2;text-align:center;}
+  html[data-theme="wii"] .hole-inputs .hole-box .hole-hint{color:#7C97A8;}
   .form-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px;}
   .form-error{font-size:12px;color:var(--flag);margin-top:6px;display:none;}
 
@@ -243,27 +278,19 @@
   </section>
 
   <section>
-    <h2><span class="wii-only">📊</span><span id="trend-title">Best n⁄2 Trend</span> <span class="idx">avg. of the best n⁄2 of n nine-hole segments, running total</span></h2>
-    <p class="note">Every round adds 1 segment (9 holes) or 2 segments (18 holes) to the pool. This line is the average of the lowest half of every segment differential posted so far. Dashed line is the linear regression through it.</p>
+    <h2><span class="wii-only">📊</span><span id="trend-title">Best n⁄2 Trend</span> <span class="idx">Average of the best n⁄2 of n nine-hole segments, running total</span></h2>
     <div class="chart-box"><canvas id="trendChart" height="150"></canvas></div>
-  </section>
-
-  <section>
-    <h2><span class="wii-only">🔭</span>Project Forward</h2>
-    <p class="note">Extrapolates the regression slope forward. Treat as "if the trend holds," not an official number.</p>
-    <div class="proj-panel">
-      <div><label for="proj-date">Target date</label><input type="date" id="proj-date"><div class="proj-date-readout" id="proj-date-readout"></div></div>
-      <div class="proj-result"><div class="cap">Projected Next Diff</div><div class="big" id="proj-value">—</div></div>
-    </div>
+    <p class="note" id="regressionCrossNote" style="margin-top:8px;"></p>
   </section>
 
   <section>
     <h2><span class="wii-only">🏆</span>Course Records</h2>
-    <p class="note">Best score, best differential, and expected score for Ange's next round, per course, most-played first.</p>
+    <p class="idx-note">Click for more data</p>
     <table>
-      <thead><tr><th>Course (#)</th><th style="text-align:right">Best Score</th><th style="text-align:right">Avg Score</th><th style="text-align:right">Best Diff.</th><th style="text-align:right">Exp. Score</th></tr></thead>
+      <thead><tr><th>Course (#, Last)</th><th style="text-align:right">Best Score</th><th style="text-align:right">Median Score</th><th style="text-align:right">Best Diff.</th><th style="text-align:right">Curr. Exp.</th></tr></thead>
       <tbody id="course-record-table"></tbody>
     </table>
+    <p class="note" id="courseRecordsSeeMore" style="font-style:italic;cursor:pointer;margin:8px 0 0;display:none;">Show more…</p>
   </section>
 
   <section>
@@ -275,11 +302,23 @@
       <thead><tr><th>Date</th><th>Score</th><th>Course</th><th style="text-align:right">Diff.</th></tr></thead>
       <tbody id="score-table"></tbody>
     </table>
+    <p class="note" id="roundHistorySeeMore" style="font-style:italic;cursor:pointer;margin:8px 0 0;display:none;">Show more…</p>
   </section>
 
-  <footer>
-    Built from manually supplied score history · <strong>Ni</strong> = 9-hole round (1 segment), 18-hole rounds count as 2 segments · handicap = avg. of the best n⁄2 of all segment differentials to date, not the official WHS revision
-  </footer>
+  <section>
+    <h2><span class="wii-only">🎯</span>Scoring Summary</h2>
+    <div class="scoring-summary-grid">
+      <div>
+        <p class="idx-note" id="scoringSummaryAllLabel">All rounds</p>
+        <div class="scoring-bars" id="scoringSummaryAll"></div>
+      </div>
+      <div>
+        <p class="idx-note" id="scoringSummaryRecentLabel">Last 11 segments</p>
+        <div class="scoring-bars" id="scoringSummaryRecent"></div>
+      </div>
+    </div>
+  </section>
+
 </div>
 
 <!-- ROUND DETAIL MODAL -->
@@ -297,7 +336,7 @@
   <div class="modal" id="addModal">
     <button class="modal-close" id="addClose" aria-label="Close">✕</button>
     <h3>Add a round</h3>
-    <p class="note" style="margin-top:2px;">Enter the total score — differential is calculated automatically from the rating and slope.</p>
+    <p class="note" style="margin-top:2px;">Enter hole-by-hole scores — total, differential, and expected score are calculated automatically.</p>
     <div class="form-grid">
       <div class="full"><label>Course name</label><input id="f-course" type="text" list="courseList" autocomplete="off" placeholder="e.g. Sligo Creek Golf Course"><datalist id="courseList"></datalist></div>
       <div><label>Date</label><input id="f-date" type="date"></div>
@@ -306,10 +345,14 @@
       </div>
       <div><label>Course rating</label><input id="f-rating" type="number" step="0.1" placeholder="e.g. 69.8"></div>
       <div><label>Slope rating</label><input id="f-slope" type="number" step="1" placeholder="e.g. 116"></div>
-      <div><label>Par</label><input id="f-par" type="number" step="1" placeholder="e.g. 72"></div>
-      <div><label>Total score</label><input id="f-score" type="number" step="1" placeholder="e.g. 96"></div>
+      <div class="full" id="expScoreHint" style="display:none;"><label>Expected Score</label><div class="num" id="expScoreValue" style="font-family:var(--font-mono);font-size:20px;font-weight:600;color:var(--fairway);"></div></div>
+      <div class="full">
+        <label>Score per hole</label>
+        <div class="hole-inputs" id="scoreInputsRow"></div>
+      </div>
+      <div class="full" id="grossScoreHint" style="display:none;"><label>Gross score</label><div class="num" id="grossScoreValue" style="font-family:var(--font-mono);font-size:20px;font-weight:600;"></div></div>
     </div>
-    <div class="form-error" id="formError">Fill in the course, date, rating, slope, and total score.</div>
+    <div class="form-error" id="formError">Fill in the course, date, rating, slope, and every hole score.</div>
     <div class="form-actions">
       <button class="btn secondary" id="addCancel" type="button">Cancel</button>
       <button class="btn" id="addSave" type="button">Save round</button>
@@ -320,30 +363,91 @@
 <script>
 // ================= DATA =================
 const baseRounds = [
+  {score:"52Ni", date:"2026-08-08", rating:32.9, slope:110, diff:36.9, course:"Patty Jewett Golf Course", holes:9,
+    holeDetail:{
+      pars:[5,4,4,4,4,3,5,3,4],
+      strokeIndex:[1,13,9,7,11,15,3,17,5],
+      scores:[7,7,5,6,6,4,6,5,6]
+    }},
+  {score:"49Ni", date:"2026-08-05", rating:31.0, slope:101, diff:37.3, course:"Sligo Creek Golf Course", holes:9,
+    holeDetail:{
+      yards:[254,135,285,160,252,260,278,252,394],
+      pars:[4,3,4,3,4,4,4,4,4],
+      strokeIndex:[16,18,8,6,14,10,4,12,2],
+      scores:[5,5,6,4,5,5,6,6,7]
+    }},
   {score:"103A", date:"2026-08-03", rating:69.8, slope:116, diff:32.3, course:"Enterprise Golf Course", holes:18,
-    detail:{par:72, tee:"White 6335 yds", duration:"2h 51m", net:69,
-      front:[4,5,6,5,5,6,6,4,8], back:[7,6,6,4,8,5,7,6,5]}},
-  {score:"47Ni", date:"2026-08-02", rating:32.5, slope:105, diff:35.2, course:"Northwest - Inside 9", holes:9},
-  {score:"45Ni", date:"2026-08-01", rating:31.0, slope:101, diff:35.5, course:"Sligo Creek Golf Course", holes:9},
-  {score:"100A", date:"2026-07-31", rating:66.2, slope:112, diff:34.1, course:"Laytonsville Golf Course", holes:18},
-  {score:"102A", date:"2026-07-29", rating:68.2, slope:107, diff:35.7, course:"East Potomac GL", holes:18},
-  {score:"46Ni", date:"2026-07-27", rating:31.0, slope:101, diff:37.1, course:"Sligo Creek Golf Course", holes:9},
-  {score:"50Ni", date:"2026-07-26", rating:31.0, slope:101, diff:41.6, course:"Sligo Creek Golf Course", holes:9},
-  {score:"53Ni", date:"2026-07-24", rating:32.8, slope:112, diff:40.3, course:"Bowie Golf Club", holes:9},
-  {score:"50Ni", date:"2026-07-22", rating:31.0, slope:101, diff:41.2, course:"Sligo Creek Golf Course", holes:9},
-  {score:"50Ni", date:"2026-07-20", rating:31.0, slope:101, diff:40.7, course:"Sligo Creek Golf Course", holes:9},
-  {score:"38Ni", date:"2026-07-17", rating:29.8, slope:93,  diff:30.6, course:"Needwood Executive", holes:9},
-  {score:"49Ni", date:"2026-07-17", rating:30.7, slope:99,  diff:41.5, course:"Rock Creek Golf Course", holes:9},
-  {score:"60Ni", date:"2026-07-04", rating:35.1, slope:130, diff:41.8, course:"Rehoboth Beach CC", holes:9},
-  {score:"50Ni", date:"2026-07-15", rating:29.4, slope:85,  diff:47.6, course:"Paint Branch Golf Course", holes:9},
-  {score:"51Ni", date:"2026-07-13", rating:31.0, slope:101, diff:41.8, course:"Sligo Creek Golf Course", holes:9},
-  {score:"51Ni", date:"2026-07-11", rating:31.0, slope:101, diff:41.3, course:"Sligo Creek Golf Course", holes:9},
-  {score:"57Ni", date:"2026-07-11", rating:32.5, slope:105, diff:45.3, course:"Northwest - Inside 9", holes:9},
-  {score:"43Ni", date:"2026-07-10", rating:29.8, slope:93,  diff:35.1, course:"Needwood Executive", holes:9},
-  {score:"57Ni", date:"2026-07-10", rating:31.0, slope:101, diff:48.1, course:"Sligo Creek Golf Course", holes:9},
-  {score:"43Ni", date:"2026-07-08", rating:29.8, slope:93,  diff:35.1, course:"Needwood Executive", holes:9},
-  {score:"49Ni", date:"2026-07-08", rating:31.0, slope:101, diff:39.2, course:"Sligo Creek Golf Course", holes:9},
-  {score:"48Ni", date:"2026-07-06", rating:30.0, slope:96,  diff:40.2, course:"Sligo Creek Golf Course", holes:9},
+    holeDetail:{
+      pars:[4,5,4,3,4,4,4,3,5,5,4,4,3,5,3,4,4,4],
+      yards:[332,501,365,150,394,364,383,196,531,502,377,348,142,473,134,425,378,340],
+      strokeIndex:[16,6,14,18,4,12,10,8,2,3,5,9,15,7,17,1,11,13],
+      scores:[4,5,6,5,5,6,6,4,8,7,6,6,4,8,5,7,6,5]
+    }},
+  {score:"47Ni", date:"2026-08-02", rating:32.5, slope:105, diff:35.2, course:"Northwest - Inside 9", holes:9,
+    holeDetail:{
+      pars:[4,4,4,4,3,4,4,3,4],
+      yards:[362,385,301,312,97,389,306,175,310],
+      strokeIndex:[2,3,4,6,9,1,8,7,5],
+      scores:[6,5,5,6,3,6,5,5,6]
+    }},
+  {score:"45Ni", date:"2026-08-01", rating:31.0, slope:101, diff:35.5, course:"Sligo Creek Golf Course", holes:9,
+    holeDetail:{
+      pars:[4,3,4,3,4,4,4,4,4],
+      scores:[5,3,5,5,6,5,5,5,6]
+    }},
+  {score:"100A", date:"2026-07-31", rating:66.2, slope:112, diff:34.1, course:"Laytonsville Golf Course", holes:18,
+    holeDetail:{
+      pars:[4,4,3,5,3,5,4,4,4,4,4,3,4,4,4,3,4,5],
+      yards:[286,312,152,412,130,444,336,292,290,378,332,145,287,341,382,154,338,496],
+      strokeIndex:[14,8,16,4,18,2,6,10,12,5,7,17,13,11,3,15,9,1],
+      scores:[5,5,4,7,5,7,6,6,5,5,7,3,5,6,5,6,6,7]
+    }},
+  {score:"102A", date:"2026-07-29", rating:68.2, slope:107, diff:35.7, course:"East Potomac Golf Links", holes:18,
+    holeDetail:{
+      pars:[4,4,5,3,4,5,4,3,4,4,3,5,4,4,3,4,5,4],
+      yards:[343,377,564,154,286,507,297,196,336,302,167,456,354,389,162,419,546,371],
+      strokeIndex:[7,3,1,13,17,5,15,9,11,16,14,10,8,4,18,2,6,12],
+      scores:[5,5,7,5,5,8,6,5,6,5,5,5,6,7,5,6,7,4]
+    }},
+  {score:"47Ni", date:"2026-07-27", rating:31.0, slope:101, diff:37.1, course:"Sligo Creek Golf Course", holes:9,
+    holeDetail:{pars:[4,3,4,3,4,4,4,4,4], scores:[5,4,4,3,6,7,5,8,5]}},
+  {score:"50Ni", date:"2026-07-26", rating:31.0, slope:101, diff:41.6, course:"Sligo Creek Golf Course", holes:9,
+    holeDetail:{pars:[4,3,4,3,4,4,4,4,4], scores:[6,6,6,4,5,6,5,6,6]}},
+  {score:"53Ni", date:"2026-07-24", rating:32.8, slope:112, diff:40.3, course:"Bowie Golf Club", holes:9,
+    holeDetail:{pars:[4,3,4,4,3,4,5,3,5], scores:[4,7,7,7,4,6,6,6,6]}},
+  {score:"50Ni", date:"2026-07-22", rating:31.0, slope:101, diff:41.2, course:"Sligo Creek Golf Course", holes:9,
+    holeDetail:{pars:[4,3,4,3,4,4,4,4,4], scores:[5,5,6,6,6,4,6,6,6]}},
+  {score:"50Ni", date:"2026-07-20", rating:31.0, slope:101, diff:40.7, course:"Sligo Creek Golf Course", holes:9,
+    holeDetail:{pars:[4,3,4,3,4,4,4,4,4], scores:[5,5,6,5,6,5,6,6,6]}},
+  {score:"38Ni", date:"2026-07-17", rating:29.8, slope:93,  diff:30.6, course:"Needwood Executive", holes:9,
+    holeDetail:{pars:[3,3,4,3,3,3,3,4,3], scores:[3,4,4,3,4,4,6,6,4]}},
+  {score:"49Ni", date:"2026-07-17", rating:30.7, slope:99,  diff:41.5, course:"Rock Creek Golf Course", holes:9,
+    holeDetail:{pars:[4,4,3,3,3,4,3,4,4], scores:[6,8,4,5,5,7,4,4,6]}},
+  {score:"60Ni", date:"2026-07-04", rating:35.1, slope:130, diff:41.8, course:"Rehoboth Beach CC", holes:9,
+    holeDetail:{
+      pars:[4,4,3,5,3,4,4,4,5],
+      yards:[386,375,169,504,129,349,313,374,452],
+      strokeIndex:[7,9,5,11,17,3,13,1,15],
+      scores:[7,8,5,8,3,8,8,6,7]
+    }},
+  {score:"51Ni", date:"2026-07-15", rating:29.4, slope:85,  diff:47.6, course:"Paint Branch Golf Course", holes:9,
+    holeDetail:{pars:[4,3,3,3,4,4,3,3,4], scores:[6,7,5,6,4,8,5,3,7]}},
+  {score:"50Ni", date:"2026-07-13", rating:31.0, slope:101, diff:41.8, course:"Sligo Creek Golf Course", holes:9,
+    holeDetail:{pars:[4,3,4,3,4,4,4,4,4], scores:[5,4,6,3,7,7,6,6,6]}},
+  {score:"51Ni", date:"2026-07-11", rating:31.0, slope:101, diff:41.3, course:"Sligo Creek Golf Course", holes:9,
+    holeDetail:{pars:[4,3,4,3,4,4,4,4,4], scores:[6,4,5,4,7,7,6,5,7]}},
+  {score:"57Ni", date:"2026-07-11", rating:32.5, slope:105, diff:45.3, course:"Northwest - Inside 9", holes:9,
+    holeDetail:{pars:[4,4,4,4,3,4,4,3,4], scores:[7,8,8,7,4,8,5,5,5]}},
+  {score:"43Ni", date:"2026-07-10", rating:29.8, slope:93,  diff:35.1, course:"Needwood Executive", holes:9,
+    holeDetail:{pars:[3,3,4,3,3,3,3,4,3], scores:[5,6,5,3,5,5,5,6,3]}},
+  {score:"57Ni", date:"2026-07-10", rating:31.0, slope:101, diff:48.1, course:"Sligo Creek Golf Course", holes:9,
+    holeDetail:{pars:[4,3,4,3,4,4,4,4,4], scores:[5,5,8,6,7,6,6,6,8]}},
+  {score:"43Ni", date:"2026-07-08", rating:29.8, slope:93,  diff:35.1, course:"Needwood Executive", holes:9,
+    holeDetail:{pars:[3,3,4,3,3,3,3,4,3], scores:[5,4,6,5,4,3,4,7,5]}},
+  {score:"49Ni", date:"2026-07-08", rating:31.0, slope:101, diff:39.2, course:"Sligo Creek Golf Course", holes:9,
+    holeDetail:{pars:[4,3,4,3,4,4,4,4,4], scores:[5,6,5,5,5,4,5,6,8]}},
+  {score:"48Ni", date:"2026-07-06", rating:30.0, slope:96,  diff:40.2, course:"Sligo Creek Golf Course", holes:9,
+    holeDetail:{pars:[4,3,4,3,4,4,4,4,4], scores:[6,4,5,5,5,7,6,5,5]}},
 ];
 
 // rounds the user has added/deleted persist across sessions via the browser's localStorage
@@ -425,13 +529,27 @@ function scoreOf(r){
   return parseInt(r.score.replace(/(A|Ni)$/,''), 10);
 }
 
+function median(arr){
+  const sorted = [...arr].sort((a,b)=>a-b);
+  const mid = Math.floor(sorted.length/2);
+  return sorted.length % 2 !== 0 ? sorted[mid] : (sorted[mid-1] + sorted[mid]) / 2;
+}
+
+function shortMonthYear(dateStr){
+  const d = new Date(dateStr+'T00:00:00');
+  const month = d.toLocaleDateString('en-US',{month:'short'});
+  const year2 = String(d.getFullYear()).slice(-2);
+  return `${month} \u2019${year2}`;
+}
+
 let PAR_BY_COURSE = {
+  "Patty Jewett Golf Course": 36,
   "Sligo Creek Golf Course": 34,
   "Needwood Executive": 29,
   "Northwest - Inside 9": 34,
   "Enterprise Golf Course": 72,
   "Laytonsville Golf Course": 71,
-  "East Potomac GL": 72,
+  "East Potomac Golf Links": 72,
   "Bowie Golf Club": 35,
   "Rehoboth Beach CC": 36,
   "Rock Creek Golf Course": 32,
@@ -453,7 +571,7 @@ function loadPersistedPars(){
 function toParStr(score, course){
   const par = PAR_BY_COURSE[course];
   if(par == null) return '';
-  const diff = Math.round(score - par);
+  const diff = Math.round((score - par) * 10) / 10;
   if(diff === 0) return ' (E)';
   return ` (${diff > 0 ? '+' : ''}${diff})`;
 }
@@ -516,7 +634,8 @@ function recompute(){
   tbody.innerHTML = '';
   const sortedForTable = [...rounds].sort((a,b)=> new Date(b.date) - new Date(a.date));
   const lowestDiff = Math.min(...rounds.map(r=>r.diff));
-  sortedForTable.forEach((r)=>{
+
+  const buildRoundRow = (r) => {
     const idx = rounds.indexOf(r);
     const tr = document.createElement('tr');
     const dateFmt = new Date(r.date+'T00:00:00').toLocaleDateString('en-US',{month:'2-digit',day:'2-digit',year:'numeric'});
@@ -528,10 +647,34 @@ function recompute(){
       <td class="diff-cell">${r.diff.toFixed(1)}</td>
     `;
     tr.addEventListener('click', ()=>openDetail(idx));
-    tbody.appendChild(tr);
-  });
+    return tr;
+  };
+
+  const visibleLimit = 5;
+  const shownRounds = sortedForTable.slice(0, visibleLimit);
+  const restRounds = sortedForTable.slice(visibleLimit);
+  shownRounds.forEach(r => tbody.appendChild(buildRoundRow(r)));
+
+  const seeMoreEl = document.getElementById('roundHistorySeeMore');
+  if(restRounds.length > 0){
+    const restRowEls = restRounds.map(buildRoundRow);
+    restRowEls.forEach(tr => { tr.style.display = 'none'; tbody.appendChild(tr); });
+
+    const moreLabel = `Show more… (${restRounds.length} earlier round${restRounds.length===1?'':'s'})`;
+    let expanded = false;
+    seeMoreEl.textContent = moreLabel;
+    seeMoreEl.style.display = 'block';
+    seeMoreEl.onclick = () => {
+      expanded = !expanded;
+      restRowEls.forEach(tr => { tr.style.display = expanded ? '' : 'none'; });
+      seeMoreEl.textContent = expanded ? 'Show less' : moreLabel;
+    };
+  } else {
+    seeMoreEl.style.display = 'none';
+  }
 
   renderCourseRecords();
+  updateScoringSummary();
   refreshCourseLookup();
   renderCharts(currentTheme);
   updateProjection();
@@ -548,30 +691,54 @@ function renderCourseRecords(){
   const rows = Object.entries(byCourse).map(([course, list])=>{
     const bestScore = Math.min(...list.map(scoreOf));
     const bestDiff = Math.min(...list.map(r=>r.diff));
-    const avgScore = list.reduce((s,r)=>s+scoreOf(r),0)/list.length;
+    const medianScore = median(list.map(scoreOf));
     const latest = [...list].sort((a,b)=> new Date(b.date) - new Date(a.date))[0];
     const expScore = currentIndex !== null
       ? (latest.holes === 9
           ? Math.round((currentIndex/2) * latest.slope / 113 + latest.rating)
           : Math.round(currentIndex * latest.slope / 113 + latest.rating))
       : null;
-    return {course, count:list.length, bestScore, bestDiff, avgScore, expScore};
-  }).sort((a,b)=> b.count - a.count || a.bestDiff - b.bestDiff);
+    return {course, count:list.length, bestScore, bestDiff, medianScore, expScore, latestDate:latest.date};
+  }).sort((a,b)=> b.count - a.count || new Date(b.latestDate) - new Date(a.latestDate));
 
   const tbody = document.getElementById('course-record-table');
   tbody.innerHTML = '';
-  rows.forEach(row=>{
+
+  const buildCourseRow = (row) => {
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td class="course-name">${row.course} <span class="topar">(${row.count})</span></td>
+      <td class="course-name">${row.course} <span class="topar">(${row.count}, ${shortMonthYear(row.latestDate)})</span></td>
       <td class="diff-cell">${row.bestScore}<span class="topar">${toParStr(row.bestScore, row.course)}</span></td>
-      <td class="diff-cell">${Math.round(row.avgScore)}<span class="topar">${toParStr(Math.round(row.avgScore), row.course)}</span></td>
+      <td class="diff-cell">${Math.round(row.medianScore)}<span class="topar">${toParStr(row.medianScore, row.course)}</span></td>
       <td class="diff-cell">${row.bestDiff.toFixed(1)}</td>
       <td class="diff-cell">${row.expScore !== null ? row.expScore : '—'}</td>
     `;
     tr.addEventListener('click', ()=>openCourseDetail(row.course));
-    tbody.appendChild(tr);
-  });
+    return tr;
+  };
+
+  const visibleLimit = 5;
+  const shownRows = rows.slice(0, visibleLimit);
+  const restRows = rows.slice(visibleLimit);
+  shownRows.forEach(row => tbody.appendChild(buildCourseRow(row)));
+
+  const seeMoreEl = document.getElementById('courseRecordsSeeMore');
+  if(restRows.length > 0){
+    const restRowEls = restRows.map(buildCourseRow);
+    restRowEls.forEach(tr => { tr.style.display = 'none'; tbody.appendChild(tr); });
+
+    const moreLabel = `Show more… (${restRows.length} more course${restRows.length===1?'':'s'})`;
+    let expanded = false;
+    seeMoreEl.textContent = moreLabel;
+    seeMoreEl.style.display = 'block';
+    seeMoreEl.onclick = () => {
+      expanded = !expanded;
+      restRowEls.forEach(tr => { tr.style.display = expanded ? '' : 'none'; });
+      seeMoreEl.textContent = expanded ? 'Show less' : moreLabel;
+    };
+  } else {
+    seeMoreEl.style.display = 'none';
+  }
 }
 
 // ================= CHARTS =================
@@ -608,14 +775,24 @@ function renderCharts(theme){
   diffChart = new Chart(document.getElementById('diffChart'), {
     type:'scatter',
     data:{datasets:[
-      {label:'18-hole', data: rounds.filter(r=>r.holes===18).map(r=>({x:roundNumberOf[roundKey(r)], y:r.diff})), backgroundColor:c.c18, pointRadius:5},
-      {label:'9-hole (WHS adjusted)', data: rounds.filter(r=>r.holes===9).map(r=>({x:roundNumberOf[roundKey(r)], y:r.diff})), backgroundColor:c.c9, pointRadius:5}
+      {label:'18-hole', data: rounds.filter(r=>r.holes===18).map(r=>({x:roundNumberOf[roundKey(r)], y:r.diff, idx:rounds.indexOf(r)})), backgroundColor:c.c18, pointRadius:5},
+      {label:'9-hole', data: rounds.filter(r=>r.holes===9).map(r=>({x:roundNumberOf[roundKey(r)], y:r.diff, idx:rounds.indexOf(r)})), backgroundColor:c.c9, pointRadius:5}
     ]},
     options:{responsive:true, maintainAspectRatio:false,
       plugins:{legend:{labels:{color:c.ink,font:{family:c.font,size:13}}}},
       scales:{
         y:{title:{display:true,text:'Score Differential',color:c.ink,font:{family:c.font,size:14}},ticks:{color:c.ink,font:{family:c.font,size:13}},grid:{color:c.grid}},
         x:{title:{display:true,text:'Round number',color:c.ink,font:{family:c.font,size:13}},ticks:{color:c.ink,font:{family:c.font,size:13},stepSize:1},grid:{display:false}}
+      },
+      onClick: (evt, elements) => {
+        if(elements.length > 0){
+          const el = elements[0];
+          const point = diffChart.data.datasets[el.datasetIndex].data[el.index];
+          if(point && point.idx !== undefined) openDetail(point.idx);
+        }
+      },
+      onHover: (evt, elements) => {
+        evt.native.target.style.cursor = elements.length > 0 ? 'pointer' : 'default';
       }
     }
   });
@@ -638,9 +815,6 @@ themeBtn.addEventListener('click', ()=>{
 });
 
 // ================= PROJECTION =================
-const projInput = document.getElementById('proj-date');
-const projReadout = document.getElementById('proj-date-readout');
-
 function regressionCrossDate(){
   // Solve reg.slope*day + reg.intercept = 30.0 for day, then convert to a real date.
   // Only meaningful if the regression is actually declining (slope < 0).
@@ -651,35 +825,17 @@ function regressionCrossDate(){
   return new Date(ms).toISOString().slice(0,10);
 }
 
-function initProjectionDate(){
-  const chrono = [...rounds].sort((a,b)=> new Date(a.date) - new Date(b.date));
-  const lastDate = chrono[chrono.length-1].date;
-  const crossDate = regressionCrossDate();
-  projInput.min = crossDate && crossDate < chrono[0].date ? crossDate : chrono[0].date;
-  if(!projInput.value){
-    if(crossDate){
-      projInput.value = crossDate;
-    } else {
-      const defaultTarget = new Date(new Date(lastDate).getTime() + 30*86400000);
-      projInput.value = defaultTarget.toISOString().slice(0,10);
-    }
-  }
-}
 function updateProjection(){
-  if(!projInput.value) initProjectionDate();
-  const target = projInput.value;
-  if(!target) return;
-  const targetDay = dayNum(target) - t0;
-  const projected = reg.slope*targetDay + reg.intercept;
-  document.getElementById('proj-value').textContent = projected.toFixed(1);
-  const readable = new Date(target+'T00:00:00').toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
+  const noteEl = document.getElementById('regressionCrossNote');
+  if(!noteEl) return;
   const crossDate = regressionCrossDate();
-  const isCrossDate = crossDate && target === crossDate;
-  projReadout.textContent = isCrossDate
-    ? `${readable} — first day the regression is projected to drop below 30.0`
-    : readable;
+  if(!crossDate){
+    noteEl.textContent = 'Regression is flat or trending up — not projected to drop below 30.0 at this rate.';
+    return;
+  }
+  const readable = new Date(crossDate+'T00:00:00').toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
+  noteEl.innerHTML = `Regression projected to drop below 30.0 on <strong>${readable}</strong>.`;
 }
-projInput.addEventListener('input', updateProjection);
 
 // ================= ROUND DETAIL MODAL =================
 const detailOverlay = document.getElementById('detailOverlay');
@@ -710,6 +866,8 @@ function openDetail(idx){
 
   let body = `<p class="note" style="margin:2px 0 0;">${dateFmt} · ${r.holes}-hole round · Differential ${r.diff.toFixed(1)} · Rating/Slope ${r.rating.toFixed(1)}/${r.slope}</p>`;
 
+  body += buildSingleRoundScorecardHtml(r);
+
   body += `<div style="text-align:center;margin-top:14px;"><button class="btn danger" id="deleteRoundBtn" type="button">Delete this round</button></div>`;
 
   document.getElementById('detailBody').innerHTML = body;
@@ -737,6 +895,225 @@ function openDetail(idx){
   });
 }
 
+function toParFrag(val, par){
+  const diff = Math.round((val - par) * 10) / 10;
+  if(diff === 0) return ' <span class="topar">(E)</span>';
+  return ` <span class="topar">(${diff > 0 ? '+' : ''}${diff})</span>`;
+}
+
+// rows: array of {label, cellFn(holeIndex)->string, totalFn()->string (only used on last chunk)}
+function getChunkPlan(numHoles){
+  if(numHoles === 9){
+    return [
+      {range:[0,5], totalUpTo:null},
+      {range:[5,9], totalUpTo:9, totalLabel:'Out'},
+    ];
+  }
+  if(numHoles === 18){
+    return [
+      {range:[0,5], totalUpTo:null},
+      {range:[5,9], totalUpTo:9, totalLabel:'Out'},
+      {range:[9,14], totalUpTo:null},
+      {range:[14,18], totalUpTo:18, totalLabel:'Total'},
+    ];
+  }
+  // fallback for unusual hole counts: chunks of 5, grand total only at the very end
+  const sizes = [];
+  let remaining = numHoles;
+  while(remaining > 0){
+    if(remaining <= 5){ sizes.push(remaining); remaining = 0; }
+    else if(remaining - 5 === 1){ sizes.push(4); remaining -= 4; }
+    else { sizes.push(5); remaining -= 5; }
+  }
+  let start = 0;
+  return sizes.map((size, i) => {
+    const end = start + size;
+    const isLast = i === sizes.length - 1;
+    const chunk = {range:[start,end], totalUpTo: isLast ? numHoles : null, totalLabel:'Total'};
+    start = end;
+    return chunk;
+  });
+}
+
+// rows: array of {label, rawFn(holeIndex)->number, isPar:boolean}
+function scoreNotationClass(val, par){
+  const diff = val - par;
+  if(diff === -1) return 'birdie';
+  if(diff === 1) return 'bogey';
+  if(diff >= 2) return 'double';
+  return '';
+}
+
+function tallyHoles(holeList){
+  // holeList: array of {score, par}
+  const tally = {birdie:0, par:0, bogey:0, double:0, worse:0};
+  holeList.forEach(({score, par}) => {
+    const diff = score - par;
+    if(diff <= -1) tally.birdie++;
+    else if(diff === 0) tally.par++;
+    else if(diff === 1) tally.bogey++;
+    else if(diff === 2) tally.double++;
+    else tally.worse++;
+  });
+  tally.total = holeList.length;
+  return tally;
+}
+
+function buildSegments(){
+  // chronological list of {date, holes:[{score,par}, ...9 holes]} — one entry per 9-hole segment
+  const chrono = [...rounds].sort((a,b)=> new Date(a.date) - new Date(b.date));
+  const segments = [];
+  chrono.forEach(r=>{
+    if(!r.holeDetail) return;
+    const { pars, scores } = r.holeDetail;
+    if(r.holes === 18){
+      segments.push({date:r.date, holes: pars.slice(0,9).map((p,i)=>({score:scores[i], par:p}))});
+      segments.push({date:r.date, holes: pars.slice(9,18).map((p,i)=>({score:scores[i+9], par:p}))});
+    } else {
+      segments.push({date:r.date, holes: pars.map((p,i)=>({score:scores[i], par:p}))});
+    }
+  });
+  return segments;
+}
+
+function renderScoringBars(containerId, tally){
+  const container = document.getElementById(containerId);
+  const allRows = [
+    {label:'Birdie', key:'birdie', cls:'', hideIfZero:true},
+    {label:'Par', key:'par', cls:''},
+    {label:'Bogey', key:'bogey', cls:'bogey'},
+    {label:'Double', key:'double', cls:'double'},
+    {label:'Worse', key:'worse', cls:'worse'},
+  ];
+  const rows = allRows.filter(r => !(r.hideIfZero && tally[r.key] === 0));
+  const maxCount = Math.max(1, ...rows.map(r=>tally[r.key]));
+  container.innerHTML = rows.map(r=>{
+    const count = tally[r.key];
+    const pct = tally.total > 0 ? Math.round(count/tally.total*100) : 0;
+    const widthPct = Math.round(count/maxCount*100);
+    return `
+      <div class="scoring-bar-row">
+        <div class="scoring-bar-label">${r.label}</div>
+        <div class="scoring-bar-track"><div class="scoring-bar-fill ${r.cls}" style="width:${widthPct}%;"></div></div>
+        <div class="scoring-bar-count">${pct}%</div>
+      </div>`;
+  }).join('');
+}
+
+function avgPer18Str(holeList){
+  if(holeList.length === 0) return '';
+  const totalDiff = holeList.reduce((s,{score,par})=> s + (score-par), 0);
+  const avgPerHole = totalDiff/holeList.length;
+  const avgPer18 = Math.round(avgPerHole*18*10)/10;
+  if(avgPer18 === 0) return 'average E per 18';
+  return `average ${avgPer18 > 0 ? '+' : ''}${avgPer18} per 18`;
+}
+
+function updateScoringSummary(){
+  const allHolesEl = document.getElementById('scoringSummaryAll');
+  const recentHolesEl = document.getElementById('scoringSummaryRecent');
+  if(!allHolesEl || !recentHolesEl) return;
+
+  const segments = buildSegments();
+  const allHoles = segments.flatMap(s => s.holes);
+  const recentSegments = segments.slice(-11);
+  const recentHoles = recentSegments.flatMap(s => s.holes);
+
+  document.getElementById('scoringSummaryAllLabel').textContent = `All rounds (${allHoles.length} holes, ${avgPer18Str(allHoles)}):`;
+  document.getElementById('scoringSummaryRecentLabel').textContent = `Last ${recentSegments.length} segments (${recentHoles.length} holes, ${avgPer18Str(recentHoles)}):`;
+
+  renderScoringBars('scoringSummaryAll', tallyHoles(allHoles));
+  renderScoringBars('scoringSummaryRecent', tallyHoles(recentHoles));
+}
+
+function renderScorecardChunks(numHoles, pars, rows){
+  const plan = getChunkPlan(numHoles);
+  let html = '';
+  plan.forEach(chunk => {
+    const [start, end] = chunk.range;
+    let headerCells = '';
+    for(let h=start; h<end; h++) headerCells += `<th>${h+1}</th>`;
+    if(chunk.totalUpTo) headerCells += `<th class="out-col">${chunk.totalLabel}</th>`;
+
+    const bodyRows = rows.map(row => {
+      let cells = '';
+      for(let h=start; h<end; h++){
+        const val = row.rawFn(h);
+        if(row.isPar){
+          cells += `<td>${val}</td>`;
+        } else {
+          const cls = scoreNotationClass(val, pars[h]);
+          cells += `<td><span class="score-mark ${cls}">${Math.round(val)}</span></td>`;
+        }
+      }
+      if(chunk.totalUpTo){
+        let sum = 0, parSum = 0;
+        for(let h=0; h<chunk.totalUpTo; h++){ sum += row.rawFn(h); parSum += pars[h]; }
+        cells += `<td class="out-col">${row.isPar ? sum : Math.round(sum) + toParFrag(sum, parSum)}</td>`;
+      }
+      return `<tr><td>${row.label}</td>${cells}</tr>`;
+    }).join('');
+
+    html += `<table class="hole-scorecard" style="margin-bottom:8px;">
+      <thead><tr><th>Hole</th>${headerCells}</tr></thead>
+      <tbody>${bodyRows}</tbody>
+    </table>`;
+  });
+  return html;
+}
+
+function buildHoleStatsHtml(atCourse){
+  const withHoles = atCourse.filter(r => r.holeDetail);
+  if(withHoles.length === 0) return '';
+
+  const numHoles = withHoles[0].holeDetail.scores.length;
+  const pars = withHoles[0].holeDetail.pars;
+
+  if(withHoles.length === 1){
+    const scores = withHoles[0].holeDetail.scores;
+    const rows = [
+      {label:'Par', rawFn:(h)=>pars[h], isPar:true},
+      {label:'Score', rawFn:(h)=>scores[h], isPar:false},
+    ];
+    return `
+    <p class="note" style="margin:16px 0 6px;">Hole-by-hole (from 1 scorecard on file)</p>
+    ${renderScorecardChunks(numHoles, pars, rows)}`;
+  }
+
+  const perHole = [];
+  for(let h=0; h<numHoles; h++){
+    const scoresAtHole = withHoles.map(r => r.holeDetail.scores[h]);
+    const med = median(scoresAtHole);
+    const best = Math.min(...scoresAtHole);
+    perHole.push({hole:h+1, par:pars[h], median:med, best});
+  }
+
+  const rows = [
+    {label:'Par', rawFn:(h)=>pars[h], isPar:true},
+    {label:'Median', rawFn:(h)=>perHole[h].median, isPar:false},
+    {label:'Best', rawFn:(h)=>perHole[h].best, isPar:false},
+  ];
+
+  return `
+    <p class="note" style="margin:16px 0 6px;">Hole-by-hole (from ${withHoles.length} scorecards on file)</p>
+    ${renderScorecardChunks(numHoles, pars, rows)}`;
+}
+
+function buildSingleRoundScorecardHtml(r){
+  if(!r.holeDetail) return '';
+  const { pars, scores } = r.holeDetail;
+  const numHoles = scores.length;
+
+  const rows = [
+    {label:'Par', rawFn:(h)=>pars[h], isPar:true},
+    {label:'Score', rawFn:(h)=>scores[h], isPar:false},
+  ];
+
+  return `
+    <p class="note" style="margin:16px 0 6px;">Scorecard</p>
+    ${renderScorecardChunks(numHoles, pars, rows)}`;
+}
+
 function openCourseDetail(courseName){
   const atCourse = rounds
     .map((r, idx) => ({...r, idx}))
@@ -746,7 +1123,7 @@ function openCourseDetail(courseName){
   document.getElementById('detailTitle').textContent = courseName;
   document.getElementById('detailMiiRow').innerHTML = '';
 
-  const rowsHtml = atCourse.map(r => {
+  const buildRow = (r) => {
     const dateFmt = new Date(r.date+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
     const gross = scoreOf(r);
     const mood = moodEmoji(r.diff, rounds.map(x=>x.diff));
@@ -757,11 +1134,24 @@ function openCourseDetail(courseName){
         <span class="crr-score">${gross}<span class="topar">${toParStr(gross, r.course)}</span></span>
         <span class="crr-diff">${r.diff.toFixed(1)}</span>
       </div>`;
-  }).join('');
+  };
+
+  const visibleLimit = 5;
+  const shown = atCourse.slice(0, visibleLimit);
+  const rest = atCourse.slice(visibleLimit);
+  const shownHtml = shown.map(buildRow).join('');
+  const restHtml = rest.map(buildRow).join('');
+
+  const seeMoreHtml = rest.length > 0
+    ? `<div id="courseRoundsMoreWrap" style="display:none;">${restHtml}</div>
+       <p class="note" id="courseRoundsSeeMore" style="font-style:italic;cursor:pointer;margin:6px 0 0;">See more (${rest.length} earlier round${rest.length===1?'':'s'})</p>`
+    : '';
 
   document.getElementById('detailBody').innerHTML = `
     <p class="note" style="margin:2px 0 10px;">${atCourse.length} round${atCourse.length===1?'':'s'} at this course · tap one for details</p>
-    <div class="course-round-list">${rowsHtml}</div>
+    <div class="course-round-list">${shownHtml}</div>
+    ${seeMoreHtml}
+    ${buildHoleStatsHtml(atCourse)}
   `;
   detailOverlay.classList.add('open');
 
@@ -771,6 +1161,21 @@ function openCourseDetail(courseName){
       openDetail(idx);
     });
   });
+
+  const seeMoreEl = document.getElementById('courseRoundsSeeMore');
+  if(seeMoreEl){
+    seeMoreEl.addEventListener('click', ()=>{
+      const wrap = document.getElementById('courseRoundsMoreWrap');
+      wrap.style.display = 'block';
+      wrap.querySelectorAll('.course-round-row').forEach(el=>{
+        el.addEventListener('click', ()=>{
+          const idx = parseInt(el.dataset.idx, 10);
+          openDetail(idx);
+        });
+      });
+      seeMoreEl.style.display = 'none';
+    });
+  }
 }
 
 // ================= ADD ROUND MODAL =================
@@ -778,6 +1183,53 @@ const addOverlay = document.getElementById('addOverlay');
 document.getElementById('addClose').addEventListener('click', ()=>addOverlay.classList.remove('open'));
 document.getElementById('addCancel').addEventListener('click', ()=>addOverlay.classList.remove('open'));
 addOverlay.addEventListener('click', e=>{ if(e.target===addOverlay) addOverlay.classList.remove('open'); });
+
+function getHistoricalHoleStats(courseName, holes){
+  if(!courseName) return null;
+  const matches = rounds.filter(r =>
+    r.course.toLowerCase() === courseName.toLowerCase() &&
+    r.holeDetail &&
+    r.holeDetail.scores.length === holes
+  );
+  if(matches.length === 0) return null;
+  const pars = matches[0].holeDetail.pars;
+  const bests = [];
+  for(let h=0; h<holes; h++){
+    bests.push(Math.min(...matches.map(r => r.holeDetail.scores[h])));
+  }
+  return { pars, bests };
+}
+
+function buildHoleInputs(){
+  const holes = parseInt(document.getElementById('f-holes').value, 10);
+  const courseTyped = document.getElementById('f-course').value.trim();
+  const hist = getHistoricalHoleStats(courseTyped, holes);
+  const scoreRow = document.getElementById('scoreInputsRow');
+  scoreRow.innerHTML = '';
+  const scoreOptions = [2,3,4,5,6,7,8].map(n => `<option value="${n}">${n}</option>`).join('');
+  for(let h=1; h<=holes; h++){
+    const hintHtml = hist ? `<div class="hole-hint">Par ${hist.pars[h-1]}<br>Best ${hist.bests[h-1]}</div>` : '';
+    scoreRow.innerHTML += `<div class="hole-box"><div class="hnum">${h}</div><select class="hole-score-box" data-hole="${h}"><option value="" disabled selected>–</option>${scoreOptions}</select>${hintHtml}</div>`;
+  }
+  document.querySelectorAll('.hole-score-box').forEach(el=>{
+    el.addEventListener('input', updateGrossScoreHint);
+  });
+  updateGrossScoreHint();
+}
+
+function updateGrossScoreHint(){
+  const boxes = Array.from(document.querySelectorAll('.hole-score-box'));
+  const values = boxes.map(b => parseInt(b.value, 10));
+  const hint = document.getElementById('grossScoreHint');
+  const valueEl = document.getElementById('grossScoreValue');
+  if(values.length === 0 || values.some(v => isNaN(v))){
+    hint.style.display = 'none';
+    return;
+  }
+  const gross = values.reduce((s,x)=>s+x,0);
+  valueEl.textContent = gross;
+  hint.style.display = 'block';
+}
 
 document.getElementById('f-course').addEventListener('input', (e)=>{
   const typed = e.target.value.trim();
@@ -787,10 +1239,45 @@ document.getElementById('f-course').addEventListener('input', (e)=>{
     document.getElementById('f-slope').value = match.slope;
     document.getElementById('f-holes').value = match.holes;
   }
-  const knownPar = PAR_BY_COURSE[typed] ?? Object.entries(PAR_BY_COURSE).find(([name])=>name.toLowerCase()===typed.toLowerCase())?.[1];
-  if(knownPar != null){
-    document.getElementById('f-par').value = knownPar;
+  buildHoleInputs();
+  updateExpectedScoreHint();
+});
+
+function autoHalveNineHoleRating(){
+  const holes = parseInt(document.getElementById('f-holes').value, 10);
+  const ratingInput = document.getElementById('f-rating');
+  const rating = parseFloat(ratingInput.value);
+  if(holes === 9 && !isNaN(rating) && rating > 50){
+    ratingInput.value = Math.round((rating / 2) * 10) / 10;
   }
+}
+
+function updateExpectedScoreHint(){
+  let rating = parseFloat(document.getElementById('f-rating').value);
+  const slope = parseFloat(document.getElementById('f-slope').value);
+  const holes = parseInt(document.getElementById('f-holes').value, 10);
+  const hint = document.getElementById('expScoreHint');
+  const valueEl = document.getElementById('expScoreValue');
+
+  if(isNaN(rating) || isNaN(slope) || !trend || !trend.length){
+    hint.style.display = 'none';
+    return;
+  }
+  if(holes === 9 && rating > 50){
+    rating = rating / 2;
+  }
+  const currentIndex = trend[trend.length-1].index;
+  const expScore = holes === 9
+    ? Math.round((currentIndex/2) * slope / 113 + rating)
+    : Math.round(currentIndex * slope / 113 + rating);
+  valueEl.textContent = expScore;
+  hint.style.display = 'block';
+}
+document.getElementById('f-rating').addEventListener('input', updateExpectedScoreHint);
+document.getElementById('f-slope').addEventListener('input', updateExpectedScoreHint);
+document.getElementById('f-holes').addEventListener('change', ()=>{
+  buildHoleInputs();
+  updateExpectedScoreHint();
 });
 
 function todayISO(){
@@ -806,8 +1293,8 @@ function openAddModal(){
   document.getElementById('f-holes').value = 18;
   document.getElementById('f-rating').value = '';
   document.getElementById('f-slope').value = '';
-  document.getElementById('f-score').value = '';
-  document.getElementById('f-par').value = '';
+  document.getElementById('expScoreHint').style.display = 'none';
+  buildHoleInputs();
   addOverlay.classList.add('open');
 }
 document.getElementById('addRoundBtn').addEventListener('click', openAddModal);
@@ -816,28 +1303,37 @@ document.getElementById('addSave').addEventListener('click', ()=>{
   const course = document.getElementById('f-course').value.trim();
   const date = document.getElementById('f-date').value;
   const holes = parseInt(document.getElementById('f-holes').value, 10);
-  const rating = parseFloat(document.getElementById('f-rating').value);
+  let rating = parseFloat(document.getElementById('f-rating').value);
   const slope = parseFloat(document.getElementById('f-slope').value);
-  const gross = parseInt(document.getElementById('f-score').value, 10);
-  const parInput = document.getElementById('f-par').value;
-  const par = parseInt(parInput, 10);
 
-  const valid = course && date && !isNaN(rating) && !isNaN(slope) && !isNaN(gross) && gross > 0;
+  if(holes === 9 && !isNaN(rating) && rating > 50){
+    rating = rating / 2;
+  }
+
+  const scoreBoxes = Array.from(document.querySelectorAll('.hole-score-box'));
+  const scores = scoreBoxes.map(b => parseInt(b.value, 10));
+
+  const hist = getHistoricalHoleStats(course, holes);
+  const pars = hist ? hist.pars : Array(holes).fill(4);
+
+  const scoresValid = scores.length === holes && scores.every(s => !isNaN(s) && s > 0);
+  const valid = course && date && !isNaN(rating) && !isNaN(slope) && scoresValid;
   if(!valid){
     document.getElementById('formError').style.display = 'block';
     return;
   }
 
+  const gross = scores.reduce((s,x)=>s+x,0);
+  const parTotal = pars.reduce((s,x)=>s+x,0);
   const diff = computeDiff(gross, rating, slope, holes);
   const newRound = {
     score: gross + (holes===9?'Ni':'A'),
-    date, rating, slope, diff, course, holes
+    date, rating, slope, diff, course, holes,
+    holeDetail: { pars, scores }
   };
 
-  if(!isNaN(par)){
-    PAR_BY_COURSE[course] = par;
-    persistPars();
-  }
+  PAR_BY_COURSE[course] = parTotal;
+  persistPars();
 
   addedRounds.unshift(newRound);
   persistAdded();
