@@ -92,20 +92,6 @@
   h2 .idx{font-family:var(--font-mono);font-size:11px;color:#8a8368;font-weight:400;}
   .idx-note{font-family:var(--font-mono);font-size:11px;color:#8a8368;font-weight:400;margin:0 0 18px;}
   html[data-theme="wii"] .idx-note{color:#7C97A8;font-weight:500;}
-  .scoring-summary-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
-  .scoring-bars{display:flex;flex-direction:column;gap:8px;}
-  .scoring-bar-row{display:flex;align-items:center;gap:8px;font-size:12.5px;}
-  .scoring-bar-label{width:64px;flex-shrink:0;font-family:var(--font-mono);color:var(--ink);}
-  .scoring-bar-track{flex:1;height:10px;background:var(--paper-tan);border:1px solid var(--line);border-radius:5px;overflow:hidden;}
-  .scoring-bar-fill{height:100%;background:var(--fairway);}
-  .scoring-bar-fill.bogey{background:var(--sand);}
-  .scoring-bar-fill.double{background:var(--flag);}
-  .scoring-bar-fill.worse{background:#4a4a4a;}
-  .scoring-bar-count{width:56px;flex-shrink:0;text-align:right;font-family:var(--font-mono);font-size:11px;color:#8a8368;}
-  html[data-theme="wii"] .scoring-bar-count{color:#7C97A8;}
-  @media (max-width:600px){
-    .scoring-summary-grid{grid-template-columns:1fr;gap:24px;}
-  }
   html[data-theme="wii"] h2 .idx{color:#7C97A8;font-weight:500;}
   p.note{font-size:13.5px;color:#6b6752;margin:0 0 18px;max-width:60ch;}
   html[data-theme="wii"] p.note{color:#5C86A0;font-weight:500;}
@@ -153,6 +139,7 @@
   .score-mark.birdie{border-radius:50%;border:1.5px solid currentColor;padding:0 3px;}
   .score-mark.bogey{border:1.5px solid currentColor;padding:0 3px;}
   .score-mark.double{border:1.5px solid currentColor;padding:0 3px;box-shadow:0 0 0 2px var(--paper), 0 0 0 3.5px currentColor;margin:0 3px;}
+  .best-star{color:var(--flag);font-weight:700;font-size:11px;position:relative;top:-6px;margin-left:1px;line-height:0;}
   .course-round-row{display:flex;justify-content:space-between;align-items:center;gap:6px;padding:9px 6px;border-bottom:1px solid var(--line);cursor:pointer;font-size:13.5px;}
   .course-round-row:hover{background:var(--paper-tan);}
   .course-round-row:last-child{border-bottom:none;}
@@ -167,7 +154,7 @@
   html[data-theme="wii"] .date-cell{color:#7C97A8;}
   .lowdiff-face{width:20px;height:auto;vertical-align:middle;margin-left:6px;}
   .badge{font-family:var(--font-mono);font-size:10px;padding:1px 5px;border-radius:6px;display:inline-block;margin-right:6px;vertical-align:middle;}
-  .badge.b18{background:var(--fairway);color:#fff;} .badge.b9{background:var(--sand);color:#fff;}
+  .badge.b18{background:var(--sand);color:#fff;} .badge.b9{background:var(--fairway);color:#fff;}
   .badge.detail{background:transparent;border:1px solid var(--fairway-light);color:var(--fairway-light);}
   .diff-cell{font-family:var(--font-mono);text-align:right;}
   .course-name{color:#4a4838;} html[data-theme="wii"] .course-name{color:#5C86A0;font-weight:500;}
@@ -181,9 +168,10 @@
   .overlay.open{display:flex;}
   .modal{background:var(--paper);border-radius:calc(var(--radius) + 6px);max-width:520px;width:100%;padding:22px;position:relative;box-shadow:0 20px 50px rgba(0,0,0,0.25);}
   .modal-close{position:absolute;top:14px;right:14px;background:none;border:none;font-size:20px;cursor:pointer;color:var(--ink);}
+  .modal-back{position:absolute;top:12px;left:14px;background:none;border:none;font-size:14px;font-weight:600;cursor:pointer;color:var(--fairway);padding:4px 2px;}
   .modal h3{font-family:var(--font-display);color:var(--fairway);margin:0 0 4px;font-size:20px;}
   html[data-theme="wii"] .modal h3{color:var(--ink);font-weight:700;}
-  .modal .mii-row{display:flex;align-items:center;gap:12px;margin-bottom:10px;}
+  .modal .mii-row{display:flex;align-items:center;gap:12px;margin-bottom:10px;margin-top:24px;}
 
   /* dark scorecard, mirrors the native app card */
   .scorecard-dark{background:linear-gradient(135deg,#12121c,#1c1830,#101826);color:#fff;border-radius:20px;padding:18px 16px;margin-top:12px;}
@@ -311,25 +299,12 @@
     <p class="note" id="roundHistorySeeMore" style="font-style:italic;cursor:pointer;margin:8px 0 0;display:none;">Show more…</p>
   </section>
 
-  <section>
-    <h2><span class="wii-only">🎯</span>Scoring Summary</h2>
-    <div class="scoring-summary-grid">
-      <div>
-        <p class="idx-note" id="scoringSummaryAllLabel">All rounds</p>
-        <div class="scoring-bars" id="scoringSummaryAll"></div>
-      </div>
-      <div>
-        <p class="idx-note" id="scoringSummaryRecentLabel">Last 11 segments</p>
-        <div class="scoring-bars" id="scoringSummaryRecent"></div>
-      </div>
-    </div>
-  </section>
-
 </div>
 
 <!-- ROUND DETAIL MODAL -->
 <div class="overlay" id="detailOverlay">
   <div class="modal" id="detailModal">
+    <button class="modal-back" id="detailBack" aria-label="Back" style="display:none;">← Back</button>
     <button class="modal-close" id="detailClose" aria-label="Close">✕</button>
     <div class="mii-row" id="detailMiiRow"></div>
     <h3 id="detailTitle">Round</h3>
@@ -652,7 +627,7 @@ function recompute(){
       <td class="course-name">${r.course}${isLowest ? `<img class="lowdiff-face wii-only" src="data:image/png;base64,${lowDiffFaceB64}" alt="Best round">` : ''}</td>
       <td class="diff-cell">${r.diff.toFixed(1)}</td>
     `;
-    tr.addEventListener('click', ()=>openDetail(idx));
+    tr.addEventListener('click', ()=>{ returnToCourse = null; openDetail(idx); });
     return tr;
   };
 
@@ -680,7 +655,6 @@ function recompute(){
   }
 
   renderCourseRecords();
-  updateScoringSummary();
   refreshCourseLookup();
   renderCharts(currentTheme);
   updateProjection();
@@ -750,9 +724,9 @@ function renderCourseRecords(){
 // ================= CHARTS =================
 function colorsFor(theme){
   if(theme === 'wii'){
-    return {ink:'#3C4A52', grid:'#8B8C91', trendLine:'#26B0D3', regLine:'#8D9095', c18:'#21ABDE', c9:'#8D9095', font:'ui-rounded, -apple-system, sans-serif'};
+    return {ink:'#3C4A52', grid:'#8B8C91', trendLine:'#26B0D3', regLine:'#8D9095', c18:'#8D9095', c9:'#21ABDE', font:'ui-rounded, -apple-system, sans-serif'};
   }
-  return {ink:'#28321F', grid:'#d8cfae', trendLine:'#33553B', regLine:'#A8402F', c18:'#33553B', c9:'#CBAE78', font:'ui-monospace, SF Mono, Menlo, monospace'};
+  return {ink:'#28321F', grid:'#d8cfae', trendLine:'#33553B', regLine:'#A8402F', c18:'#CBAE78', c9:'#33553B', font:'ui-monospace, SF Mono, Menlo, monospace'};
 }
 
 function renderCharts(theme){
@@ -781,8 +755,8 @@ function renderCharts(theme){
   diffChart = new Chart(document.getElementById('diffChart'), {
     type:'scatter',
     data:{datasets:[
-      {label:'18-hole', data: rounds.filter(r=>r.holes===18).map(r=>({x:roundNumberOf[roundKey(r)], y:r.diff, idx:rounds.indexOf(r)})), backgroundColor:c.c18, pointRadius:5},
-      {label:'9-hole', data: rounds.filter(r=>r.holes===9).map(r=>({x:roundNumberOf[roundKey(r)], y:r.diff, idx:rounds.indexOf(r)})), backgroundColor:c.c9, pointRadius:5}
+      {label:'9-hole', data: rounds.filter(r=>r.holes===9).map(r=>({x:roundNumberOf[roundKey(r)], y:r.diff, idx:rounds.indexOf(r)})), backgroundColor:c.c9, pointRadius:5},
+      {label:'18-hole', data: rounds.filter(r=>r.holes===18).map(r=>({x:roundNumberOf[roundKey(r)], y:r.diff, idx:rounds.indexOf(r)})), backgroundColor:c.c18, pointRadius:5}
     ]},
     options:{responsive:true, maintainAspectRatio:false,
       plugins:{legend:{labels:{color:c.ink,font:{family:c.font,size:13}}}},
@@ -794,7 +768,7 @@ function renderCharts(theme){
         if(elements.length > 0){
           const el = elements[0];
           const point = diffChart.data.datasets[el.datasetIndex].data[el.index];
-          if(point && point.idx !== undefined) openDetail(point.idx);
+          if(point && point.idx !== undefined){ returnToCourse = null; openDetail(point.idx); }
         }
       },
       onHover: (evt, elements) => {
@@ -878,7 +852,11 @@ function updateProjection(){
 // ================= ROUND DETAIL MODAL =================
 const detailOverlay = document.getElementById('detailOverlay');
 const detailModal = document.getElementById('detailModal');
+let returnToCourse = null;
 document.getElementById('detailClose').addEventListener('click', ()=>detailOverlay.classList.remove('open'));
+document.getElementById('detailBack').addEventListener('click', ()=>{
+  if(returnToCourse) openCourseDetail(returnToCourse);
+});
 detailOverlay.addEventListener('click', e=>{ if(e.target===detailOverlay) detailOverlay.classList.remove('open'); });
 
 function moodEmoji(diff, allDiffs){
@@ -896,6 +874,7 @@ function moodEmoji(diff, allDiffs){
 function openDetail(idx){
   const r = rounds[idx];
   document.getElementById('detailTitle').textContent = r.course;
+  document.getElementById('detailBack').style.display = returnToCourse ? 'block' : 'none';
   const dateFmt = new Date(r.date+'T00:00:00').toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
 
   const allDiffs = rounds.map(x=>x.diff);
@@ -982,88 +961,6 @@ function scoreNotationClass(val, par){
   return '';
 }
 
-function tallyHoles(holeList){
-  // holeList: array of {score, par}
-  const tally = {birdie:0, par:0, bogey:0, double:0, worse:0};
-  holeList.forEach(({score, par}) => {
-    const diff = score - par;
-    if(diff <= -1) tally.birdie++;
-    else if(diff === 0) tally.par++;
-    else if(diff === 1) tally.bogey++;
-    else if(diff === 2) tally.double++;
-    else tally.worse++;
-  });
-  tally.total = holeList.length;
-  return tally;
-}
-
-function buildSegments(){
-  // chronological list of {date, holes:[{score,par}, ...9 holes]} — one entry per 9-hole segment
-  const chrono = [...rounds].sort((a,b)=> new Date(a.date) - new Date(b.date));
-  const segments = [];
-  chrono.forEach(r=>{
-    if(!r.holeDetail) return;
-    const { pars, scores } = r.holeDetail;
-    if(r.holes === 18){
-      segments.push({date:r.date, holes: pars.slice(0,9).map((p,i)=>({score:scores[i], par:p}))});
-      segments.push({date:r.date, holes: pars.slice(9,18).map((p,i)=>({score:scores[i+9], par:p}))});
-    } else {
-      segments.push({date:r.date, holes: pars.map((p,i)=>({score:scores[i], par:p}))});
-    }
-  });
-  return segments;
-}
-
-function renderScoringBars(containerId, tally){
-  const container = document.getElementById(containerId);
-  const allRows = [
-    {label:'Birdie', key:'birdie', cls:'', hideIfZero:true},
-    {label:'Par', key:'par', cls:''},
-    {label:'Bogey', key:'bogey', cls:'bogey'},
-    {label:'Double', key:'double', cls:'double'},
-    {label:'Worse', key:'worse', cls:'worse'},
-  ];
-  const rows = allRows.filter(r => !(r.hideIfZero && tally[r.key] === 0));
-  const maxCount = Math.max(1, ...rows.map(r=>tally[r.key]));
-  container.innerHTML = rows.map(r=>{
-    const count = tally[r.key];
-    const pct = tally.total > 0 ? Math.round(count/tally.total*100) : 0;
-    const widthPct = Math.round(count/maxCount*100);
-    return `
-      <div class="scoring-bar-row">
-        <div class="scoring-bar-label">${r.label}</div>
-        <div class="scoring-bar-track"><div class="scoring-bar-fill ${r.cls}" style="width:${widthPct}%;"></div></div>
-        <div class="scoring-bar-count">${pct}%</div>
-      </div>`;
-  }).join('');
-}
-
-function avgPer18Str(holeList){
-  if(holeList.length === 0) return '';
-  const totalDiff = holeList.reduce((s,{score,par})=> s + (score-par), 0);
-  const avgPerHole = totalDiff/holeList.length;
-  const avgPer18 = Math.round(avgPerHole*18*10)/10;
-  if(avgPer18 === 0) return 'average E per 18';
-  return `average ${avgPer18 > 0 ? '+' : ''}${avgPer18} per 18`;
-}
-
-function updateScoringSummary(){
-  const allHolesEl = document.getElementById('scoringSummaryAll');
-  const recentHolesEl = document.getElementById('scoringSummaryRecent');
-  if(!allHolesEl || !recentHolesEl) return;
-
-  const segments = buildSegments();
-  const allHoles = segments.flatMap(s => s.holes);
-  const recentSegments = segments.slice(-11);
-  const recentHoles = recentSegments.flatMap(s => s.holes);
-
-  document.getElementById('scoringSummaryAllLabel').textContent = `All rounds (${allHoles.length} holes, ${avgPer18Str(allHoles)}):`;
-  document.getElementById('scoringSummaryRecentLabel').textContent = `Last ${recentSegments.length} segments (${recentHoles.length} holes, ${avgPer18Str(recentHoles)}):`;
-
-  renderScoringBars('scoringSummaryAll', tallyHoles(allHoles));
-  renderScoringBars('scoringSummaryRecent', tallyHoles(recentHoles));
-}
-
 function renderScorecardChunks(numHoles, pars, rows){
   const plan = getChunkPlan(numHoles);
   let html = '';
@@ -1081,7 +978,8 @@ function renderScorecardChunks(numHoles, pars, rows){
           cells += `<td>${val}</td>`;
         } else {
           const cls = scoreNotationClass(val, pars[h]);
-          cells += `<td><span class="score-mark ${cls}">${Math.round(val)}</span></td>`;
+          const mark = (row.markFn && row.markFn(h)) ? '<span class="best-star">*</span>' : '';
+          cells += `<td><span class="score-mark ${cls}">${Math.round(val)}</span>${mark}</td>`;
         }
       }
       if(chunk.totalUpTo){
@@ -1142,13 +1040,32 @@ function buildSingleRoundScorecardHtml(r){
   const { pars, scores } = r.holeDetail;
   const numHoles = scores.length;
 
+  // Mark a hole with an asterisk if this round set a NEW personal-best-to-date at that
+  // specific hole -- i.e. it beat every prior round's score there (strictly, no ties),
+  // as of when it was played. This is a running record, not a comparison against the
+  // whole dataset: a later round with an even better score doesn't retroactively remove
+  // an earlier round's star, since it really was the best at the time.
+  const atCourse = rounds.filter(x => x.course === r.course && x.holeDetail);
+
+  const bestMarks = new Array(numHoles).fill(false);
+  for(let h=0; h<numHoles; h++){
+    const priorScoresAtHole = atCourse
+      .filter(x => x.holeDetail.scores.length > h && new Date(x.date) < new Date(r.date))
+      .map(x => x.holeDetail.scores[h]);
+    if(priorScoresAtHole.length === 0) continue; // no prior data at this hole -- nothing to beat
+    const priorBest = Math.min(...priorScoresAtHole);
+    if(scores[h] < priorBest){
+      bestMarks[h] = true;
+    }
+  }
+
   const rows = [
     {label:'Par', rawFn:(h)=>pars[h], isPar:true},
-    {label:'Score', rawFn:(h)=>scores[h], isPar:false},
+    {label:'Score', rawFn:(h)=>scores[h], isPar:false, markFn:(h)=>bestMarks[h]},
   ];
 
   return `
-    <p class="note" style="margin:16px 0 6px;">Scorecard</p>
+    <p class="note" style="margin:16px 0 6px;">Scorecard${bestMarks.some(Boolean) ? ' · <span class="best-star">*</span> = new best at that hole (at the time)' : ''}</p>
     ${renderScorecardChunks(numHoles, pars, rows)}`;
 }
 
@@ -1158,6 +1075,8 @@ function openCourseDetail(courseName){
     .filter(r => r.course === courseName)
     .sort((a,b) => new Date(b.date) - new Date(a.date));
 
+  returnToCourse = courseName;
+  document.getElementById('detailBack').style.display = 'none';
   document.getElementById('detailTitle').innerHTML = `${courseName} <span class="crr-rs">${atCourse[0].rating.toFixed(1)}/${atCourse[0].slope}</span>`;
   document.getElementById('detailMiiRow').innerHTML = '';
 
