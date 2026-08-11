@@ -406,6 +406,57 @@
   </div>
 </div>
 
+<script type="module">
+  // Cross-device sync bridge. Everything the app adds locally (rounds, future rounds,
+  // course registry, custom pars) mirrors to this Firestore doc so any device visiting
+  // the same URL sees the same data. If Firebase is ever unreachable (offline, blocked,
+  // config missing) the app just falls back to the existing localStorage-only behavior --
+  // nothing here is required for the app to keep working.
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+  import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyCiPDZ-TJU3zOk5zoBhI-c44ZYSkKrnPyw",
+    authDomain: "angesgolfbackend.firebaseapp.com",
+    projectId: "angesgolfbackend",
+    storageBucket: "angesgolfbackend.firebasestorage.app",
+    messagingSenderId: "157870259987",
+    appId: "1:157870259987:web:bbe1ef9f762fa317fba4e6"
+  };
+
+  let stateDocRef = null;
+  try {
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    stateDocRef = doc(db, "angesGolf", "sharedState");
+  } catch(e) {
+    console.warn("Firebase init failed -- running in local-only mode:", e);
+  }
+
+  window.__fbReady = !!stateDocRef;
+
+  window.__fbSaveState = function(stateObj){
+    if(!stateDocRef) return;
+    setDoc(stateDocRef, stateObj, { merge: true }).catch(err=>{
+      console.warn("Firestore save failed (local copy is still safe):", err);
+    });
+  };
+
+  window.__fbSubscribe = function(onRemoteUpdate, onFirstSnapshot){
+    if(!stateDocRef){ if(onFirstSnapshot) onFirstSnapshot(true); return; }
+    let first = true;
+    onSnapshot(stateDocRef, (snap)=>{
+      if(snap.exists()) onRemoteUpdate(snap.data());
+      if(first){ first = false; if(onFirstSnapshot) onFirstSnapshot(!snap.exists()); }
+    }, (err)=>{
+      console.warn("Firestore subscription error (local copy is still safe):", err);
+      if(first){ first = false; if(onFirstSnapshot) onFirstSnapshot(true); }
+    });
+  };
+
+  window.dispatchEvent(new CustomEvent('firebaseBridgeReady'));
+</script>
+
 <script>
 // ================= DATA =================
 const baseRounds = [
@@ -541,17 +592,75 @@ function applyCourseRenames(){
   });
 }
 
+// ================= FIREBASE SYNC =================
+// Debounced so rapid edits (e.g. filling out a whole scorecard) collapse into one write
+// instead of firing on every keystroke. `applyingRemoteState` guards against a write we
+// just made immediately bouncing back through our own subscription and re-triggering itself.
+let firebaseSyncTimer = null;
+let applyingRemoteState = false;
+
+function gatherSyncableState(){
+  return {
+    addedRounds, deletedKeys, courseRenames,
+    addedFutureRounds, deletedFutureRoundIds,
+    courseRegistry, customPars: PAR_BY_COURSE,
+    updatedAt: Date.now()
+  };
+}
+
+function scheduleFirebaseSync(){
+  if(applyingRemoteState) return;
+  if(typeof window.__fbSaveState !== 'function') return;
+  if(firebaseSyncTimer) clearTimeout(firebaseSyncTimer);
+  firebaseSyncTimer = setTimeout(()=>{
+    window.__fbSaveState(gatherSyncableState());
+  }, 800);
+}
+
+function applyRemoteState(data){
+  applyingRemoteState = true;
+  if(data.addedRounds) addedRounds = data.addedRounds;
+  if(data.deletedKeys) deletedKeys = data.deletedKeys;
+  if(data.courseRenames) courseRenames = data.courseRenames;
+  if(data.addedFutureRounds) addedFutureRounds = data.addedFutureRounds;
+  if(data.deletedFutureRoundIds) deletedFutureRoundIds = data.deletedFutureRoundIds;
+  if(data.courseRegistry) courseRegistry = Object.assign({}, COURSE_REGISTRY_DEFAULTS, data.courseRegistry);
+  if(data.customPars) PAR_BY_COURSE = data.customPars;
+
+  // keep the localStorage mirror current too, so the offline fallback matches the cloud
+  if(hasStorage){
+    try{
+      window.localStorage.setItem('anges-golf-rounds-added', JSON.stringify(addedRounds));
+      window.localStorage.setItem('anges-golf-rounds-deleted', JSON.stringify(deletedKeys));
+      window.localStorage.setItem('anges-golf-course-renames', JSON.stringify(courseRenames));
+      window.localStorage.setItem('anges-golf-future-rounds', JSON.stringify(addedFutureRounds));
+      window.localStorage.setItem('anges-golf-future-rounds-deleted', JSON.stringify(deletedFutureRoundIds));
+      window.localStorage.setItem('anges-golf-course-registry', JSON.stringify(courseRegistry));
+      window.localStorage.setItem('anges-golf-custom-pars', JSON.stringify(PAR_BY_COURSE));
+    }catch(e){}
+  }
+
+  applyCourseRenames();
+  rebuildRoundsArray();
+  rebuildFutureRoundsArray();
+  recompute();
+  applyingRemoteState = false;
+}
+
 function persistAdded(){
   if(!hasStorage) return;
   try{ window.localStorage.setItem('anges-golf-rounds-added', JSON.stringify(addedRounds)); }catch(e){}
+  scheduleFirebaseSync();
 }
 function persistDeleted(){
   if(!hasStorage) return;
   try{ window.localStorage.setItem('anges-golf-rounds-deleted', JSON.stringify(deletedKeys)); }catch(e){}
+  scheduleFirebaseSync();
 }
 function persistRenames(){
   if(!hasStorage) return;
   try{ window.localStorage.setItem('anges-golf-course-renames', JSON.stringify(courseRenames)); }catch(e){}
+  scheduleFirebaseSync();
 }
 let futureRounds = [];        // computed: baseFutureRounds (minus cancelled) + addedFutureRounds
 let addedFutureRounds = [];   // future rounds added through the app UI, persisted
@@ -575,10 +684,12 @@ function removeFutureRound(id){
 function persistAddedFutureRounds(){
   if(!hasStorage) return;
   try{ window.localStorage.setItem('anges-golf-future-rounds', JSON.stringify(addedFutureRounds)); }catch(e){}
+  scheduleFirebaseSync();
 }
 function persistDeletedFutureRoundIds(){
   if(!hasStorage) return;
   try{ window.localStorage.setItem('anges-golf-future-rounds-deleted', JSON.stringify(deletedFutureRoundIds)); }catch(e){}
+  scheduleFirebaseSync();
 }
 
 // Rating/slope for courses that have never actually been played (and may not even have a
@@ -591,6 +702,7 @@ let courseRegistry = { ...COURSE_REGISTRY_DEFAULTS };
 function persistCourseRegistry(){
   if(!hasStorage) return;
   try{ window.localStorage.setItem('anges-golf-course-registry', JSON.stringify(courseRegistry)); }catch(e){}
+  scheduleFirebaseSync();
 }
 function lookupCourseInfo(name){
   const key = name.trim().toLowerCase();
@@ -634,6 +746,28 @@ function loadPersisted(){
   applyCourseRenames();
   rebuildRoundsArray();
   recompute();
+
+}
+
+// Subscribe to cross-device sync once the Firebase bridge module has actually finished
+// loading (it's an ES module, so it always runs after this classic script, regardless of
+// source order -- this listener just waits for it rather than racing it). First snapshot:
+// if the cloud doc doesn't exist yet (brand new setup), seed it with whatever's already in
+// local storage. Every snapshot after that -- including ones triggered by another device's
+// edits -- overwrites local state with the cloud's version and re-renders.
+function setupFirebaseSubscription(){
+  if(typeof window.__fbSubscribe === 'function'){
+    window.__fbSubscribe(
+      (remoteData) => { applyRemoteState(remoteData); },
+      (docMissing) => { if(docMissing) scheduleFirebaseSync(); }
+    );
+  }
+}
+if(window.__fbReady !== undefined){
+  // module already finished (unlikely this early, but handle it just in case)
+  setupFirebaseSubscription();
+} else {
+  window.addEventListener('firebaseBridgeReady', setupFirebaseSubscription);
 }
 
 const dayNum = d => Math.round(new Date(d).getTime()/86400000);
@@ -707,6 +841,7 @@ let PAR_BY_COURSE = {
 function persistPars(){
   if(!hasStorage) return;
   try{ window.localStorage.setItem('anges-golf-custom-pars', JSON.stringify(PAR_BY_COURSE)); }catch(e){}
+  scheduleFirebaseSync();
 }
 function loadPersistedPars(){
   if(!hasStorage) return;
