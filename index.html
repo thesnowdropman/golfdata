@@ -143,7 +143,7 @@
   .score-mark.birdie{border-radius:50%;border:1.5px solid currentColor;}
   .score-mark.bogey{border:1.5px solid currentColor;}
   .score-mark.double{border:1.5px solid currentColor;box-shadow:0 0 0 2px var(--paper), 0 0 0 3.5px currentColor;}
-  .best-star{color:var(--flag);font-weight:700;font-size:11px;position:relative;top:-6px;margin-left:1px;line-height:0;}
+  .new-best-num{color:var(--flag);font-weight:700;}
   .new-course-badge{color:var(--flag);font-weight:700;font-size:12px;margin-bottom:3px;}
   .hole-num-clickable,.hole-stat-clickable{cursor:pointer;}
   .hole-num-clickable:hover,.hole-stat-clickable:hover{background:var(--paper-tan);}
@@ -217,7 +217,7 @@
   html[data-theme="wii"] .form-grid label{color:#7C97A8;font-weight:600;}
   .form-grid input,.form-grid select{width:100%;font-family:var(--font-body);font-size:14px;padding:7px 9px;border:1px solid var(--line);border-radius:calc(var(--radius)/3 + 4px);background:var(--paper-tan);color:var(--ink);}
   .hole-inputs{display:grid;grid-template-columns:repeat(auto-fill, 34px);justify-content:start;gap:4px;margin-top:4px;}
-  #parInputsRow,#futureParInputsRow{grid-template-columns:repeat(9, 34px);}
+  #parInputsRow,#futureParInputsRow,#scoreInputsRow{grid-template-columns:repeat(9, 34px);}
   .hole-inputs .hole-box{width:34px;display:flex;flex-direction:column;align-items:center;}
   .hole-inputs .hole-box .hnum{font-size:9px;color:#8a8368;margin-bottom:2px;}
   html[data-theme="wii"] .hole-inputs .hole-box .hnum{color:#7C97A8;}
@@ -1383,15 +1383,20 @@ function renderScorecardChunks(numHoles, pars, rows){
           cells += `<td>${val}</td>`;
         } else {
           const cls = scoreNotationClass(val, pars[h]);
-          const mark = (row.markFn && row.markFn(h)) ? '<span class="best-star">*</span>' : '';
+          const isNewBest = row.markFn && row.markFn(h);
           const clickAttrs = row.clickable ? ` class="hole-stat-clickable" data-hole="${h+1}"` : '';
-          cells += `<td${clickAttrs}><span class="score-mark ${cls}">${Math.round(val)}</span>${mark}</td>`;
+          cells += `<td${clickAttrs}><span class="score-mark ${cls} ${isNewBest ? 'new-best-num' : ''}">${Math.round(val)}</span></td>`;
         }
       }
       if(chunk.totalUpTo){
         let sum = 0, parSum = 0;
         for(let h=0; h<chunk.totalUpTo; h++){ sum += row.rawFn(h); parSum += pars[h]; }
-        cells += `<td class="out-col">${row.isPar ? sum : Math.round(sum) + toParFrag(sum, parSum)}</td>`;
+        if(row.isPar){
+          cells += `<td class="out-col">${sum}</td>`;
+        } else {
+          const totalIsNewBest = row.totalMarkFn && row.totalMarkFn();
+          cells += `<td class="out-col ${totalIsNewBest ? 'new-best-num' : ''}">${Math.round(sum)}${toParFrag(sum, parSum)}</td>`;
+        }
       }
       return `<tr><td>${row.label}</td>${cells}</tr>`;
     }).join('');
@@ -1465,13 +1470,26 @@ function buildSingleRoundScorecardHtml(r){
     }
   }
 
+  // Also mark the round's own total if it's the best (lowest) score ever recorded at this
+  // course -- only meaningful once the course has been played at least twice.
+  const allRoundsAtCourse = rounds.filter(x => x.course === r.course);
+  let isBestRoundAtCourse = false;
+  if(allRoundsAtCourse.length >= 2){
+    const thisGross = scoreOf(r);
+    const bestGross = Math.min(...allRoundsAtCourse.map(scoreOf));
+    isBestRoundAtCourse = thisGross === bestGross;
+  }
+
   const rows = [
     {label:'Par', rawFn:(h)=>pars[h], isPar:true},
-    {label:'Score', rawFn:(h)=>scores[h], isPar:false, markFn:(h)=>bestMarks[h], clickable:true},
+    {label:'Score', rawFn:(h)=>scores[h], isPar:false, markFn:(h)=>bestMarks[h], totalMarkFn:()=>isBestRoundAtCourse, clickable:true},
   ];
 
+  const legendParts = [];
+  if(bestMarks.some(Boolean) || isBestRoundAtCourse) legendParts.push('<span class="new-best-num">red</span> = new best at the time');
+
   return `
-    <p class="note" style="margin:16px 0 6px;">Scorecard${bestMarks.some(Boolean) ? ' · <span class="best-star">*</span> = new best (at time of round)' : ''}</p>
+    <p class="note" style="margin:16px 0 6px;">Scorecard${legendParts.length ? ' · ' + legendParts.join(' · ') : ''}</p>
     ${renderScorecardChunks(numHoles, pars, rows)}`;
 }
 
