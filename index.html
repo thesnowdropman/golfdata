@@ -116,6 +116,10 @@
   html[data-theme="wii"] .proj-result .cap{color:#7C97A8;font-weight:600;}
 
   table{width:100%;border-collapse:collapse;font-size:13.5px;}
+  .course-records-table{table-layout:fixed;}
+  .course-records-table th:first-child, .course-records-table td:first-child{width:auto;}
+  .course-records-table th:not(:first-child), .course-records-table td:not(:first-child){width:15%;white-space:nowrap;padding-left:4px;padding-right:6px;}
+  .course-records-table thead th:not(:first-child){font-size:9px;letter-spacing:0.02em;}
   .round-history-table th:nth-child(2), .round-history-table td:nth-child(2){width:30%;}
   .round-history-table th:nth-child(4), .round-history-table td:nth-child(4){width:1%;white-space:nowrap;}
   thead th{text-align:left;font-family:var(--font-mono);font-size:10.5px;letter-spacing:0.08em;text-transform:uppercase;color:#8a8368;border-bottom:2px solid var(--fairway);padding:8px 8px;}
@@ -290,10 +294,12 @@
   <section>
     <h2><span class="wii-only">🏆</span>Course Records</h2>
     <p class="idx-note">Click for more data</p>
-    <table>
+    <div style="overflow-x:auto;">
+    <table class="course-records-table">
       <thead><tr><th>Course (#, Last)</th><th style="text-align:right">Best Score</th><th style="text-align:right">Median Score</th><th style="text-align:right">Best Diff.</th><th style="text-align:right">Curr. Exp.</th></tr></thead>
       <tbody id="course-record-table"></tbody>
     </table>
+    </div>
     <p class="note" id="courseRecordsSeeMore" style="font-style:italic;cursor:pointer;margin:8px 0 0;display:none;">Show more…</p>
   </section>
 
