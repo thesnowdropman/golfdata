@@ -217,6 +217,7 @@
   .hole-inputs .hole-box .hnum{font-size:9px;color:#8a8368;margin-bottom:2px;}
   html[data-theme="wii"] .hole-inputs .hole-box .hnum{color:#7C97A8;}
   .hole-inputs .hole-box input,.hole-inputs .hole-box select{width:34px;height:30px;text-align:center;text-align-last:center;padding:0 2px;font-family:var(--font-mono);font-size:13px;box-sizing:border-box;}
+  .hole-inputs .hole-box.beats-hole-best select{border:2px solid var(--flag);border-radius:3px;}
   .hole-inputs .hole-box .hole-hint{font-size:8px;color:#8a8368;margin-top:2px;line-height:1.2;text-align:center;}
   html[data-theme="wii"] .hole-inputs .hole-box .hole-hint{color:#7C97A8;}
   .form-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px;}
@@ -307,6 +308,18 @@
     <p class="note" id="roundHistorySeeMore" style="font-style:italic;cursor:pointer;margin:8px 0 0;display:none;">Show more…</p>
   </section>
 
+  <section>
+    <div class="h2-row">
+      <h2><span class="wii-only">🗓️</span>Future Rounds</h2>
+      <button class="btn" id="addFutureBtn" type="button">+ Add Future Round</button>
+    </div>
+    <table>
+      <thead><tr><th>Date</th><th>Course</th><th style="text-align:right">Exp. Score</th></tr></thead>
+      <tbody id="futureRoundsList"></tbody>
+    </table>
+    <p class="note" id="noFutureRoundsNote" style="display:none;">Nothing planned yet.</p>
+  </section>
+
 </div>
 
 <!-- ROUND DETAIL MODAL -->
@@ -342,17 +355,53 @@
       <div class="full" id="parInputsSection" style="display:none;">
         <label>Par per hole <span class="idx-note" style="margin:0;display:inline;">— new course, only needed once</span></label>
         <div class="hole-inputs" id="parInputsRow"></div>
+        <p class="idx-note" id="parTotalReadout" style="margin:6px 0 0;"></p>
       </div>
       <div class="full">
         <label>Score per hole</label>
         <div class="hole-inputs" id="scoreInputsRow"></div>
       </div>
       <div class="full" id="grossScoreHint" style="display:none;"><label>Gross score</label><div class="num" id="grossScoreValue" style="font-family:var(--font-mono);font-size:20px;font-weight:600;"></div></div>
+      <p class="note" id="newCourseBestMsg" style="display:none;color:var(--flag);font-weight:700;text-align:center;">🎉 New course best!</p>
     </div>
     <div class="form-error" id="formError">Fill in the course, date, rating, slope, and every hole score.</div>
     <div class="form-actions">
       <button class="btn secondary" id="addCancel" type="button">Cancel</button>
       <button class="btn" id="addSave" type="button">Save round</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD FUTURE ROUND MODAL -->
+<div class="overlay" id="addFutureOverlay">
+  <div class="modal" id="addFutureModal">
+    <button class="modal-close" id="addFutureClose" aria-label="Close">✕</button>
+    <h3 id="addFutureModalTitle">Plan a future round</h3>
+    <p class="note" style="margin-top:2px;">Par is optional here — you can always fill it in when you actually log the round.</p>
+    <div class="form-grid">
+      <div class="full">
+        <div id="futureNewCourseBadge" class="new-course-badge" style="display:none;">New Course!</div>
+        <label>Course name</label>
+        <input id="ff-course" type="text" list="courseList" autocomplete="off" placeholder="e.g. Sligo Creek Golf Course">
+      </div>
+      <div><label>Date</label><input id="ff-date" type="date"></div>
+      <div><label>Hour</label><select id="ff-hour"></select></div>
+      <div><label>Minute</label><select id="ff-minute"></select></div>
+      <div><label>Holes</label>
+        <select id="ff-holes"><option value="18">18</option><option value="9">9</option></select>
+      </div>
+      <div><label>Course rating</label><input id="ff-rating" type="number" step="0.1" placeholder="e.g. 69.8"></div>
+      <div><label>Slope rating</label><input id="ff-slope" type="number" step="1" placeholder="e.g. 116"></div>
+      <div class="full" id="futureParInputsSection" style="display:none;">
+        <label>Par per hole <span class="idx-note" style="margin:0;display:inline;">— optional, only needed once</span></label>
+        <div class="hole-inputs" id="futureParInputsRow"></div>
+        <p class="idx-note" id="futureParTotalReadout" style="margin:6px 0 0;"></p>
+      </div>
+    </div>
+    <div class="form-error" id="futureFormError">Fill in the course, date, rating, and slope.</div>
+    <div class="form-actions">
+      <button class="btn secondary" id="addFutureCancel" type="button">Cancel</button>
+      <button class="btn" id="addFutureSave" type="button">Save planned round</button>
     </div>
   </div>
 </div>
@@ -495,6 +544,33 @@ function persistRenames(){
   if(!hasStorage) return;
   try{ window.localStorage.setItem('anges-golf-course-renames', JSON.stringify(courseRenames)); }catch(e){}
 }
+let futureRounds = []; // {id, date, course, holes, rating, slope, pars(optional)}, persisted
+
+// Rating/slope for courses that have never actually been played (and may not even have a
+// Future Round planned) -- pre-registered so autofill works the moment the name is typed
+// anywhere. Baked-in defaults below are merged with anything the user has entered since.
+const COURSE_REGISTRY_DEFAULTS = {
+  "bowie golf club (18)": {rating:70.4, slope:124, holes:18},
+};
+let courseRegistry = { ...COURSE_REGISTRY_DEFAULTS };
+function persistCourseRegistry(){
+  if(!hasStorage) return;
+  try{ window.localStorage.setItem('anges-golf-course-registry', JSON.stringify(courseRegistry)); }catch(e){}
+}
+function lookupCourseInfo(name){
+  const key = name.trim().toLowerCase();
+  return courseLookup[key] || courseRegistry[key] || null;
+}
+function saveCourseInfoToRegistry(name, rating, slope, holes){
+  const key = name.trim().toLowerCase();
+  if(!key || isNaN(rating) || isNaN(slope)) return;
+  courseRegistry[key] = {rating, slope, holes};
+  persistCourseRegistry();
+}
+function persistFutureRounds(){
+  if(!hasStorage) return;
+  try{ window.localStorage.setItem('anges-golf-future-rounds', JSON.stringify(futureRounds)); }catch(e){}
+}
 function loadPersisted(){
   if(hasStorage){
     try{
@@ -509,6 +585,14 @@ function loadPersisted(){
       const raw = window.localStorage.getItem('anges-golf-course-renames');
       if(raw) courseRenames = JSON.parse(raw);
     }catch(e){ courseRenames = {}; }
+    try{
+      const raw = window.localStorage.getItem('anges-golf-future-rounds');
+      if(raw) futureRounds = JSON.parse(raw);
+    }catch(e){ futureRounds = []; }
+    try{
+      const raw = window.localStorage.getItem('anges-golf-course-registry');
+      if(raw) courseRegistry = Object.assign({}, COURSE_REGISTRY_DEFAULTS, JSON.parse(raw));
+    }catch(e){ /* keep defaults */ }
   }
   loadPersistedPars();
   applyCourseRenames();
@@ -705,6 +789,71 @@ function recompute(){
   refreshCourseLookup();
   renderCharts(currentTheme);
   updateProjection();
+  renderFutureRounds();
+}
+
+function computeExpScoreFor(rating, slope, holes){
+  if(!trend || !trend.length || isNaN(rating) || isNaN(slope)) return null;
+  const currentIndex = trend[trend.length-1].index;
+  return holes === 9
+    ? Math.round((currentIndex/2) * slope / 113 + rating)
+    : Math.round(currentIndex * slope / 113 + rating);
+}
+
+function pad2(n){ return String(n).padStart(2,'0'); }
+
+function formatHourLabel(hour24){
+  const period = hour24 >= 12 ? 'PM' : 'AM';
+  let h12 = hour24 % 12;
+  if(h12 === 0) h12 = 12;
+  return `${h12} ${period}`;
+}
+
+function formatTimeLabel(hour24, minute){
+  const period = hour24 >= 12 ? 'p.m.' : 'a.m.';
+  let h12 = hour24 % 12;
+  if(h12 === 0) h12 = 12;
+  return `${h12}:${pad2(minute)} ${period}`;
+}
+
+function futureSortKey(f){
+  const hh = (f.hour != null) ? f.hour : 12;
+  const mm = (f.minute != null) ? f.minute : 0;
+  return new Date(`${f.date}T${pad2(hh)}:${pad2(Math.min(mm,59))}:00`).getTime();
+}
+
+function formatFutureDateTime(f){
+  const dateFmt = new Date(f.date+'T00:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}).replace(',', '');
+  if(f.hour == null) return dateFmt;
+  return `${dateFmt}<br>${formatTimeLabel(f.hour, f.minute || 0)}`;
+}
+
+function renderFutureRounds(){
+  const listEl = document.getElementById('futureRoundsList');
+  const noneEl = document.getElementById('noFutureRoundsNote');
+  if(!listEl) return;
+  const sorted = [...futureRounds].sort((a,b)=> futureSortKey(a) - futureSortKey(b));
+  if(sorted.length === 0){
+    listEl.innerHTML = '';
+    noneEl.style.display = 'block';
+    return;
+  }
+  noneEl.style.display = 'none';
+  listEl.innerHTML = sorted.map(f => {
+    const exp = computeExpScoreFor(f.rating, f.slope, f.holes);
+    return `
+      <tr class="future-round-row" data-id="${f.id}" style="cursor:pointer;">
+        <td class="date-cell">${formatFutureDateTime(f)}</td>
+        <td class="course-name"><span class="badge ${f.holes===18?'b18':'b9'}">${f.holes===18?'18':'9'}</span>${f.course}</td>
+        <td class="diff-cell">${exp !== null ? exp : '—'}</td>
+      </tr>`;
+  }).join('');
+  document.querySelectorAll('.future-round-row').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      navStack = [];
+      openFutureRoundDetail(el.dataset.id);
+    });
+  });
 }
 
 function renderCourseRecords(){
@@ -778,23 +927,27 @@ function colorsFor(theme){
 
 function renderCharts(theme){
   const c = colorsFor(theme);
-  const trendLabels = trend.map(p => new Date(p.date+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'}));
-  const regLineData = trend.map(p => reg.slope*p.day + reg.intercept);
 
   if(trendChart) trendChart.destroy();
   if(diffChart) diffChart.destroy();
 
   trendChart = new Chart(document.getElementById('trendChart'), {
     type:'line',
-    data:{labels: trendLabels, datasets:[
-      {label:`Best ${currentBestCount} Segments Trend`, data: trend.map(p=>p.index), borderColor:c.trendLine, backgroundColor:c.trendLine, pointRadius:3, tension:0.15, borderWidth:2.5},
-      {label:'Regression', data: regLineData, borderColor:c.regLine, borderDash:[5,4], borderWidth:1.5, pointRadius:0, tension:0}
+    data:{datasets:[
+      {label:'Best Half of Rounds', data: trend.map(p=>({x:p.day, y:p.index})), borderColor:c.trendLine, backgroundColor:c.trendLine, pointRadius:3, tension:0.15, borderWidth:2.5},
+      {label:'Regression', data: trend.map(p=>({x:p.day, y:reg.slope*p.day + reg.intercept})), borderColor:c.regLine, borderDash:[5,4], borderWidth:1.5, pointRadius:0, tension:0}
     ]},
     options:{responsive:true, maintainAspectRatio:false,
       plugins:{legend:{labels:{color:c.ink,font:{family:c.font,size:13}}}},
       scales:{
         y:{title:{display:true,text:'Handicap',color:c.ink,font:{family:c.font,size:14}},ticks:{color:c.ink,font:{family:c.font,size:13}},grid:{color:c.grid}},
-        x:{ticks:{color:c.ink,font:{family:c.font,size:12},maxRotation:60,minRotation:60},grid:{display:false}}
+        x:{type:'linear',
+          ticks:{
+            color:c.ink,font:{family:c.font,size:12},maxRotation:60,minRotation:60,
+            callback:(value)=> new Date((t0+value)*86400000).toLocaleDateString('en-US',{month:'short',day:'numeric'})
+          },
+          grid:{display:false}
+        }
       }
     }
   });
@@ -1126,7 +1279,7 @@ function buildSingleRoundScorecardHtml(r){
   ];
 
   return `
-    <p class="note" style="margin:16px 0 6px;">Scorecard${bestMarks.some(Boolean) ? ' · <span class="best-star">*</span> = new best at that hole (at the time)' : ''}</p>
+    <p class="note" style="margin:16px 0 6px;">Scorecard${bestMarks.some(Boolean) ? ' · <span class="best-star">*</span> = new best (at time of round)' : ''}</p>
     ${renderScorecardChunks(numHoles, pars, rows)}`;
 }
 
@@ -1290,8 +1443,18 @@ function getHistoricalHoleStats(courseName, holes){
   return { pars, bests, medians };
 }
 
+function plannedParsFor(courseName, holes){
+  const entry = futureRounds.find(f =>
+    f.course.trim().toLowerCase() === courseName.trim().toLowerCase() &&
+    f.holes === holes && f.pars
+  );
+  return entry ? entry.pars : null;
+}
+
 function isKnownCourse(name){
-  return !!courseLookup[name.trim().toLowerCase()];
+  const key = name.trim().toLowerCase();
+  if(courseLookup[key]) return true;
+  return futureRounds.some(f => f.course.trim().toLowerCase() === key && f.pars);
 }
 
 function updateNewCourseUI(){
@@ -1302,6 +1465,12 @@ function updateNewCourseUI(){
   if(isNew) buildParInputs();
 }
 
+function updateParTotalReadout(boxSelector, readoutId){
+  const boxes = Array.from(document.querySelectorAll(boxSelector));
+  const total = boxes.reduce((s,b) => s + (parseInt(b.value,10) || 0), 0);
+  document.getElementById(readoutId).textContent = `Total par: ${total}`;
+}
+
 function buildParInputs(){
   const holes = parseInt(document.getElementById('f-holes').value, 10);
   const parRow = document.getElementById('parInputsRow');
@@ -1310,6 +1479,10 @@ function buildParInputs(){
     const opts = [3,4,5,6].map(n => `<option value="${n}" ${n===4?'selected':''}>${n}</option>`).join('');
     parRow.innerHTML += `<div class="hole-box"><div class="hnum">${h}</div><select class="hole-par-box" data-hole="${h}">${opts}</select></div>`;
   }
+  document.querySelectorAll('.hole-par-box').forEach(el=>{
+    el.addEventListener('input', ()=>updateParTotalReadout('.hole-par-box', 'parTotalReadout'));
+  });
+  updateParTotalReadout('.hole-par-box', 'parTotalReadout');
 }
 
 function buildHoleInputs(){
@@ -1321,9 +1494,11 @@ function buildHoleInputs(){
   const scoreOptions = [2,3,4,5,6,7,8];
 
   const parBoxes = Array.from(document.querySelectorAll('.hole-par-box'));
+  const planned = plannedParsFor(courseTyped, holes);
   const parForHole = (h) => {
     if(hist) return hist.pars[h];
     if(parBoxes[h]) return parseInt(parBoxes[h].value, 10);
+    if(planned) return planned[h];
     return 4;
   };
   const prefillForHole = (h) => {
@@ -1339,9 +1514,13 @@ function buildHoleInputs(){
     scoreRow.innerHTML += `<div class="hole-box"><div class="hnum">${h}</div><select class="hole-score-box" data-hole="${h}">${opts}</select>${hintHtml}</div>`;
   }
   document.querySelectorAll('.hole-score-box').forEach(el=>{
-    el.addEventListener('input', updateGrossScoreHint);
+    el.addEventListener('input', ()=>{
+      updateGrossScoreHint();
+      updateHoleBestHighlights();
+    });
   });
   updateGrossScoreHint();
+  updateHoleBestHighlights();
 }
 
 function updateGrossScoreHint(){
@@ -1351,16 +1530,47 @@ function updateGrossScoreHint(){
   const valueEl = document.getElementById('grossScoreValue');
   if(values.length === 0 || values.some(v => isNaN(v))){
     hint.style.display = 'none';
+    document.getElementById('newCourseBestMsg').style.display = 'none';
     return;
   }
   const gross = values.reduce((s,x)=>s+x,0);
   valueEl.textContent = gross;
   hint.style.display = 'block';
+  updateNewCourseBestMsg(gross);
+}
+
+function updateHoleBestHighlights(){
+  const courseTyped = document.getElementById('f-course').value.trim();
+  const holes = parseInt(document.getElementById('f-holes').value, 10);
+  const hist = getHistoricalHoleStats(courseTyped, holes);
+  document.querySelectorAll('.hole-score-box').forEach(box=>{
+    const h = parseInt(box.dataset.hole, 10) - 1;
+    const val = parseInt(box.value, 10);
+    const wrapper = box.closest('.hole-box');
+    const beats = hist && !isNaN(val) && val < hist.bests[h];
+    wrapper.classList.toggle('beats-hole-best', !!beats);
+  });
+}
+
+function updateNewCourseBestMsg(gross){
+  const courseTyped = document.getElementById('f-course').value.trim();
+  const msgEl = document.getElementById('newCourseBestMsg');
+  if(!courseTyped){
+    msgEl.style.display = 'none';
+    return;
+  }
+  const priorRounds = rounds.filter(r => r.course.trim().toLowerCase() === courseTyped.toLowerCase());
+  if(priorRounds.length === 0){
+    msgEl.style.display = 'none';
+    return;
+  }
+  const priorBest = Math.min(...priorRounds.map(scoreOf));
+  msgEl.style.display = (gross < priorBest) ? 'block' : 'none';
 }
 
 document.getElementById('f-course').addEventListener('input', (e)=>{
   const typed = e.target.value.trim();
-  const match = courseLookup[typed.toLowerCase()];
+  const match = lookupCourseInfo(typed);
   if(match){
     document.getElementById('f-rating').value = match.rating;
     document.getElementById('f-slope').value = match.slope;
@@ -1427,6 +1637,7 @@ function openAddModal(){
   document.getElementById('expScoreHint').style.display = 'none';
   document.getElementById('newCourseBadge').style.display = 'none';
   document.getElementById('parInputsSection').style.display = 'none';
+  document.getElementById('newCourseBestMsg').style.display = 'none';
   buildHoleInputs();
   addOverlay.classList.add('open');
 }
@@ -1453,7 +1664,7 @@ document.getElementById('addSave').addEventListener('click', ()=>{
     pars = parBoxes.map(b => parseInt(b.value, 10));
   } else {
     const hist = getHistoricalHoleStats(course, holes);
-    pars = hist ? hist.pars : Array(holes).fill(4);
+    pars = hist ? hist.pars : (plannedParsFor(course, holes) || Array(holes).fill(4));
   }
 
   const parsValid = pars.length === holes && pars.every(p => !isNaN(p) && p > 0);
@@ -1493,13 +1704,250 @@ document.getElementById('addSave').addEventListener('click', ()=>{
 
   PAR_BY_COURSE[course] = parTotal;
   persistPars();
+  saveCourseInfoToRegistry(course, rating, slope, holes);
 
   addedRounds.unshift(newRound);
   persistAdded();
+
+  // If a Future Round was planned for this same course + date, it's been played now -- remove it.
+  const matchedFutureIdx = futureRounds.findIndex(f =>
+    f.course.trim().toLowerCase() === course.toLowerCase() && f.date === date
+  );
+  if(matchedFutureIdx !== -1){
+    futureRounds.splice(matchedFutureIdx, 1);
+    persistFutureRounds();
+  }
+
   rebuildRoundsArray();
   addOverlay.classList.remove('open');
   recompute();
 });
+
+// ================= ADD FUTURE ROUND MODAL =================
+const addFutureOverlay = document.getElementById('addFutureOverlay');
+document.getElementById('addFutureClose').addEventListener('click', ()=>addFutureOverlay.classList.remove('open'));
+document.getElementById('addFutureCancel').addEventListener('click', ()=>addFutureOverlay.classList.remove('open'));
+addFutureOverlay.addEventListener('click', e=>{ if(e.target===addFutureOverlay) addFutureOverlay.classList.remove('open'); });
+
+function buildFutureParInputs(){
+  const holes = parseInt(document.getElementById('ff-holes').value, 10);
+  const parRow = document.getElementById('futureParInputsRow');
+  parRow.innerHTML = '';
+  for(let h=1; h<=holes; h++){
+    const opts = [3,4,5,6].map(n => `<option value="${n}" ${n===4?'selected':''}>${n}</option>`).join('');
+    parRow.innerHTML += `<div class="hole-box"><div class="hnum">${h}</div><select class="future-hole-par-box" data-hole="${h}">${opts}</select></div>`;
+  }
+  document.querySelectorAll('.future-hole-par-box').forEach(el=>{
+    el.addEventListener('input', ()=>updateParTotalReadout('.future-hole-par-box', 'futureParTotalReadout'));
+  });
+  updateParTotalReadout('.future-hole-par-box', 'futureParTotalReadout');
+}
+
+function updateFutureNewCourseUI(){
+  const typed = document.getElementById('ff-course').value.trim();
+  const isNew = typed.length > 0 && !isKnownCourse(typed);
+  document.getElementById('futureNewCourseBadge').style.display = isNew ? 'block' : 'none';
+  document.getElementById('futureParInputsSection').style.display = isNew ? 'block' : 'none';
+  if(isNew) buildFutureParInputs();
+}
+
+document.getElementById('ff-course').addEventListener('input', (e)=>{
+  const typed = e.target.value.trim();
+  const match = lookupCourseInfo(typed);
+  if(match){
+    document.getElementById('ff-rating').value = match.rating;
+    document.getElementById('ff-slope').value = match.slope;
+    document.getElementById('ff-holes').value = match.holes;
+  }
+  updateFutureNewCourseUI();
+});
+document.getElementById('ff-holes').addEventListener('change', ()=>{
+  if(document.getElementById('futureParInputsSection').style.display !== 'none'){
+    buildFutureParInputs();
+  }
+});
+
+function populateFutureTimeDropdowns(){
+  const hourSel = document.getElementById('ff-hour');
+  if(hourSel.options.length === 0){
+    for(let h=7; h<=19; h++){
+      hourSel.innerHTML += `<option value="${h}" ${h===9?'selected':''}>${formatHourLabel(h)}</option>`;
+    }
+  }
+  const minSel = document.getElementById('ff-minute');
+  if(minSel.options.length === 0){
+    for(let m=0; m<=60; m++){
+      minSel.innerHTML += `<option value="${m}" ${m===0?'selected':''}>${pad2(m)}</option>`;
+    }
+  }
+}
+
+let editingFutureId = null;
+
+function openAddFutureModal(){
+  editingFutureId = null;
+  document.getElementById('addFutureModalTitle').textContent = 'Plan a future round';
+  document.getElementById('addFutureSave').textContent = 'Save planned round';
+  document.getElementById('futureFormError').style.display = 'none';
+  document.getElementById('ff-course').value = '';
+  document.getElementById('ff-date').value = todayISO();
+  document.getElementById('ff-holes').value = 18;
+  document.getElementById('ff-rating').value = '';
+  document.getElementById('ff-slope').value = '';
+  document.getElementById('futureNewCourseBadge').style.display = 'none';
+  document.getElementById('futureParInputsSection').style.display = 'none';
+  populateFutureTimeDropdowns();
+  document.getElementById('ff-hour').value = 9;
+  document.getElementById('ff-minute').value = 0;
+  addFutureOverlay.classList.add('open');
+}
+document.getElementById('addFutureBtn').addEventListener('click', openAddFutureModal);
+
+function openEditFutureModal(f){
+  editingFutureId = f.id;
+  document.getElementById('addFutureModalTitle').textContent = 'Edit planned round';
+  document.getElementById('addFutureSave').textContent = 'Save changes';
+  document.getElementById('futureFormError').style.display = 'none';
+  document.getElementById('ff-course').value = f.course;
+  document.getElementById('ff-date').value = f.date;
+  document.getElementById('ff-holes').value = f.holes;
+  document.getElementById('ff-rating').value = f.rating;
+  document.getElementById('ff-slope').value = f.slope;
+  populateFutureTimeDropdowns();
+  document.getElementById('ff-hour').value = (f.hour != null) ? f.hour : 9;
+  document.getElementById('ff-minute').value = (f.minute != null) ? f.minute : 0;
+
+  if(f.pars){
+    document.getElementById('futureNewCourseBadge').style.display = 'none';
+    document.getElementById('futureParInputsSection').style.display = 'block';
+    buildFutureParInputs();
+    document.querySelectorAll('.future-hole-par-box').forEach((box, i)=>{
+      if(f.pars[i] != null) box.value = f.pars[i];
+    });
+    updateParTotalReadout('.future-hole-par-box', 'futureParTotalReadout');
+  } else {
+    updateFutureNewCourseUI();
+  }
+
+  detailOverlay.classList.remove('open');
+  addFutureOverlay.classList.add('open');
+}
+
+document.getElementById('addFutureSave').addEventListener('click', ()=>{
+  const course = document.getElementById('ff-course').value.trim();
+  const date = document.getElementById('ff-date').value;
+  const holes = parseInt(document.getElementById('ff-holes').value, 10);
+  const rating = parseFloat(document.getElementById('ff-rating').value);
+  const slope = parseFloat(document.getElementById('ff-slope').value);
+  const hour = parseInt(document.getElementById('ff-hour').value, 10);
+  const minute = parseInt(document.getElementById('ff-minute').value, 10);
+
+  const valid = course && date && !isNaN(rating) && !isNaN(slope);
+  if(!valid){
+    document.getElementById('futureFormError').style.display = 'block';
+    return;
+  }
+
+  let pars = null;
+  if(document.getElementById('futureParInputsSection').style.display !== 'none'){
+    const parBoxes = Array.from(document.querySelectorAll('.future-hole-par-box'));
+    const enteredPars = parBoxes.map(b => parseInt(b.value, 10));
+    const allValid = enteredPars.length === holes && enteredPars.every(p => !isNaN(p) && p > 0);
+    const allLeftAtDefault = enteredPars.every(p => p === 4);
+    // If every hole is still sitting at the unchanged default of 4, treat it as if par
+    // was never actually gathered -- keeps the course "new" until real par is entered,
+    // either here later or when the round is actually logged.
+    if(allValid && !allLeftAtDefault){
+      pars = enteredPars;
+    }
+  }
+
+  if(editingFutureId){
+    const idx = futureRounds.findIndex(f => f.id === editingFutureId);
+    if(idx !== -1){
+      futureRounds[idx] = { ...futureRounds[idx], date, course, holes, rating, slope, pars, hour, minute };
+    }
+    editingFutureId = null;
+  } else {
+    futureRounds.push({
+      id: 'f' + Date.now() + Math.random().toString(36).slice(2,7),
+      date, course, holes, rating, slope, pars, hour, minute
+    });
+  }
+  persistFutureRounds();
+  saveCourseInfoToRegistry(course, rating, slope, holes);
+  addFutureOverlay.classList.remove('open');
+  renderFutureRounds();
+});
+
+function enterScoreForFuture(f){
+  detailOverlay.classList.remove('open');
+  openAddModal();
+  document.getElementById('f-course').value = f.course;
+  document.getElementById('f-date').value = f.date;
+  document.getElementById('f-holes').value = f.holes;
+  document.getElementById('f-rating').value = f.rating;
+  document.getElementById('f-slope').value = f.slope;
+  updateNewCourseUI();
+  buildHoleInputs();
+  updateExpectedScoreHint();
+}
+
+function openFutureRoundDetail(id){
+  const f = futureRounds.find(x => x.id === id);
+  if(!f) return;
+  const dateFmt = new Date(f.date+'T00:00:00').toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
+  const exp = computeExpScoreFor(f.rating, f.slope, f.holes);
+
+  document.getElementById('detailMiiRow').innerHTML = '';
+  document.getElementById('detailTitle').innerHTML = `${f.course} <span class="crr-rs">${f.rating.toFixed(1)}/${f.slope}</span>`;
+
+  let body = `<p class="note" style="margin:2px 0 12px;">${dateFmt}${f.hour != null ? ' · ' + formatTimeLabel(f.hour, f.minute || 0) : ''} · ${f.holes} holes · Exp. Score ${exp !== null ? exp : '—'}</p>`;
+
+  const atCourse = rounds.filter(r => r.course.trim().toLowerCase() === f.course.trim().toLowerCase());
+  if(atCourse.some(r => r.holeDetail)){
+    body += buildHoleStatsHtml(atCourse);
+  } else if(f.pars){
+    const rows = [{label:'Par', rawFn:(h)=>f.pars[h], isPar:true}];
+    body += `<p class="note" style="margin:16px 0 6px;">Planned par (no rounds played here yet)</p>${renderScorecardChunks(f.holes, f.pars, rows)}`;
+  } else {
+    body += `<p class="note" style="margin:16px 0 6px;">No par entered yet — you can add it when you log this round.</p>`;
+  }
+
+  body += `<div style="text-align:center;margin-top:14px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
+    <button class="btn" id="enterScoreBtn" type="button">Enter Score</button>
+    <button class="btn secondary" id="editFutureBtn" type="button">Edit</button>
+    <button class="btn danger" id="cancelFutureBtn" type="button">Cancel this planned round</button>
+  </div>`;
+
+  document.getElementById('detailBody').innerHTML = body;
+  detailOverlay.classList.add('open');
+  updateBackButton();
+
+  document.getElementById('enterScoreBtn').addEventListener('click', ()=>{
+    enterScoreForFuture(f);
+  });
+
+  document.getElementById('editFutureBtn').addEventListener('click', ()=>{
+    openEditFutureModal(f);
+  });
+
+  const cancelBtn = document.getElementById('cancelFutureBtn');
+  cancelBtn.addEventListener('click', function onCancelClick(){
+    if(cancelBtn.dataset.armed === '1'){
+      const idx = futureRounds.findIndex(x => x.id === id);
+      if(idx !== -1){
+        futureRounds.splice(idx, 1);
+        persistFutureRounds();
+      }
+      detailOverlay.classList.remove('open');
+      renderFutureRounds();
+    } else {
+      cancelBtn.dataset.armed = '1';
+      cancelBtn.textContent = 'Tap again to confirm cancel';
+    }
+  });
+}
 
 // ================= INIT =================
 loadPersisted();
