@@ -1486,10 +1486,10 @@ function buildSingleRoundScorecardHtml(r){
   ];
 
   const legendParts = [];
-  if(bestMarks.some(Boolean) || isBestRoundAtCourse) legendParts.push('<span class="new-best-num">red</span> = new best at the time');
+  if(bestMarks.some(Boolean) || isBestRoundAtCourse) legendParts.push('<span class="new-best-num">Red</span>: New best score at time of the round');
 
   return `
-    <p class="note" style="margin:16px 0 6px;">Scorecard${legendParts.length ? ' · ' + legendParts.join(' · ') : ''}</p>
+    <p class="note" style="margin:16px 0 6px;"><span style="color:var(--fairway);font-weight:700;">Scorecard</span>${legendParts.length ? ' · ' + legendParts.join(' · ') : ''}</p>
     ${renderScorecardChunks(numHoles, pars, rows)}`;
 }
 
