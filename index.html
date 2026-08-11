@@ -1106,11 +1106,27 @@ function renderCharts(theme){
   if(trendChart) trendChart.destroy();
   if(diffChart) diffChart.destroy();
 
+  // For display only: if two rounds landed on the same calendar day, show one averaged
+  // point instead of two overlapping ones. The regression itself is still computed from
+  // every individual round (unchanged), so the projected-date pacing stays accurate --
+  // this only affects what gets plotted.
+  const chartTrendPoints = [];
+  for(const p of trend){
+    const last = chartTrendPoints[chartTrendPoints.length-1];
+    if(last && last.date === p.date){
+      const totalCount = last._count + 1;
+      last.index = Math.round(((last.index * last._count + p.index) / totalCount) * 10) / 10;
+      last._count = totalCount;
+    } else {
+      chartTrendPoints.push({date:p.date, day:p.day, index:p.index, _count:1});
+    }
+  }
+
   trendChart = new Chart(document.getElementById('trendChart'), {
     type:'line',
     data:{datasets:[
-      {label:'Best Half of Rounds', data: trend.map(p=>({x:p.day, y:p.index})), borderColor:c.trendLine, backgroundColor:c.trendLine, pointRadius:3, tension:0.15, borderWidth:2.5},
-      {label:'Regression', data: trend.map(p=>({x:p.day, y:reg.slope*p.day + reg.intercept})), borderColor:c.regLine, borderDash:[5,4], borderWidth:1.5, pointRadius:0, tension:0}
+      {label:'Best Half of Rounds', data: chartTrendPoints.map(p=>({x:p.day, y:p.index})), borderColor:c.trendLine, backgroundColor:c.trendLine, pointRadius:3, tension:0.15, borderWidth:2.5},
+      {label:'Regression', data: chartTrendPoints.map(p=>({x:p.day, y:reg.slope*p.day + reg.intercept})), borderColor:c.regLine, borderDash:[5,4], borderWidth:1.5, pointRadius:0, tension:0}
     ]},
     options:{responsive:true, maintainAspectRatio:false,
       plugins:{legend:{labels:{color:c.ink,font:{family:c.font,size:13}}}},
