@@ -385,11 +385,11 @@
         <input id="ff-course" type="text" list="courseList" autocomplete="off" placeholder="e.g. Sligo Creek Golf Course">
       </div>
       <div><label>Date</label><input id="ff-date" type="date"></div>
-      <div><label>Hour</label><select id="ff-hour"></select></div>
-      <div><label>Minute</label><select id="ff-minute"></select></div>
       <div><label>Holes</label>
         <select id="ff-holes"><option value="18">18</option><option value="9">9</option></select>
       </div>
+      <div><label>Hour</label><select id="ff-hour"></select></div>
+      <div><label>Minute</label><select id="ff-minute"></select></div>
       <div><label>Course rating</label><input id="ff-rating" type="number" step="0.1" placeholder="e.g. 69.8"></div>
       <div><label>Slope rating</label><input id="ff-slope" type="number" step="1" placeholder="e.g. 116"></div>
       <div class="full" id="futureParInputsSection" style="display:none;">
@@ -496,6 +496,15 @@ const baseRounds = [
     holeDetail:{pars:[4,3,4,3,4,4,4,4,4], scores:[6,4,5,5,5,7,6,5,5]}},
 ];
 
+// Future (planned) rounds baked directly into the file -- like baseRounds, these survive
+// fresh downloads and different devices/browsers. Add an entry here whenever the user
+// tells you about a round they're planning, the same way scorecards get added to
+// baseRounds. Rounds added through the app's own UI only live in that browser's local
+// storage until someone reports them here.
+const baseFutureRounds = [
+  // {id:"f...", date:"2026-08-13", course:"Bowie Golf Club (18)", holes:18, rating:70.4, slope:124, pars:null, hour:9, minute:0},
+];
+
 // rounds the user has added/deleted persist across sessions via the browser's localStorage
 // (works when this file is hosted/opened normally — e.g. GitHub Pages — not inside Claude's artifact sandbox)
 const hasStorage = typeof window !== 'undefined' && !!window.localStorage;
@@ -544,7 +553,33 @@ function persistRenames(){
   if(!hasStorage) return;
   try{ window.localStorage.setItem('anges-golf-course-renames', JSON.stringify(courseRenames)); }catch(e){}
 }
-let futureRounds = []; // {id, date, course, holes, rating, slope, pars(optional)}, persisted
+let futureRounds = [];        // computed: baseFutureRounds (minus cancelled) + addedFutureRounds
+let addedFutureRounds = [];   // future rounds added through the app UI, persisted
+let deletedFutureRoundIds = []; // ids of baseFutureRounds entries the user cancelled or edited away, persisted
+
+function rebuildFutureRoundsArray(){
+  const activeBase = baseFutureRounds.filter(f => !deletedFutureRoundIds.includes(f.id));
+  futureRounds = [...activeBase, ...addedFutureRounds];
+}
+function removeFutureRound(id){
+  const addedIdx = addedFutureRounds.findIndex(f => f.id === id);
+  if(addedIdx !== -1){
+    addedFutureRounds.splice(addedIdx, 1);
+    persistAddedFutureRounds();
+  } else if(!deletedFutureRoundIds.includes(id)){
+    deletedFutureRoundIds.push(id);
+    persistDeletedFutureRoundIds();
+  }
+  rebuildFutureRoundsArray();
+}
+function persistAddedFutureRounds(){
+  if(!hasStorage) return;
+  try{ window.localStorage.setItem('anges-golf-future-rounds', JSON.stringify(addedFutureRounds)); }catch(e){}
+}
+function persistDeletedFutureRoundIds(){
+  if(!hasStorage) return;
+  try{ window.localStorage.setItem('anges-golf-future-rounds-deleted', JSON.stringify(deletedFutureRoundIds)); }catch(e){}
+}
 
 // Rating/slope for courses that have never actually been played (and may not even have a
 // Future Round planned) -- pre-registered so autofill works the moment the name is typed
@@ -567,10 +602,6 @@ function saveCourseInfoToRegistry(name, rating, slope, holes){
   courseRegistry[key] = {rating, slope, holes};
   persistCourseRegistry();
 }
-function persistFutureRounds(){
-  if(!hasStorage) return;
-  try{ window.localStorage.setItem('anges-golf-future-rounds', JSON.stringify(futureRounds)); }catch(e){}
-}
 function loadPersisted(){
   if(hasStorage){
     try{
@@ -587,13 +618,18 @@ function loadPersisted(){
     }catch(e){ courseRenames = {}; }
     try{
       const raw = window.localStorage.getItem('anges-golf-future-rounds');
-      if(raw) futureRounds = JSON.parse(raw);
-    }catch(e){ futureRounds = []; }
+      if(raw) addedFutureRounds = JSON.parse(raw);
+    }catch(e){ addedFutureRounds = []; }
+    try{
+      const raw = window.localStorage.getItem('anges-golf-future-rounds-deleted');
+      if(raw) deletedFutureRoundIds = JSON.parse(raw);
+    }catch(e){ deletedFutureRoundIds = []; }
     try{
       const raw = window.localStorage.getItem('anges-golf-course-registry');
       if(raw) courseRegistry = Object.assign({}, COURSE_REGISTRY_DEFAULTS, JSON.parse(raw));
     }catch(e){ /* keep defaults */ }
   }
+  rebuildFutureRoundsArray();
   loadPersistedPars();
   applyCourseRenames();
   rebuildRoundsArray();
@@ -1710,12 +1746,11 @@ document.getElementById('addSave').addEventListener('click', ()=>{
   persistAdded();
 
   // If a Future Round was planned for this same course + date, it's been played now -- remove it.
-  const matchedFutureIdx = futureRounds.findIndex(f =>
+  const matchedFuture = futureRounds.find(f =>
     f.course.trim().toLowerCase() === course.toLowerCase() && f.date === date
   );
-  if(matchedFutureIdx !== -1){
-    futureRounds.splice(matchedFutureIdx, 1);
-    persistFutureRounds();
+  if(matchedFuture){
+    removeFutureRound(matchedFuture.id);
   }
 
   rebuildRoundsArray();
@@ -1863,18 +1898,29 @@ document.getElementById('addFutureSave').addEventListener('click', ()=>{
   }
 
   if(editingFutureId){
-    const idx = futureRounds.findIndex(f => f.id === editingFutureId);
-    if(idx !== -1){
-      futureRounds[idx] = { ...futureRounds[idx], date, course, holes, rating, slope, pars, hour, minute };
+    const addedIdx = addedFutureRounds.findIndex(f => f.id === editingFutureId);
+    if(addedIdx !== -1){
+      addedFutureRounds[addedIdx] = { ...addedFutureRounds[addedIdx], date, course, holes, rating, slope, pars, hour, minute };
+    } else {
+      // It was a baked-in baseFutureRounds entry -- can't mutate the file itself from here,
+      // so retire the original (marked cancelled) and save the edited version as a new
+      // added entry, reusing the same id.
+      if(!deletedFutureRoundIds.includes(editingFutureId)){
+        deletedFutureRoundIds.push(editingFutureId);
+        persistDeletedFutureRoundIds();
+      }
+      addedFutureRounds.push({ id: editingFutureId, date, course, holes, rating, slope, pars, hour, minute });
     }
+    persistAddedFutureRounds();
     editingFutureId = null;
   } else {
-    futureRounds.push({
+    addedFutureRounds.push({
       id: 'f' + Date.now() + Math.random().toString(36).slice(2,7),
       date, course, holes, rating, slope, pars, hour, minute
     });
+    persistAddedFutureRounds();
   }
-  persistFutureRounds();
+  rebuildFutureRoundsArray();
   saveCourseInfoToRegistry(course, rating, slope, holes);
   addFutureOverlay.classList.remove('open');
   renderFutureRounds();
@@ -1935,11 +1981,7 @@ function openFutureRoundDetail(id){
   const cancelBtn = document.getElementById('cancelFutureBtn');
   cancelBtn.addEventListener('click', function onCancelClick(){
     if(cancelBtn.dataset.armed === '1'){
-      const idx = futureRounds.findIndex(x => x.id === id);
-      if(idx !== -1){
-        futureRounds.splice(idx, 1);
-        persistFutureRounds();
-      }
+      removeFutureRound(id);
       detailOverlay.classList.remove('open');
       renderFutureRounds();
     } else {
