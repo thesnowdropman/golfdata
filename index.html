@@ -116,6 +116,10 @@
   html[data-theme="wii"] .proj-result .cap{color:#7C97A8;font-weight:600;}
 
   table{width:100%;border-collapse:collapse;font-size:13.5px;}
+  .future-rounds-table{table-layout:fixed;}
+  .future-rounds-table th:nth-child(1),.future-rounds-table td:nth-child(1){width:32%;}
+  .future-rounds-table th:nth-child(2),.future-rounds-table td:nth-child(2){width:44%;}
+  .future-rounds-table th:nth-child(3),.future-rounds-table td:nth-child(3){width:24%;}
   .round-history-table th:nth-child(2), .round-history-table td:nth-child(2){width:30%;}
   .round-history-table th:nth-child(4), .round-history-table td:nth-child(4){width:1%;white-space:nowrap;}
   thead th{text-align:left;font-family:var(--font-mono);font-size:10.5px;letter-spacing:0.08em;text-transform:uppercase;color:#8a8368;border-bottom:2px solid var(--fairway);padding:8px 8px;}
@@ -313,7 +317,7 @@
       <h2><span class="wii-only">🗓️</span>Future Rounds</h2>
       <button class="btn" id="addFutureBtn" type="button">+ Add Future Round</button>
     </div>
-    <table>
+    <table class="future-rounds-table">
       <thead><tr><th>Date</th><th>Course</th><th style="text-align:right">Exp. Score</th></tr></thead>
       <tbody id="futureRoundsList"></tbody>
     </table>
