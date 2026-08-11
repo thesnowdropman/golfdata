@@ -135,11 +135,18 @@
   .hole-scorecard tbody td:first-child{font-family:var(--font-mono);font-weight:600;text-align:left;color:var(--fairway);}
   html[data-theme="wii"] .hole-scorecard tbody td:first-child{color:var(--ink);}
   .hole-scorecard .out-col{font-weight:600;border-left:2px solid var(--line);}
-  .score-mark{display:inline-block;line-height:1.3;min-width:1.3em;}
-  .score-mark.birdie{border-radius:50%;border:1.5px solid currentColor;padding:0 3px;}
-  .score-mark.bogey{border:1.5px solid currentColor;padding:0 3px;}
-  .score-mark.double{border:1.5px solid currentColor;padding:0 3px;box-shadow:0 0 0 2px var(--paper), 0 0 0 3.5px currentColor;margin:0 3px;}
+  .score-mark{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;box-sizing:border-box;}
+  .score-mark.birdie{border-radius:50%;border:1.5px solid currentColor;}
+  .score-mark.bogey{border:1.5px solid currentColor;}
+  .score-mark.double{border:1.5px solid currentColor;box-shadow:0 0 0 2px var(--paper), 0 0 0 3.5px currentColor;}
   .best-star{color:var(--flag);font-weight:700;font-size:11px;position:relative;top:-6px;margin-left:1px;line-height:0;}
+  .hole-num-clickable,.hole-stat-clickable{cursor:pointer;}
+  .hole-num-clickable:hover,.hole-stat-clickable:hover{background:var(--paper-tan);}
+  .hole-history-list{display:flex;flex-direction:column;gap:2px;}
+  .hole-history-row{display:flex;justify-content:space-between;align-items:center;padding:8px 6px;border-bottom:1px solid var(--line);font-size:13.5px;}
+  .hole-history-score{width:36px;flex-shrink:0;display:flex;justify-content:center;}
+  .hole-history-date{color:#7a7461;}
+  html[data-theme="wii"] .hole-history-date{color:#7C97A8;}
   .course-round-row{display:flex;justify-content:space-between;align-items:center;gap:6px;padding:9px 6px;border-bottom:1px solid var(--line);cursor:pointer;font-size:13.5px;}
   .course-round-row:hover{background:var(--paper-tan);}
   .course-round-row:last-child{border-bottom:none;}
@@ -157,6 +164,9 @@
   .badge.b18{background:var(--sand);color:#fff;} .badge.b9{background:var(--fairway);color:#fff;}
   .badge.detail{background:transparent;border:1px solid var(--fairway-light);color:var(--fairway-light);}
   .diff-cell{font-family:var(--font-mono);text-align:right;}
+  .score-topar-wrap{display:inline-flex;justify-content:flex-end;align-items:baseline;}
+  .score-topar-wrap .score-num{display:inline-block;min-width:2.1em;text-align:right;}
+  .score-topar-wrap .topar{display:inline-block;min-width:3em;text-align:left;margin-left:3px;}
   .course-name{color:#4a4838;} html[data-theme="wii"] .course-name{color:#5C86A0;font-weight:500;}
   .chevron{color:#aaa39c;float:right;}
 
@@ -627,7 +637,7 @@ function recompute(){
       <td class="course-name">${r.course}${isLowest ? `<img class="lowdiff-face wii-only" src="data:image/png;base64,${lowDiffFaceB64}" alt="Best round">` : ''}</td>
       <td class="diff-cell">${r.diff.toFixed(1)}</td>
     `;
-    tr.addEventListener('click', ()=>{ returnToCourse = null; openDetail(idx); });
+    tr.addEventListener('click', ()=>{ navStack = []; openDetail(idx); });
     return tr;
   };
 
@@ -688,12 +698,12 @@ function renderCourseRecords(){
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td class="course-name">${row.course} <span class="topar">(${row.count}, ${shortMonthYear(row.latestDate)})</span></td>
-      <td class="diff-cell">${row.bestScore}<span class="topar">${toParStr(row.bestScore, row.course)}</span></td>
-      <td class="diff-cell">${Math.round(row.medianScore)}<span class="topar">${toParStr(row.medianScore, row.course)}</span></td>
+      <td class="diff-cell"><span class="score-topar-wrap"><span class="score-num">${row.bestScore}</span><span class="topar">${toParStr(row.bestScore, row.course)}</span></span></td>
+      <td class="diff-cell"><span class="score-topar-wrap"><span class="score-num">${Math.round(row.medianScore)}</span><span class="topar">${toParStr(row.medianScore, row.course)}</span></span></td>
       <td class="diff-cell">${row.bestDiff.toFixed(1)}</td>
       <td class="diff-cell">${row.expScore !== null ? row.expScore : '—'}</td>
     `;
-    tr.addEventListener('click', ()=>openCourseDetail(row.course));
+    tr.addEventListener('click', ()=>{ navStack = []; openCourseDetail(row.course); });
     return tr;
   };
 
@@ -768,7 +778,7 @@ function renderCharts(theme){
         if(elements.length > 0){
           const el = elements[0];
           const point = diffChart.data.datasets[el.datasetIndex].data[el.index];
-          if(point && point.idx !== undefined){ returnToCourse = null; openDetail(point.idx); }
+          if(point && point.idx !== undefined){ navStack = []; openDetail(point.idx); }
         }
       },
       onHover: (evt, elements) => {
@@ -852,10 +862,14 @@ function updateProjection(){
 // ================= ROUND DETAIL MODAL =================
 const detailOverlay = document.getElementById('detailOverlay');
 const detailModal = document.getElementById('detailModal');
-let returnToCourse = null;
+let navStack = [];
+function updateBackButton(){
+  document.getElementById('detailBack').style.display = navStack.length > 0 ? 'block' : 'none';
+}
 document.getElementById('detailClose').addEventListener('click', ()=>detailOverlay.classList.remove('open'));
 document.getElementById('detailBack').addEventListener('click', ()=>{
-  if(returnToCourse) openCourseDetail(returnToCourse);
+  const prevRender = navStack.pop();
+  if(prevRender) prevRender();
 });
 detailOverlay.addEventListener('click', e=>{ if(e.target===detailOverlay) detailOverlay.classList.remove('open'); });
 
@@ -874,7 +888,6 @@ function moodEmoji(diff, allDiffs){
 function openDetail(idx){
   const r = rounds[idx];
   document.getElementById('detailTitle').textContent = r.course;
-  document.getElementById('detailBack').style.display = returnToCourse ? 'block' : 'none';
   const dateFmt = new Date(r.date+'T00:00:00').toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
 
   const allDiffs = rounds.map(x=>x.diff);
@@ -889,6 +902,16 @@ function openDetail(idx){
 
   document.getElementById('detailBody').innerHTML = body;
   detailOverlay.classList.add('open');
+  updateBackButton();
+
+  document.querySelectorAll('.hole-num-clickable, .hole-stat-clickable').forEach(el=>{
+    el.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      const h = parseInt(el.dataset.hole, 10) - 1;
+      navStack.push(()=>openDetail(idx));
+      openHoleDetail(r.course, h);
+    });
+  });
 
   const delBtn = document.getElementById('deleteRoundBtn');
   delBtn.addEventListener('click', function onDeleteClick(){
@@ -967,7 +990,7 @@ function renderScorecardChunks(numHoles, pars, rows){
   plan.forEach(chunk => {
     const [start, end] = chunk.range;
     let headerCells = '';
-    for(let h=start; h<end; h++) headerCells += `<th>${h+1}</th>`;
+    for(let h=start; h<end; h++) headerCells += `<th class="hole-num-clickable" data-hole="${h+1}">${h+1}</th>`;
     if(chunk.totalUpTo) headerCells += `<th class="out-col">${chunk.totalLabel}</th>`;
 
     const bodyRows = rows.map(row => {
@@ -979,7 +1002,8 @@ function renderScorecardChunks(numHoles, pars, rows){
         } else {
           const cls = scoreNotationClass(val, pars[h]);
           const mark = (row.markFn && row.markFn(h)) ? '<span class="best-star">*</span>' : '';
-          cells += `<td><span class="score-mark ${cls}">${Math.round(val)}</span>${mark}</td>`;
+          const clickAttrs = row.clickable ? ` class="hole-stat-clickable" data-hole="${h+1}"` : '';
+          cells += `<td${clickAttrs}><span class="score-mark ${cls}">${Math.round(val)}</span>${mark}</td>`;
         }
       }
       if(chunk.totalUpTo){
@@ -1009,7 +1033,7 @@ function buildHoleStatsHtml(atCourse){
     const scores = withHoles[0].holeDetail.scores;
     const rows = [
       {label:'Par', rawFn:(h)=>pars[h], isPar:true},
-      {label:'Score', rawFn:(h)=>scores[h], isPar:false},
+      {label:'Score', rawFn:(h)=>scores[h], isPar:false, clickable:true},
     ];
     return `
     <p class="note" style="margin:16px 0 6px;">Hole-by-hole (from 1 scorecard on file)</p>
@@ -1026,8 +1050,8 @@ function buildHoleStatsHtml(atCourse){
 
   const rows = [
     {label:'Par', rawFn:(h)=>pars[h], isPar:true},
-    {label:'Median', rawFn:(h)=>perHole[h].median, isPar:false},
-    {label:'Best', rawFn:(h)=>perHole[h].best, isPar:false},
+    {label:'Median', rawFn:(h)=>perHole[h].median, isPar:false, clickable:true},
+    {label:'Best', rawFn:(h)=>perHole[h].best, isPar:false, clickable:true},
   ];
 
   return `
@@ -1061,12 +1085,71 @@ function buildSingleRoundScorecardHtml(r){
 
   const rows = [
     {label:'Par', rawFn:(h)=>pars[h], isPar:true},
-    {label:'Score', rawFn:(h)=>scores[h], isPar:false, markFn:(h)=>bestMarks[h]},
+    {label:'Score', rawFn:(h)=>scores[h], isPar:false, markFn:(h)=>bestMarks[h], clickable:true},
   ];
 
   return `
     <p class="note" style="margin:16px 0 6px;">Scorecard${bestMarks.some(Boolean) ? ' · <span class="best-star">*</span> = new best at that hole (at the time)' : ''}</p>
     ${renderScorecardChunks(numHoles, pars, rows)}`;
+}
+
+let holeDistChart = null;
+
+function openHoleDetail(courseName, holeIndex){
+  const atCourse = rounds.filter(r => r.course === courseName && r.holeDetail && r.holeDetail.scores.length > holeIndex);
+  const chronoAtCourse = [...atCourse].sort((a,b)=> new Date(a.date) - new Date(b.date));
+  if(chronoAtCourse.length === 0) return;
+
+  const par = chronoAtCourse[chronoAtCourse.length-1].holeDetail.pars[holeIndex];
+  const scores = chronoAtCourse.map(r => r.holeDetail.scores[holeIndex]);
+  const best = Math.min(...scores);
+  const med = median(scores);
+
+  document.getElementById('detailMiiRow').innerHTML = '';
+  document.getElementById('detailTitle').innerHTML = `${courseName} <span class="crr-rs">Hole ${holeIndex+1} · Par ${par}</span>`;
+
+  const listHtml = [...chronoAtCourse].reverse().map(r => {
+    const s = r.holeDetail.scores[holeIndex];
+    const cls = scoreNotationClass(s, par);
+    const dateFmt = new Date(r.date+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+    return `<div class="hole-history-row"><span class="hole-history-date">${dateFmt}</span><span class="hole-history-score"><span class="score-mark ${cls}">${s}</span></span></div>`;
+  }).join('');
+
+  const freq = {};
+  scores.forEach(s => freq[s] = (freq[s]||0) + 1);
+  const sortedScores = Object.keys(freq).map(Number).sort((a,b)=>a-b);
+  const scoreLabel = (s) => {
+    const d = Math.round((s - par) * 10) / 10;
+    const parText = d === 0 ? 'E' : (d > 0 ? `+${d}` : `${d}`);
+    return `${s} (${parText})`;
+  };
+
+  document.getElementById('detailBody').innerHTML = `
+    <p class="note" style="margin:2px 0 12px;">Played ${scores.length} time${scores.length===1?'':'s'} · Median ${med.toFixed(1)} · Best ${best}</p>
+    <div class="chart-box" style="height:160px;"><canvas id="holeDistChart"></canvas></div>
+    <p class="idx-note" style="margin:16px 0 6px;">All scores (most recent first)</p>
+    <div class="hole-history-list">${listHtml}</div>
+  `;
+  detailOverlay.classList.add('open');
+  updateBackButton();
+
+  if(holeDistChart) holeDistChart.destroy();
+  const c = colorsFor(currentTheme);
+  holeDistChart = new Chart(document.getElementById('holeDistChart'), {
+    type:'bar',
+    data:{
+      labels: sortedScores.map(scoreLabel),
+      datasets:[{ label:'Times scored', data: sortedScores.map(s=>freq[s]), backgroundColor: c.c9 }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false} },
+      scales:{
+        x:{ title:{display:true,text:'Score',color:c.ink,font:{family:c.font,size:12}}, ticks:{color:c.ink,font:{family:c.font,size:12}}, grid:{display:false} },
+        y:{ title:{display:true,text:'#',color:c.ink,font:{family:c.font,size:12}}, beginAtZero:true, ticks:{color:c.ink,font:{family:c.font,size:12},stepSize:1}, grid:{color:c.grid} }
+      }
+    }
+  });
 }
 
 function openCourseDetail(courseName){
@@ -1075,8 +1158,6 @@ function openCourseDetail(courseName){
     .filter(r => r.course === courseName)
     .sort((a,b) => new Date(b.date) - new Date(a.date));
 
-  returnToCourse = courseName;
-  document.getElementById('detailBack').style.display = 'none';
   document.getElementById('detailTitle').innerHTML = `${courseName} <span class="crr-rs">${atCourse[0].rating.toFixed(1)}/${atCourse[0].slope}</span>`;
   document.getElementById('detailMiiRow').innerHTML = '';
 
@@ -1111,11 +1192,22 @@ function openCourseDetail(courseName){
     ${buildHoleStatsHtml(atCourse)}
   `;
   detailOverlay.classList.add('open');
+  updateBackButton();
 
   document.querySelectorAll('.course-round-row').forEach(el=>{
     el.addEventListener('click', ()=>{
       const idx = parseInt(el.dataset.idx, 10);
+      navStack.push(()=>openCourseDetail(courseName));
       openDetail(idx);
+    });
+  });
+
+  document.querySelectorAll('.hole-num-clickable, .hole-stat-clickable').forEach(el=>{
+    el.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      const h = parseInt(el.dataset.hole, 10) - 1;
+      navStack.push(()=>openCourseDetail(courseName));
+      openHoleDetail(courseName, h);
     });
   });
 
@@ -1127,6 +1219,7 @@ function openCourseDetail(courseName){
       wrap.querySelectorAll('.course-round-row').forEach(el=>{
         el.addEventListener('click', ()=>{
           const idx = parseInt(el.dataset.idx, 10);
+          navStack.push(()=>openCourseDetail(courseName));
           openDetail(idx);
         });
       });
