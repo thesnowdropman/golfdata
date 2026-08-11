@@ -140,6 +140,7 @@
   .score-mark.bogey{border:1.5px solid currentColor;}
   .score-mark.double{border:1.5px solid currentColor;box-shadow:0 0 0 2px var(--paper), 0 0 0 3.5px currentColor;}
   .best-star{color:var(--flag);font-weight:700;font-size:11px;position:relative;top:-6px;margin-left:1px;line-height:0;}
+  .new-course-badge{color:var(--flag);font-weight:700;font-size:12px;margin-bottom:3px;}
   .hole-num-clickable,.hole-stat-clickable{cursor:pointer;}
   .hole-num-clickable:hover,.hole-stat-clickable:hover{background:var(--paper-tan);}
   .hole-history-list{display:flex;flex-direction:column;gap:2px;}
@@ -326,7 +327,11 @@
     <h3>Add a round</h3>
     <p class="note" style="margin-top:2px;">Enter hole-by-hole scores — total, differential, and expected score are calculated automatically.</p>
     <div class="form-grid">
-      <div class="full"><label>Course name</label><input id="f-course" type="text" list="courseList" autocomplete="off" placeholder="e.g. Sligo Creek Golf Course"><datalist id="courseList"></datalist></div>
+      <div class="full">
+        <div id="newCourseBadge" class="new-course-badge" style="display:none;">New Course!</div>
+        <label>Course name</label>
+        <input id="f-course" type="text" list="courseList" autocomplete="off" placeholder="e.g. Sligo Creek Golf Course"><datalist id="courseList"></datalist>
+      </div>
       <div><label>Date</label><input id="f-date" type="date"></div>
       <div><label>Holes</label>
         <select id="f-holes"><option value="18">18</option><option value="9">9</option></select>
@@ -334,6 +339,10 @@
       <div><label>Course rating</label><input id="f-rating" type="number" step="0.1" placeholder="e.g. 69.8"></div>
       <div><label>Slope rating</label><input id="f-slope" type="number" step="1" placeholder="e.g. 116"></div>
       <div class="full" id="expScoreHint" style="display:none;"><label>Expected Score</label><div class="num" id="expScoreValue" style="font-family:var(--font-mono);font-size:20px;font-weight:600;color:var(--fairway);"></div></div>
+      <div class="full" id="parInputsSection" style="display:none;">
+        <label>Par per hole <span class="idx-note" style="margin:0;display:inline;">— new course, only needed once</span></label>
+        <div class="hole-inputs" id="parInputsRow"></div>
+      </div>
       <div class="full">
         <label>Score per hole</label>
         <div class="hole-inputs" id="scoreInputsRow"></div>
@@ -443,6 +452,7 @@ const baseRounds = [
 const hasStorage = typeof window !== 'undefined' && !!window.localStorage;
 let addedRounds = [];   // user-added rounds, persisted
 let deletedKeys = [];   // keys of baseRounds the user deleted, persisted
+let courseRenames = {}; // old course name -> new course name, persisted
 let rounds = [...baseRounds];
 
 function roundKey(r){ return `${r.date}|${r.course}|${r.score}`; }
@@ -452,6 +462,27 @@ function rebuildRoundsArray(){
   rounds = [...activeBase, ...addedRounds];
 }
 
+// If a course "X (18)" is added and a plain "X" already exists, relabel every existing
+// "X" round to "X (9)" so the two variants stay distinct going forward. Mutates the
+// round objects in place so the rename sticks for the rest of the session and applies
+// to any future round added under the old plain name too.
+function applyCourseRenames(){
+  if(Object.keys(courseRenames).length === 0) return;
+  // Only relabels the round's course text. Deliberately does NOT touch PAR_BY_COURSE --
+  // par is never copied or shared between the old and new names, so the two courses
+  // stay fully independent aside from the rename itself. If the renamed round's own
+  // par isn't registered under its new name yet, it's set from that SAME round's own
+  // stored hole pars -- self-contained, never borrowed from the other course.
+  [...baseRounds, ...addedRounds].forEach(r=>{
+    if(courseRenames[r.course]){
+      r.course = courseRenames[r.course];
+      if(PAR_BY_COURSE[r.course] == null && r.holeDetail){
+        PAR_BY_COURSE[r.course] = r.holeDetail.pars.reduce((s,x)=>s+x,0);
+      }
+    }
+  });
+}
+
 function persistAdded(){
   if(!hasStorage) return;
   try{ window.localStorage.setItem('anges-golf-rounds-added', JSON.stringify(addedRounds)); }catch(e){}
@@ -459,6 +490,10 @@ function persistAdded(){
 function persistDeleted(){
   if(!hasStorage) return;
   try{ window.localStorage.setItem('anges-golf-rounds-deleted', JSON.stringify(deletedKeys)); }catch(e){}
+}
+function persistRenames(){
+  if(!hasStorage) return;
+  try{ window.localStorage.setItem('anges-golf-course-renames', JSON.stringify(courseRenames)); }catch(e){}
 }
 function loadPersisted(){
   if(hasStorage){
@@ -470,8 +505,13 @@ function loadPersisted(){
       const raw = window.localStorage.getItem('anges-golf-rounds-deleted');
       if(raw) deletedKeys = JSON.parse(raw);
     }catch(e){ deletedKeys = []; }
+    try{
+      const raw = window.localStorage.getItem('anges-golf-course-renames');
+      if(raw) courseRenames = JSON.parse(raw);
+    }catch(e){ courseRenames = {}; }
   }
   loadPersistedPars();
+  applyCourseRenames();
   rebuildRoundsArray();
   recompute();
 }
@@ -1241,10 +1281,35 @@ function getHistoricalHoleStats(courseName, holes){
   if(matches.length === 0) return null;
   const pars = matches[0].holeDetail.pars;
   const bests = [];
+  const medians = [];
   for(let h=0; h<holes; h++){
-    bests.push(Math.min(...matches.map(r => r.holeDetail.scores[h])));
+    const scoresAtHole = matches.map(r => r.holeDetail.scores[h]);
+    bests.push(Math.min(...scoresAtHole));
+    medians.push(median(scoresAtHole));
   }
-  return { pars, bests };
+  return { pars, bests, medians };
+}
+
+function isKnownCourse(name){
+  return !!courseLookup[name.trim().toLowerCase()];
+}
+
+function updateNewCourseUI(){
+  const typed = document.getElementById('f-course').value.trim();
+  const isNew = typed.length > 0 && !isKnownCourse(typed);
+  document.getElementById('newCourseBadge').style.display = isNew ? 'block' : 'none';
+  document.getElementById('parInputsSection').style.display = isNew ? 'block' : 'none';
+  if(isNew) buildParInputs();
+}
+
+function buildParInputs(){
+  const holes = parseInt(document.getElementById('f-holes').value, 10);
+  const parRow = document.getElementById('parInputsRow');
+  parRow.innerHTML = '';
+  for(let h=1; h<=holes; h++){
+    const opts = [3,4,5,6].map(n => `<option value="${n}" ${n===4?'selected':''}>${n}</option>`).join('');
+    parRow.innerHTML += `<div class="hole-box"><div class="hnum">${h}</div><select class="hole-par-box" data-hole="${h}">${opts}</select></div>`;
+  }
 }
 
 function buildHoleInputs(){
@@ -1253,10 +1318,25 @@ function buildHoleInputs(){
   const hist = getHistoricalHoleStats(courseTyped, holes);
   const scoreRow = document.getElementById('scoreInputsRow');
   scoreRow.innerHTML = '';
-  const scoreOptions = [2,3,4,5,6,7,8].map(n => `<option value="${n}">${n}</option>`).join('');
+  const scoreOptions = [2,3,4,5,6,7,8];
+
+  const parBoxes = Array.from(document.querySelectorAll('.hole-par-box'));
+  const parForHole = (h) => {
+    if(hist) return hist.pars[h];
+    if(parBoxes[h]) return parseInt(parBoxes[h].value, 10);
+    return 4;
+  };
+  const prefillForHole = (h) => {
+    if(hist) return Math.round(hist.medians[h]);
+    const par = parForHole(h);
+    return !isNaN(par) ? par + 2 : 6;
+  };
+
   for(let h=1; h<=holes; h++){
+    const prefill = Math.max(2, Math.min(8, prefillForHole(h-1)));
     const hintHtml = hist ? `<div class="hole-hint">Par ${hist.pars[h-1]}<br>Best ${hist.bests[h-1]}</div>` : '';
-    scoreRow.innerHTML += `<div class="hole-box"><div class="hnum">${h}</div><select class="hole-score-box" data-hole="${h}"><option value="" disabled selected>–</option>${scoreOptions}</select>${hintHtml}</div>`;
+    const opts = scoreOptions.map(n => `<option value="${n}" ${n===prefill?'selected':''}>${n}</option>`).join('');
+    scoreRow.innerHTML += `<div class="hole-box"><div class="hnum">${h}</div><select class="hole-score-box" data-hole="${h}">${opts}</select>${hintHtml}</div>`;
   }
   document.querySelectorAll('.hole-score-box').forEach(el=>{
     el.addEventListener('input', updateGrossScoreHint);
@@ -1286,6 +1366,7 @@ document.getElementById('f-course').addEventListener('input', (e)=>{
     document.getElementById('f-slope').value = match.slope;
     document.getElementById('f-holes').value = match.holes;
   }
+  updateNewCourseUI();
   buildHoleInputs();
   updateExpectedScoreHint();
 });
@@ -1323,6 +1404,9 @@ function updateExpectedScoreHint(){
 document.getElementById('f-rating').addEventListener('input', updateExpectedScoreHint);
 document.getElementById('f-slope').addEventListener('input', updateExpectedScoreHint);
 document.getElementById('f-holes').addEventListener('change', ()=>{
+  if(document.getElementById('parInputsSection').style.display !== 'none'){
+    buildParInputs();
+  }
   buildHoleInputs();
   updateExpectedScoreHint();
 });
@@ -1341,6 +1425,8 @@ function openAddModal(){
   document.getElementById('f-rating').value = '';
   document.getElementById('f-slope').value = '';
   document.getElementById('expScoreHint').style.display = 'none';
+  document.getElementById('newCourseBadge').style.display = 'none';
+  document.getElementById('parInputsSection').style.display = 'none';
   buildHoleInputs();
   addOverlay.classList.add('open');
 }
@@ -1360,11 +1446,19 @@ document.getElementById('addSave').addEventListener('click', ()=>{
   const scoreBoxes = Array.from(document.querySelectorAll('.hole-score-box'));
   const scores = scoreBoxes.map(b => parseInt(b.value, 10));
 
-  const hist = getHistoricalHoleStats(course, holes);
-  const pars = hist ? hist.pars : Array(holes).fill(4);
+  const isNewCourse = course.length > 0 && !isKnownCourse(course);
+  let pars;
+  if(isNewCourse){
+    const parBoxes = Array.from(document.querySelectorAll('.hole-par-box'));
+    pars = parBoxes.map(b => parseInt(b.value, 10));
+  } else {
+    const hist = getHistoricalHoleStats(course, holes);
+    pars = hist ? hist.pars : Array(holes).fill(4);
+  }
 
+  const parsValid = pars.length === holes && pars.every(p => !isNaN(p) && p > 0);
   const scoresValid = scores.length === holes && scores.every(s => !isNaN(s) && s > 0);
-  const valid = course && date && !isNaN(rating) && !isNaN(slope) && scoresValid;
+  const valid = course && date && !isNaN(rating) && !isNaN(slope) && scoresValid && parsValid;
   if(!valid){
     document.getElementById('formError').style.display = 'block';
     return;
@@ -1373,6 +1467,24 @@ document.getElementById('addSave').addEventListener('click', ()=>{
   const gross = scores.reduce((s,x)=>s+x,0);
   const parTotal = pars.reduce((s,x)=>s+x,0);
   const diff = computeDiff(gross, rating, slope, holes);
+
+  // If this course name ends in "(18)" and a plain version of the same name already
+  // has rounds on file, relabel every existing round there to "(9)" so the two stay
+  // distinct. Applies retroactively to past rounds and to any future round saved
+  // under the old plain name too.
+  const m18 = course.match(/^(.*)\s\(18\)$/i);
+  if(m18){
+    const baseName = m18[1].trim();
+    const hasPlainVersion = rounds.some(r => r.course.trim().toLowerCase() === baseName.toLowerCase());
+    if(hasPlainVersion && !courseRenames[baseName]){
+      const newName9 = `${baseName} (9)`;
+      courseRenames[baseName] = newName9;
+      persistRenames();
+      applyCourseRenames();
+      rebuildRoundsArray();
+    }
+  }
+
   const newRound = {
     score: gross + (holes===9?'Ni':'A'),
     date, rating, slope, diff, course, holes,
