@@ -117,11 +117,14 @@
 
   table{width:100%;border-collapse:collapse;font-size:13.5px;}
   .future-rounds-table{table-layout:fixed;}
-  .future-rounds-table th:nth-child(1),.future-rounds-table td:nth-child(1){width:32%;}
-  .future-rounds-table th:nth-child(2),.future-rounds-table td:nth-child(2){width:44%;}
-  .future-rounds-table th:nth-child(3),.future-rounds-table td:nth-child(3){width:24%;white-space:nowrap;}
-  .round-history-table th:nth-child(2), .round-history-table td:nth-child(2){width:30%;}
-  .round-history-table th:nth-child(4), .round-history-table td:nth-child(4){width:1%;white-space:nowrap;}
+  .future-rounds-table th:nth-child(1),.future-rounds-table td:nth-child(1){width:24%;}
+  .future-rounds-table th:nth-child(2),.future-rounds-table td:nth-child(2){width:54%;}
+  .future-rounds-table th:nth-child(3),.future-rounds-table td:nth-child(3){width:22%;white-space:nowrap;}
+  .round-history-table{table-layout:fixed;}
+  .round-history-table th:nth-child(1), .round-history-table td:nth-child(1){width:18%;}
+  .round-history-table th:nth-child(2), .round-history-table td:nth-child(2){width:42%;}
+  .round-history-table th:nth-child(3), .round-history-table td:nth-child(3){width:22%;}
+  .round-history-table th:nth-child(4), .round-history-table td:nth-child(4){width:18%;white-space:nowrap;}
   thead th{text-align:left;font-family:var(--font-mono);font-size:10.5px;letter-spacing:0.08em;text-transform:uppercase;color:#8a8368;border-bottom:2px solid var(--fairway);padding:8px 8px;}
   html[data-theme="wii"] thead th{color:#5C86A0;font-weight:700;letter-spacing:0.1em;}
   tbody td{padding:9px 8px;border-bottom:1px solid var(--line);vertical-align:top;}
@@ -169,6 +172,7 @@
   .badge.b18{background:var(--sand);color:#fff;} .badge.b9{background:var(--fairway);color:#fff;}
   .badge.detail{background:transparent;border:1px solid var(--fairway-light);color:var(--fairway-light);}
   .diff-cell{font-family:var(--font-mono);text-align:right;}
+  .round-history-table .diff-cell{text-align:left;}
   .course-name{color:#4a4838;} html[data-theme="wii"] .course-name{color:#5C86A0;font-weight:500;}
   .chevron{color:#aaa39c;float:right;}
 
@@ -307,7 +311,7 @@
       <button class="btn" id="addRoundBtn" type="button">+ Add Round</button>
     </div>
     <table class="round-history-table">
-      <thead><tr><th>Date</th><th>Score</th><th>Course</th><th style="text-align:right">Diff.</th></tr></thead>
+      <thead><tr><th>Date</th><th>Course</th><th>Score</th><th>Diff.</th></tr></thead>
       <tbody id="score-table"></tbody>
     </table>
     <p class="note" id="roundHistorySeeMore" style="font-style:italic;cursor:pointer;margin:8px 0 0;display:none;">Show more…</p>
@@ -940,12 +944,12 @@ function recompute(){
   const buildRoundRow = (r) => {
     const idx = rounds.indexOf(r);
     const tr = document.createElement('tr');
-    const dateFmt = new Date(r.date+'T00:00:00').toLocaleDateString('en-US',{month:'2-digit',day:'2-digit',year:'numeric'});
+    const dateFmt = new Date(r.date+'T00:00:00').toLocaleDateString('en-US',{month:'2-digit',day:'2-digit',year:'2-digit'});
     const isLowest = r.diff === lowestDiff;
     tr.innerHTML = `
       <td class="date-cell">${dateFmt}</td>
-      <td><span class="badge ${r.holes===18?'b18':'b9'}">${r.holes===18?'18':'9'}</span><span class="score-tag">${r.score.replace(/(A|Ni)$/,'')}<span class="topar">${toParStr(scoreOf(r), r.course)}</span></span></td>
-      <td class="course-name">${r.course}${isLowest ? `<img class="lowdiff-face wii-only" src="data:image/png;base64,${lowDiffFaceB64}" alt="Best round">` : ''}</td>
+      <td class="course-name"><span class="badge ${r.holes===18?'b18':'b9'}">${r.holes===18?'18':'9'}</span>${r.course}${isLowest ? `<img class="lowdiff-face wii-only" src="data:image/png;base64,${lowDiffFaceB64}" alt="Best round">` : ''}</td>
+      <td><span class="score-tag">${r.score.replace(/(A|Ni)$/,'')}<span class="topar">${toParStr(scoreOf(r), r.course)}</span></span></td>
       <td class="diff-cell">${r.diff.toFixed(1)}</td>
     `;
     tr.addEventListener('click', ()=>{ navStack = []; openDetail(idx); });
@@ -1016,16 +1020,7 @@ function breakScoreProbability(f, targetScore){
   if(isNaN(f.rating) || isNaN(f.slope)) return null;
   const dayOffset = dayNum(f.date) - t0;
   const projectedDiff = reg.slope * dayOffset + reg.intercept;
-  // The real WHS differential formula only uses Rating and Slope -- Par isn't actually
-  // part of it (Rating already encodes difficulty). But Rating typically tracks Par in
-  // practice (a shorter, lower-par course usually IS rated easier too), so when Par is
-  // entered below the standard 72, shift the effective rating down to match -- one
-  // stroke of rating per stroke of par below 72. This is a deliberate approximation,
-  // not official USGA math.
-  const par = parForFutureRound(f);
-  const parAdjustment = par != null ? (72 - par) : 0;
-  const effectiveRating = f.rating - parAdjustment;
-  const neededDiff = (targetScore - effectiveRating) * 113 / f.slope;
+  const neededDiff = (targetScore - f.rating) * 113 / f.slope;
   const prob = normalCDF(neededDiff, projectedDiff, diffResidualSD);
   return Math.round(prob * 100);
 }
