@@ -1021,12 +1021,15 @@ function breakScoreProbability(f, targetScore){
   const dayOffset = dayNum(f.date) - t0;
   const projectedDiff = reg.slope * dayOffset + reg.intercept;
   const rawDiff = (targetScore - f.rating) * 113 / f.slope;
-  // trend/projectedDiff live on the 18-hole-equivalent scale everywhere else in this app --
-  // a 9-hole differential is only half of that scale (the other "half" being the synthetic
-  // other-nine), so a 9-hole target score needs to be doubled to compare against it fairly.
-  const neededDiff = f.holes === 9 ? rawDiff * 2 : rawDiff;
+  // Must mirror computeDiff() exactly, which is the app's real, established formula for
+  // what a 9-hole round's differential actually becomes: raw + (currentTrend / 2), not
+  // raw doubled. Using anything else produces numbers that don't line up with real stored
+  // differentials for the exact same course and score.
+  const neededDiff = f.holes === 9 ? (rawDiff + projectedDiff/2) : rawDiff;
   const prob = normalCDF(neededDiff, projectedDiff, diffResidualSD);
-  return Math.round(prob * 100);
+  // Never display literal 0% or 100% -- a normal-distribution model shouldn't claim
+  // mathematical certainty either direction, even when the true value rounds to it.
+  return Math.min(99, Math.max(1, Math.round(prob * 100)));
 }
 
 function pad2(n){ return String(n).padStart(2,'0'); }
