@@ -1097,6 +1097,8 @@ function renderFutureRounds(){
         const courseRecord = Math.min(...priorRoundsAtCourse.map(scoreOf));
         const beatRecordProb = breakScoreProbability(f, courseRecord - 1);
         if(beatRecordProb !== null) probLineHtml = `<div class="idx-note" style="margin:2px 0 0;">${beatRecordProb}% &lt;${courseRecord}</div>`;
+      } else {
+        probLineHtml = `<div class="idx-note" style="margin:2px 0 0;">New!</div>`;
       }
     }
 
