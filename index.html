@@ -53,13 +53,11 @@
   .wii-golf{font-style:italic;}
   .wii-only.block{display:none;} html[data-theme="wii"] .wii-only.block{display:block;}
 
-  #themeBtn{font-family:var(--font-mono);font-size:10.5px;letter-spacing:0.06em;text-transform:uppercase;background:var(--paper-tan);color:var(--fairway);border:1.5px solid var(--fairway);border-radius:var(--radius);padding:5px 10px;cursor:pointer;box-shadow:var(--card-shadow);}
-  html[data-theme="wii"] #themeBtn{border-radius:999px;border:2px solid var(--fairway);font-family:var(--font-display);font-weight:700;letter-spacing:0.02em;}
 
   header.hero{border-bottom:3px solid var(--fairway);padding-bottom:20px;margin-bottom:28px;border-radius:var(--radius);position:relative;z-index:2;display:flex;gap:16px;align-items:flex-start;}
   html[data-theme="wii"] header.hero{border-bottom:none;}
   .hero-text{flex:1;min-width:0;}
-  .eyebrow{font-family:var(--font-mono);font-size:12px;letter-spacing:0.14em;text-transform:uppercase;color:var(--fairway-light);display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:2px;}
+  .eyebrow{font-family:var(--font-mono);font-size:12px;letter-spacing:0.14em;text-transform:uppercase;color:var(--fairway-light);display:flex;justify-content:flex-end;align-items:flex-start;margin-bottom:2px;}
   .eyebrow-right{display:flex;align-items:flex-start;}
   .date-ghin-stack{display:flex;flex-direction:column;align-items:flex-end;gap:2px;}
   .corner-face{display:flex;align-items:center;flex-shrink:0;}
@@ -258,7 +256,6 @@
   <header class="hero">
     <div class="hero-text">
       <div class="eyebrow">
-        <button id="themeBtn" type="button">🎮 Switch to Wii Golf</button>
         <span class="eyebrow-right">
           <span class="date-ghin-stack">
             <span id="today-tag">—</span>
@@ -508,7 +505,7 @@ const baseRounds = [
       strokeIndex:[14,8,16,4,18,2,6,10,12,5,7,17,13,11,3,15,9,1],
       scores:[5,5,4,7,5,7,6,6,5,5,7,3,5,6,5,6,6,7]
     }},
-  {score:"102A", date:"2026-07-29", rating:68.2, slope:107, diff:35.7, course:"East Potomac Golf Links (Blue)", holes:18,
+  {score:"102A", date:"2026-07-29", rating:68.2, slope:107, diff:35.7, course:"East Potomac Golf Links (B)", holes:18,
     holeDetail:{
       pars:[4,4,5,3,4,5,4,3,4,4,3,5,4,4,3,4,5,4],
       yards:[343,377,564,154,286,507,297,196,336,302,167,456,354,389,162,419,546,371],
@@ -634,7 +631,7 @@ function applyRemoteState(data){
   if(data.addedFutureRounds) addedFutureRounds = data.addedFutureRounds;
   if(data.deletedFutureRoundIds) deletedFutureRoundIds = data.deletedFutureRoundIds;
   if(data.courseRegistry) courseRegistry = Object.assign({}, COURSE_REGISTRY_DEFAULTS, data.courseRegistry);
-  if(data.customPars) PAR_BY_COURSE = data.customPars;
+  if(data.customPars) PAR_BY_COURSE = Object.assign({}, PAR_BY_COURSE_DEFAULTS, data.customPars);
 
   // keep the localStorage mirror current too, so the offline fallback matches the cloud
   if(hasStorage){
@@ -840,12 +837,17 @@ let PAR_BY_COURSE = {
   "Northwest - Inside 9": 34,
   "Enterprise Golf Course": 72,
   "Laytonsville Golf Course": 71,
-  "East Potomac Golf Links (Blue)": 72,
+  "East Potomac Golf Links (B)": 72,
   "Bowie Golf Club": 35,
   "Rehoboth Beach CC": 36,
   "Rock Creek Golf Course": 32,
   "Paint Branch Golf Course": 31,
 };
+// Snapshot of the hardcoded defaults, taken before anything can mutate PAR_BY_COURSE.
+// Cloud/local sync always merges onto THIS, never onto whatever PAR_BY_COURSE currently
+// holds -- so a course renamed or added in the file always wins over stale synced data
+// from a browser that saw an older version of the file.
+const PAR_BY_COURSE_DEFAULTS = { ...PAR_BY_COURSE };
 
 function persistPars(){
   if(!hasStorage) return;
@@ -856,7 +858,7 @@ function loadPersistedPars(){
   if(!hasStorage) return;
   try{
     const raw = window.localStorage.getItem('anges-golf-custom-pars');
-    if(raw) PAR_BY_COURSE = Object.assign({}, PAR_BY_COURSE, JSON.parse(raw));
+    if(raw) PAR_BY_COURSE = Object.assign({}, PAR_BY_COURSE_DEFAULTS, JSON.parse(raw));
   }catch(e){}
 }
 
@@ -1254,22 +1256,6 @@ function renderCharts(theme){
     }
   });
 }
-
-// ================= THEME TOGGLE =================
-const themeBtn = document.getElementById('themeBtn');
-themeBtn.addEventListener('click', ()=>{
-  const isWii = document.documentElement.getAttribute('data-theme') === 'wii';
-  if(isWii){
-    document.documentElement.removeAttribute('data-theme');
-    themeBtn.textContent = '🎮 Switch to Wii Golf';
-    currentTheme = 'default';
-  }else{
-    document.documentElement.setAttribute('data-theme','wii');
-    themeBtn.textContent = '⛳ Back to Classic';
-    currentTheme = 'wii';
-  }
-  renderCharts(currentTheme);
-});
 
 // ================= PROJECTION =================
 function regressionCrossDate(){
@@ -1778,7 +1764,11 @@ function buildParInputs(){
     parRow.innerHTML += `<div class="hole-box"><div class="hnum">${h}</div><select class="hole-par-box" data-hole="${h}">${opts}</select></div>`;
   }
   document.querySelectorAll('.hole-par-box').forEach(el=>{
-    el.addEventListener('input', ()=>updateParTotalReadout('.hole-par-box', 'parTotalReadout'));
+    el.addEventListener('input', ()=>{
+      updateParTotalReadout('.hole-par-box', 'parTotalReadout');
+      updateExpectedScoreHint();
+      updateGrossScoreHint();
+    });
   });
   updateParTotalReadout('.hole-par-box', 'parTotalReadout');
 }
@@ -1821,6 +1811,19 @@ function buildHoleInputs(){
   updateHoleBestHighlights();
 }
 
+function getCurrentFormPar(){
+  const courseTyped = document.getElementById('f-course').value.trim();
+  const holes = parseInt(document.getElementById('f-holes').value, 10);
+  const parBoxes = Array.from(document.querySelectorAll('.hole-par-box'));
+  if(parBoxes.length === holes){
+    return parBoxes.reduce((s,b)=> s + (parseInt(b.value,10)||0), 0);
+  }
+  if(PAR_BY_COURSE[courseTyped] != null) return PAR_BY_COURSE[courseTyped];
+  const planned = plannedParsFor(courseTyped, holes);
+  if(planned) return planned.reduce((s,x)=>s+x,0);
+  return null;
+}
+
 function updateGrossScoreHint(){
   const boxes = Array.from(document.querySelectorAll('.hole-score-box'));
   const values = boxes.map(b => parseInt(b.value, 10));
@@ -1832,7 +1835,7 @@ function updateGrossScoreHint(){
     return;
   }
   const gross = values.reduce((s,x)=>s+x,0);
-  valueEl.textContent = gross;
+  valueEl.innerHTML = gross + toParTextFor(gross, getCurrentFormPar());
   hint.style.display = 'block';
   updateNewCourseBestMsg(gross);
 }
@@ -1906,7 +1909,7 @@ function updateExpectedScoreHint(){
   const expScore = holes === 9
     ? Math.round((currentIndex/2) * slope / 113 + rating)
     : Math.round(currentIndex * slope / 113 + rating);
-  valueEl.textContent = expScore;
+  valueEl.innerHTML = expScore + toParTextFor(expScore, getCurrentFormPar());
   hint.style.display = 'block';
 }
 document.getElementById('f-rating').addEventListener('input', updateExpectedScoreHint);
