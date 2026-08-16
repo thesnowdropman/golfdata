@@ -280,7 +280,7 @@
     <div class="cell"><div class="icon-row">⛳</div><div class="num" id="stat-index">—</div><div class="lbl">Proj Next Differential</div></div>
     <div class="cell flag"><div class="icon-row">📈</div><div class="num" id="stat-trend">—</div><div class="lbl">Last 30 days</div></div>
     <div class="cell"><div class="icon-row">🐦</div><div class="num" id="stat-lowdiff">—</div><div class="lbl">Best Differential</div></div>
-    <div class="cell flag"><div class="icon-row">🏆</div><div class="num" id="stat-since-start">—</div><div class="lbl">Since July '26 Start</div></div>
+    <div class="cell flag"><div class="icon-row">🏆</div><div class="num" id="stat-since-start">—</div><div class="lbl">Since July ’26 start</div></div>
   </div>
   <p class="rounds-footnote" id="rounds-footnote"></p>
 
@@ -1020,7 +1020,11 @@ function breakScoreProbability(f, targetScore){
   if(isNaN(f.rating) || isNaN(f.slope)) return null;
   const dayOffset = dayNum(f.date) - t0;
   const projectedDiff = reg.slope * dayOffset + reg.intercept;
-  const neededDiff = (targetScore - f.rating) * 113 / f.slope;
+  const rawDiff = (targetScore - f.rating) * 113 / f.slope;
+  // trend/projectedDiff live on the 18-hole-equivalent scale everywhere else in this app --
+  // a 9-hole differential is only half of that scale (the other "half" being the synthetic
+  // other-nine), so a 9-hole target score needs to be doubled to compare against it fairly.
+  const neededDiff = f.holes === 9 ? rawDiff * 2 : rawDiff;
   const prob = normalCDF(neededDiff, projectedDiff, diffResidualSD);
   return Math.round(prob * 100);
 }
@@ -1079,13 +1083,25 @@ function renderFutureRounds(){
   listEl.innerHTML = sorted.map(f => {
     const exp = computeExpScoreFor(f.rating, f.slope, f.holes);
     const par = parForFutureRound(f);
-    const break100 = f.holes === 18 ? breakScoreProbability(f, 99) : null;
-    const break100Html = break100 !== null ? `<div class="idx-note" style="margin:2px 0 0;">${break100}% &lt;100</div>` : '';
+
+    let probLineHtml = '';
+    if(f.holes === 18){
+      const break100 = breakScoreProbability(f, 99);
+      if(break100 !== null) probLineHtml = `<div class="idx-note" style="margin:2px 0 0;">${break100}% &lt;100</div>`;
+    } else {
+      const priorRoundsAtCourse = rounds.filter(r => r.course.trim().toLowerCase() === f.course.trim().toLowerCase());
+      if(priorRoundsAtCourse.length > 0){
+        const courseRecord = Math.min(...priorRoundsAtCourse.map(scoreOf));
+        const beatRecordProb = breakScoreProbability(f, courseRecord - 1);
+        if(beatRecordProb !== null) probLineHtml = `<div class="idx-note" style="margin:2px 0 0;">${beatRecordProb}% &lt;${courseRecord}</div>`;
+      }
+    }
+
     return `
       <tr class="future-round-row" data-id="${f.id}" style="cursor:pointer;">
         <td class="date-cell">${formatFutureDateTime(f)}</td>
         <td class="course-name"><span class="badge ${f.holes===18?'b18':'b9'}">${f.holes===18?'18':'9'}</span>${f.course}</td>
-        <td class="diff-cell">${exp !== null ? exp + toParTextFor(exp, par) : '—'}${break100Html}</td>
+        <td class="diff-cell">${exp !== null ? exp + toParTextFor(exp, par) : '—'}${probLineHtml}</td>
       </tr>`;
   }).join('');
   document.querySelectorAll('.future-round-row').forEach(el=>{
