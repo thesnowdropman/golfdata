@@ -119,9 +119,9 @@
   .future-rounds-table th:nth-child(2),.future-rounds-table td:nth-child(2){width:54%;}
   .future-rounds-table th:nth-child(3),.future-rounds-table td:nth-child(3){width:22%;white-space:nowrap;}
   .round-history-table{table-layout:fixed;}
-  .round-history-table th:nth-child(1), .round-history-table td:nth-child(1){width:16%;}
-  .round-history-table th:nth-child(2), .round-history-table td:nth-child(2){width:36%;}
-  .round-history-table th:nth-child(3), .round-history-table td:nth-child(3){width:48%;}
+  .round-history-table th:nth-child(1), .round-history-table td:nth-child(1){width:14%;}
+  .round-history-table th:nth-child(2), .round-history-table td:nth-child(2){width:46%;}
+  .round-history-table th:nth-child(3), .round-history-table td:nth-child(3){width:40%;}
   thead th{text-align:left;font-family:var(--font-mono);font-size:10.5px;letter-spacing:0.08em;text-transform:uppercase;color:#8a8368;border-bottom:2px solid var(--fairway);padding:8px 8px;}
   html[data-theme="wii"] thead th{color:#5C86A0;font-weight:700;letter-spacing:0.1em;}
   tbody td{padding:9px 8px;border-bottom:1px solid var(--line);vertical-align:top;}
@@ -940,7 +940,7 @@ function recompute(){
     tr.innerHTML = `
       <td class="date-cell">${dateFmt}</td>
       <td class="course-name"><span class="badge ${r.holes===18?'b18':'b9'}">${r.holes===18?'18':'9'}</span>${r.course}${isLowest ? `<img class="lowdiff-face wii-only" src="data:image/png;base64,${lowDiffFaceB64}" alt="Best round">` : ''}</td>
-      <td style="text-align:right"><span class="score-tag">${r.score.replace(/(A|Ni)$/,'')}<span class="topar">${toParStr(scoreOf(r), r.course)} [Differential: ${r.diff.toFixed(1)}]</span></span></td>
+      <td style="text-align:right"><span class="score-tag">${r.score.replace(/(A|Ni)$/,'')}<span class="topar">${toParStr(scoreOf(r), r.course)} [Diff: ${r.diff.toFixed(1)}]</span></span></td>
     `;
     tr.addEventListener('click', ()=>{ navStack = []; openDetail(idx); });
     return tr;
