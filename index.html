@@ -115,13 +115,17 @@
 
   table{width:100%;border-collapse:collapse;font-size:13.5px;}
   .future-rounds-table{table-layout:fixed;}
-  .future-rounds-table th:nth-child(1),.future-rounds-table td:nth-child(1){width:24%;}
-  .future-rounds-table th:nth-child(2),.future-rounds-table td:nth-child(2){width:54%;}
-  .future-rounds-table th:nth-child(3),.future-rounds-table td:nth-child(3){width:22%;white-space:nowrap;}
+  .future-rounds-table th:nth-child(1),.future-rounds-table td:nth-child(1){width:78%;}
+  .future-rounds-table th:nth-child(2),.future-rounds-table td:nth-child(2){width:22%;white-space:nowrap;}
   .round-history-table{table-layout:fixed;}
-  .round-history-table th:nth-child(1), .round-history-table td:nth-child(1){width:18%;}
-  .round-history-table th:nth-child(2), .round-history-table td:nth-child(2){width:54%;}
-  .round-history-table th:nth-child(3), .round-history-table td:nth-child(3){width:28%;}
+  .course-records-table{table-layout:fixed;}
+  .course-records-table th:nth-child(1), .course-records-table td:nth-child(1){width:64%;}
+  .course-records-table th:nth-child(2), .course-records-table td:nth-child(2){width:18%;}
+  .course-records-table th:nth-child(3), .course-records-table td:nth-child(3){width:18%;}
+  .course-records-table td:nth-child(2), .course-records-table td:nth-child(3){text-align:right;}
+  .course-records-table td:nth-child(2), .course-records-table td:nth-child(3){white-space:nowrap;}
+  .round-history-table th:nth-child(1), .round-history-table td:nth-child(1){width:70%;}
+  .round-history-table th:nth-child(2), .round-history-table td:nth-child(2){width:30%;}
   thead th{text-align:left;font-family:var(--font-mono);font-size:10.5px;letter-spacing:0.08em;text-transform:uppercase;color:#8a8368;border-bottom:2px solid var(--fairway);padding:8px 8px;}
   html[data-theme="wii"] thead th{color:#5C86A0;font-weight:700;letter-spacing:0.1em;}
   tbody td{padding:9px 8px;border-bottom:1px solid var(--line);vertical-align:middle;}
@@ -169,6 +173,9 @@
   .badge.b18{background:var(--sand);color:#fff;} .badge.b9{background:var(--fairway);color:#fff;}
   .badge.detail{background:transparent;border:1px solid var(--fairway-light);color:var(--fairway-light);}
   .diff-cell{font-family:var(--font-mono);text-align:right;}
+  .score-topar-wrap{display:inline-flex;justify-content:flex-end;align-items:baseline;}
+  .score-topar-wrap .score-num{display:inline-block;min-width:2.1em;text-align:right;}
+  .score-topar-wrap .topar{display:inline-block;min-width:3em;text-align:left;margin-left:3px;}
   .course-name{color:#4a4838;} html[data-theme="wii"] .course-name{color:#5C86A0;font-weight:500;}
   .chevron{color:#aaa39c;float:right;}
 
@@ -285,8 +292,8 @@
   <section>
     <h2><span class="wii-only">🏆</span>Course Records</h2>
     <p class="idx-note">Click for more data</p>
-    <table>
-      <thead><tr><th>Course (#, Last)</th><th style="text-align:right">Best Score</th><th style="text-align:right">Median Score</th><th style="text-align:right">Best Diff.</th><th style="text-align:right">Curr. Exp.</th></tr></thead>
+    <table class="course-records-table">
+      <thead><tr><th>Course (#, Last)</th><th style="text-align:right">Best<br>Score</th><th style="text-align:right">Curr. Exp.</th></tr></thead>
       <tbody id="course-record-table"></tbody>
     </table>
     <p class="note" id="courseRecordsSeeMore" style="font-style:italic;cursor:pointer;margin:8px 0 0;display:none;">Show more…</p>
@@ -298,7 +305,7 @@
       <button class="btn" id="addRoundBtn" type="button">+ Add Round</button>
     </div>
     <table class="round-history-table">
-      <thead><tr><th>Date</th><th>Course</th><th style="text-align:right">Score</th></tr></thead>
+      <thead><tr><th>Course</th><th style="text-align:right">Score</th></tr></thead>
       <tbody id="score-table"></tbody>
     </table>
     <p class="note" id="roundHistorySeeMore" style="font-style:italic;cursor:pointer;margin:8px 0 0;display:none;">Show more…</p>
@@ -310,7 +317,7 @@
       <button class="btn" id="addFutureBtn" type="button">+ Add Future Round</button>
     </div>
     <table class="future-rounds-table">
-      <thead><tr><th>Date</th><th>Course</th><th style="text-align:right">Exp. Score</th></tr></thead>
+      <thead><tr><th>Course</th><th style="text-align:right">Exp. Score</th></tr></thead>
       <tbody id="futureRoundsList"></tbody>
     </table>
     <p class="note" id="noFutureRoundsNote" style="display:none;">Nothing planned yet.</p>
@@ -951,8 +958,7 @@ function recompute(){
     const dateFmt = new Date(r.date+'T00:00:00').toLocaleDateString('en-US',{month:'2-digit',day:'2-digit',year:'2-digit'});
     const isLowest = r.diff === lowestDiff;
     tr.innerHTML = `
-      <td class="date-cell">${dateFmt}</td>
-      <td class="course-name"><span class="badge ${r.holes===18?'b18':'b9'}">${r.holes===18?'18':'9'}</span>${r.course}${isLowest ? `<img class="lowdiff-face wii-only" src="data:image/png;base64,${lowDiffFaceB64}" alt="Best round">` : ''}</td>
+      <td class="course-name"><span class="badge ${r.holes===18?'b18':'b9'}">${r.holes===18?'18':'9'}</span>${r.course}${isLowest ? `<img class="lowdiff-face wii-only" src="data:image/png;base64,${lowDiffFaceB64}" alt="Best round">` : ''}<br><span class="date-cell">${dateFmt}</span></td>
       <td style="text-align:right"><span class="score-tag">${r.score.replace(/(A|Ni)$/,'')}<span class="topar">${toParStr(scoreOf(r), r.course)}</span><br><span class="topar">[Diff: ${r.diff.toFixed(1)}]</span></span></td>
     `;
     tr.addEventListener('click', ()=>{ navStack = []; openDetail(idx); });
@@ -1060,7 +1066,7 @@ function futureSortKey(f){
 function formatFutureDateTime(f){
   const dateFmt = new Date(f.date+'T00:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}).replace(',', '');
   if(f.hour == null) return dateFmt;
-  return `${dateFmt}<br>${formatTimeLabel(f.hour, f.minute || 0)}`;
+  return `${dateFmt}, ${formatTimeLabel(f.hour, f.minute || 0)}`;
 }
 
 function parForFutureRound(f){
@@ -1107,8 +1113,7 @@ function renderFutureRounds(){
 
     return `
       <tr class="future-round-row" data-id="${f.id}" style="cursor:pointer;">
-        <td class="date-cell">${formatFutureDateTime(f)}</td>
-        <td class="course-name"><span class="badge ${f.holes===18?'b18':'b9'}">${f.holes===18?'18':'9'}</span>${f.course}</td>
+        <td class="course-name"><span class="date-cell">${formatFutureDateTime(f)}</span><br><span class="badge ${f.holes===18?'b18':'b9'}">${f.holes===18?'18':'9'}</span>${f.course}</td>
         <td class="diff-cell">${exp !== null ? exp + toParTextFor(exp, par) : '—'}${probLineHtml}</td>
       </tr>`;
   }).join('');
@@ -1147,10 +1152,8 @@ function renderCourseRecords(){
   const buildCourseRow = (row) => {
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td class="course-name">${row.course} <span class="topar">(${row.count}, ${shortMonthYear(row.latestDate)})</span></td>
-      <td class="diff-cell">${row.bestScore}<span class="topar">${toParStr(row.bestScore, row.course)}</span></td>
-      <td class="diff-cell">${Math.round(row.medianScore)}<span class="topar">${toParStr(row.medianScore, row.course)}</span></td>
-      <td class="diff-cell">${row.bestDiff.toFixed(1)}</td>
+      <td class="course-name">${row.course}<br><span class="topar">(${row.count}, ${shortMonthYear(row.latestDate)})</span></td>
+      <td class="diff-cell"><span class="score-topar-wrap"><span class="score-num">${row.bestScore}</span><span class="topar">${toParStr(row.bestScore, row.course)}</span></span></td>
       <td class="diff-cell">${row.expScore !== null ? row.expScore : '—'}</td>
     `;
     tr.addEventListener('click', ()=>{ navStack = []; openCourseDetail(row.course); });
@@ -1650,7 +1653,7 @@ function openCourseDetail(courseName){
       </div>`;
   };
 
-  const visibleLimit = 5;
+  const visibleLimit = 3;
   const shown = atCourse.slice(0, visibleLimit);
   const rest = atCourse.slice(visibleLimit);
   const shownHtml = shown.map(buildRow).join('');
@@ -1661,7 +1664,18 @@ function openCourseDetail(courseName){
        <p class="note" id="courseRoundsSeeMore" style="font-style:italic;cursor:pointer;margin:6px 0 0;">See more (${rest.length} earlier round${rest.length===1?'':'s'})</p>`
     : '';
 
+  const grossScores = atCourse.map(scoreOf);
+  const bestScore = Math.min(...grossScores);
+  const medianScore = median(grossScores);
+  const bestDiff = Math.min(...atCourse.map(r=>r.diff));
+  const summaryHtml = `
+    <p class="note" style="margin:2px 0 2px;">Best Score: ${bestScore}<span class="topar">${toParStr(bestScore, courseName)}</span></p>
+    <p class="note" style="margin:0 0 2px;">Median Score: ${Math.round(medianScore)}<span class="topar">${toParStr(medianScore, courseName)}</span></p>
+    <p class="note" style="margin:0 0 10px;">Best Diff.: ${bestDiff.toFixed(1)}</p>
+  `;
+
   document.getElementById('detailBody').innerHTML = `
+    ${summaryHtml}
     <p class="note" style="margin:2px 0 10px;">${atCourse.length} round${atCourse.length===1?'':'s'} at this course · tap one for details</p>
     <div class="course-round-list">${shownHtml}</div>
     ${seeMoreHtml}
