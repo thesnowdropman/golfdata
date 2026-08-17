@@ -124,7 +124,7 @@
   .round-history-table th:nth-child(3), .round-history-table td:nth-child(3){width:28%;}
   thead th{text-align:left;font-family:var(--font-mono);font-size:10.5px;letter-spacing:0.08em;text-transform:uppercase;color:#8a8368;border-bottom:2px solid var(--fairway);padding:8px 8px;}
   html[data-theme="wii"] thead th{color:#5C86A0;font-weight:700;letter-spacing:0.1em;}
-  tbody td{padding:9px 8px;border-bottom:1px solid var(--line);vertical-align:top;}
+  tbody td{padding:9px 8px;border-bottom:1px solid var(--line);vertical-align:middle;}
   tbody tr{cursor:pointer;}
   tbody tr:hover{background:var(--paper-tan);}
   .score-tag{font-family:var(--font-mono);font-weight:600;}
@@ -928,7 +928,8 @@ function recompute(){
   const sinceStart = currentIndex - trend[0].index;
   const sinceArrow = sinceStart < -0.05 ? '▼' : (sinceStart > 0.05 ? '▲' : '—');
   document.getElementById('stat-since-start').innerHTML = (sinceStart>=0?'+':'')+sinceStart.toFixed(1)+' <span class="trend-arrow">'+sinceArrow+'</span>';
-  document.getElementById('rounds-footnote').textContent = `Based on ${rounds.length} rounds posted`;
+  const totalSegmentsForFootnote = rounds.reduce((s,r)=> s + (r.holes===18?2:1), 0);
+  document.getElementById('rounds-footnote').textContent = `Based on ${rounds.length} rounds posted (${totalSegmentsForFootnote} segments)`;
 
   // title reflects the actual best-n/2 count for however many segments are posted right now
   const totalSegments = rounds.reduce((s,r)=> s + (r.holes===18?2:1), 0);
