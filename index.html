@@ -284,14 +284,14 @@
   </section>
 
   <section>
-    <h2><span class="wii-only">📊</span><span id="trend-title">Best n⁄2 Trend</span> <span class="idx">Average of the best n⁄2 of n nine-hole segments, running total</span></h2>
+    <h2><span class="wii-only">📊</span><span id="trend-title">Handicap</span></h2>
     <div class="chart-box"><canvas id="trendChart" height="150"></canvas></div>
     <p class="note" id="regressionCrossNote" style="margin-top:8px;"></p>
   </section>
 
   <section>
     <h2><span class="wii-only">🏆</span>Course Records</h2>
-    <p class="idx-note">Click for more data</p>
+    <p class="idx-note" style="margin-bottom:0;">Click for more data</p>
     <table class="course-records-table">
       <thead><tr><th>Course (#, Last)</th><th style="text-align:right">Best<br>Score</th><th style="text-align:right">Curr. Exp.</th></tr></thead>
       <tbody id="course-record-table"></tbody>
@@ -887,13 +887,13 @@ function recompute(){
       // the same day still get two separate points. Uses the exact same running best-half
       // math as `trend`, just recorded after every segment instead of after every round.
       const segN = segmentDiffs.length;
-      const segK = Math.max(1, Math.floor(segN/2));
+      const segK = Math.min(8, segN);
       const segSorted = [...segmentDiffs].sort((a,b)=>a-b);
       const segAvg = segSorted.slice(0,segK).reduce((s,x)=>s+x,0)/segK;
       chartSegPoints.push({segNum: chartSegPoints.length+1, index: Math.round(segAvg*10)/10});
     }
     const n = segmentDiffs.length;
-    const k = Math.max(1, Math.floor(n/2));
+    const k = Math.min(8, n);
     const sorted = [...segmentDiffs].sort((a,b)=>a-b);
     const avg = sorted.slice(0,k).reduce((s,x)=>s+x,0)/k;
     trend.push({date:r.date, day:dayNum(r.date)-t0, index:Math.round(avg*10)/10, diff:r.diff});
@@ -938,11 +938,10 @@ function recompute(){
   const totalSegmentsForFootnote = rounds.reduce((s,r)=> s + (r.holes===18?2:1), 0);
   document.getElementById('rounds-footnote').textContent = `Based on ${rounds.length} rounds posted (${totalSegmentsForFootnote} segments)`;
 
-  // title reflects the actual best-n/2 count for however many segments are posted right now
+  // best-8 count (or fewer, early in the season) -- kept for any code relying on currentBestCount
   const totalSegments = rounds.reduce((s,r)=> s + (r.holes===18?2:1), 0);
-  const bestCount = Math.max(1, Math.floor(totalSegments/2));
+  const bestCount = Math.min(8, totalSegments);
   currentBestCount = bestCount;
-  document.getElementById('trend-title').textContent = `Best ${bestCount} Segments Trend`;
 
   
 
@@ -1224,11 +1223,10 @@ function renderCharts(theme){
       {label:'Regression', data: chartSegPoints.map(p=>({x:p.segNum, y:chartReg.slope*p.segNum + chartReg.intercept})), borderColor:c.regLine, borderDash:[5,4], borderWidth:1.5, pointRadius:0, tension:0}
     ]},
     options:{responsive:true, maintainAspectRatio:false,
-      plugins:{legend:{labels:{color:c.ink,font:{family:c.font,size:13}}}},
+      plugins:{legend:{display:false}},
       scales:{
         y:{title:{display:true,text:'Handicap',color:c.ink,font:{family:c.font,size:14}},ticks:{color:c.ink,font:{family:c.font,size:13}},grid:{color:c.grid}},
         x:{type:'linear',
-          title:{display:true,text:'9-hole segment',color:c.ink,font:{family:c.font,size:13}},
           ticks:{color:c.ink,font:{family:c.font,size:12},stepSize:1},
           grid:{display:false}
         }
