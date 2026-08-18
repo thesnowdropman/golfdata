@@ -280,8 +280,6 @@
     <h2><span class="wii-only">⛳</span>Differential <span class="idx">every posted round</span></h2>
     <div class="chart-box"><canvas id="diffChart" height="130"></canvas></div>
     <p class="note" id="regressionCrossNote" style="margin-top:8px;"></p>
-    <p class="note" id="currentHcNote" style="margin-top:4px;"></p>
-    <p class="note" id="nextRoundHcNote" style="margin-top:4px;"></p>
   </section>
 
   <section>
@@ -1283,43 +1281,6 @@ function updateProjection(){
   } else {
     const readable = new Date(crossDate+'T00:00:00').toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
     noteEl.innerHTML = `Projected to drop below 30.0 on <strong>${readable}</strong>.`;
-  }
-
-  // Current HC: average of the lowest 8 of the most recent 20 ROUNDS (not segments) --
-  // this mirrors the real USGA Handicap Index formula (best 8 of last 20 rounds), which
-  // is a distinct calculation from this app's internal best-n/2-of-all-segments trend
-  // used everywhere else in the app.
-  const chronoRounds = [...rounds].sort((a,b)=> new Date(a.date) - new Date(b.date));
-  const currentHcEl = document.getElementById('currentHcNote');
-  if(currentHcEl){
-    const last20 = chronoRounds.slice(-20);
-    const sorted20 = last20.map(r=>r.diff).sort((a,b)=>a-b);
-    const lowest8 = sorted20.slice(0, Math.min(8, sorted20.length));
-    if(lowest8.length > 0){
-      const currentHc = lowest8.reduce((s,x)=>s+x,0) / lowest8.length;
-      currentHcEl.innerHTML = `Current HC: <strong>${currentHc.toFixed(1)}</strong>`;
-    } else {
-      currentHcEl.textContent = '';
-    }
-  }
-
-  // If next round equals expected: take the lowest 7 of the last 19 rounds, add the
-  // currently-projected next differential as an 8th value, and average all 8 -- a
-  // simulation of what Current HC would become if the next round lands exactly on
-  // today's projection.
-  const nextRoundHcEl = document.getElementById('nextRoundHcNote');
-  if(nextRoundHcEl){
-    const last19 = chronoRounds.slice(-19);
-    const sorted19 = last19.map(r=>r.diff).sort((a,b)=>a-b);
-    const lowest7 = sorted19.slice(0, Math.min(7, sorted19.length));
-    if(trend && trend.length && lowest7.length > 0){
-      const expectedNextDiff = trend[trend.length-1].index;
-      const combined = [expectedNextDiff, ...lowest7];
-      const ifNextEqualsExpected = combined.reduce((s,x)=>s+x,0) / combined.length;
-      nextRoundHcEl.innerHTML = `If next round equals expected: <strong>${ifNextEqualsExpected.toFixed(1)}</strong>`;
-    } else {
-      nextRoundHcEl.textContent = '';
-    }
   }
 }
 
