@@ -71,13 +71,13 @@
   .sub{font-size:15px;color:#5b5747;max-width:56ch;}
   html[data-theme="wii"] .sub{color:#5C86A0;font-weight:500;}
 
-  .strip{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:22px 0 8px;}
-  .cell{background:var(--paper-tan);padding:16px 12px;text-align:center;border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--card-shadow);}
+  .strip{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin:22px 0 8px;}
+  .cell{background:var(--paper-tan);padding:8px 3px;text-align:center;border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--card-shadow);min-width:0;overflow-wrap:break-word;display:flex;flex-direction:column;align-items:center;justify-content:center;}
   .cell .icon-row{font-size:18px;margin-bottom:4px;display:none;} html[data-theme="wii"] .cell .icon-row{display:block;}
-  .cell .num{font-family:var(--font-mono);font-weight:600;font-size:clamp(22px,5vw,32px);color:var(--fairway);}
+  .cell .num{font-family:var(--font-mono);font-weight:600;font-size:clamp(17px,4.2vw,24px);color:var(--fairway);}
   html[data-theme="wii"] .cell .num{font-family:var(--font-display);font-weight:700;color:var(--ink);}
   .cell.flag .num{color:var(--flag);}
-  .cell .lbl{font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:#8a8368;margin-top:4px;}
+  .cell .lbl{font-size:8.5px;letter-spacing:0.03em;text-transform:uppercase;color:#8a8368;margin-top:4px;line-height:1.25;min-height:2.5em;display:flex;align-items:center;}
   html[data-theme="wii"] .cell .lbl{color:#7C97A8;font-weight:600;}
   .trend-arrow{font-size:14px;margin-left:4px;}
   .rounds-footnote{font-size:11px;color:#8a8368;text-align:center;margin:8px 0 0;font-family:var(--font-mono);}
@@ -236,7 +236,6 @@
   .form-error{font-size:12px;color:var(--flag);margin-top:6px;display:none;}
 
   @media (max-width:600px){
-    .strip{grid-template-columns:repeat(2,1fr);}
     .proj-panel{flex-direction:column;align-items:stretch;}
     .proj-result{text-align:left;}
     .form-grid{grid-template-columns:1fr;}
@@ -271,9 +270,8 @@
   </header>
 
   <div class="strip">
-    <div class="cell"><div class="icon-row">⛳</div><div class="num" id="stat-index">—</div><div class="lbl">Proj Next Differential</div></div>
+    <div class="cell"><div class="icon-row">⛳</div><div class="num" id="stat-index">—</div><div class="lbl">Proj Next Diff.</div></div>
     <div class="cell flag"><div class="icon-row">📈</div><div class="num" id="stat-trend">—</div><div class="lbl">Last 30 days</div></div>
-    <div class="cell"><div class="icon-row">🐦</div><div class="num" id="stat-lowdiff">—</div><div class="lbl">Best Differential</div></div>
     <div class="cell flag"><div class="icon-row">🏆</div><div class="num" id="stat-since-start">—</div><div class="lbl">Since July ’26 start</div></div>
   </div>
   <p class="rounds-footnote" id="rounds-footnote"></p>
@@ -281,6 +279,7 @@
   <section>
     <h2><span class="wii-only">⛳</span>Differential <span class="idx">every posted round</span></h2>
     <div class="chart-box"><canvas id="diffChart" height="130"></canvas></div>
+    <p class="note" id="regressionCrossNote" style="margin-top:8px;"></p>
   </section>
 
   <section>
@@ -919,7 +918,6 @@ function recompute(){
   const per30 = reg.slope*30;
   const arrow = per30 < -0.05 ? '▼' : (per30 > 0.05 ? '▲' : '—');
   document.getElementById('stat-trend').innerHTML = (per30>=0?'+':'')+per30.toFixed(1)+' <span class="trend-arrow">'+arrow+'</span>';
-  document.getElementById('stat-lowdiff').textContent = Math.min(...rounds.map(r=>r.diff)).toFixed(1);
   const sinceStart = currentIndex - trend[0].index;
   const sinceArrow = sinceStart < -0.05 ? '▼' : (sinceStart > 0.05 ? '▲' : '—');
   document.getElementById('stat-since-start').innerHTML = (sinceStart>=0?'+':'')+sinceStart.toFixed(1)+' <span class="trend-arrow">'+sinceArrow+'</span>';
@@ -978,6 +976,7 @@ function recompute(){
   renderCourseRecords();
   refreshCourseLookup();
   renderCharts(currentTheme);
+  updateProjection();
   renderFutureRounds();
 }
 
@@ -1211,10 +1210,10 @@ function renderCharts(theme){
       {label:'Regression', type:'line', data: diffRoundNums.map(x=>({x, y: bestHalfReg.slope*x + bestHalfReg.intercept})), borderColor:c.regLine, borderDash:[5,4], borderWidth:1.5, pointRadius:0, tension:0}
     ]},
     options:{responsive:true, maintainAspectRatio:false,
-      plugins:{legend:{labels:{color:c.ink,font:{family:c.font,size:13}}}},
+      plugins:{legend:{labels:{color:c.ink,font:{family:c.font,size:13},filter:(item)=>item.text !== 'Regression'}}},
       scales:{
         y:{title:{display:true,text:'Differential',color:c.ink,font:{family:c.font,size:14}},ticks:{color:c.ink,font:{family:c.font,size:13}},grid:{color:c.grid}},
-        x:{title:{display:true,text:'Round number',color:c.ink,font:{family:c.font,size:13}},ticks:{color:c.ink,font:{family:c.font,size:13},stepSize:1},grid:{display:false}}
+        x:{title:{display:false},ticks:{color:c.ink,font:{family:c.font,size:13},stepSize:1},grid:{display:false}}
       },
       onClick: (evt, elements) => {
         if(elements.length > 0){
@@ -1231,6 +1230,59 @@ function renderCharts(theme){
 }
 
 // ================= PROJECTION =================
+function regressionCrossDate(){
+  // Fit a regression against OUTING NUMBER (one per round played, 9 or 18 holes both count
+  // as one), find how many more outings are needed to cross below 30.0, then convert that
+  // into a real date using the player's actual pace (outings per day) -- measured against
+  // TODAY's real date, not the last round's date. That means every day that passes without
+  // a new round pushes the projected date further out, since the pace keeps dropping while
+  // the calendar keeps moving.
+  if(!trend || trend.length === 0) return null;
+
+  const totalOutings = trend.length;
+  const outingPoints = trend.map((p, i) => ({ x: i + 1, y: p.index }));
+  const n = outingPoints.length;
+  const sx = outingPoints.reduce((s,p)=>s+p.x, 0);
+  const sy = outingPoints.reduce((s,p)=>s+p.y, 0);
+  const sxy = outingPoints.reduce((s,p)=>s+p.x*p.y, 0);
+  const sxx = outingPoints.reduce((s,p)=>s+p.x*p.x, 0);
+  const denom = (n*sxx - sx*sx);
+  if(denom === 0) return null;
+  const outingSlope = (n*sxy - sx*sy) / denom;
+  const outingIntercept = (sy - outingSlope*sx) / n;
+
+  if(outingSlope >= 0) return null; // not trending down per outing played
+
+  const targetOutingNum = (30.0 - outingIntercept) / outingSlope;
+  const outingsNeeded = Math.max(0, Math.ceil(targetOutingNum) - totalOutings);
+
+  const today = new Date();
+  if(outingsNeeded === 0){
+    return today.toISOString().slice(0,10);
+  }
+
+  const firstRoundDate = new Date(trend[0].date+'T00:00:00');
+  const daysSinceFirstRound = Math.max(1, Math.round((today - firstRoundDate) / 86400000));
+  const avgOutingsPerDay = totalOutings / daysSinceFirstRound;
+  if(avgOutingsPerDay <= 0) return null;
+
+  const daysNeeded = Math.ceil(outingsNeeded / avgOutingsPerDay);
+  const projectedMs = today.getTime() + daysNeeded * 86400000;
+  return new Date(projectedMs).toISOString().slice(0,10);
+}
+
+function updateProjection(){
+  const noteEl = document.getElementById('regressionCrossNote');
+  if(!noteEl) return;
+  const crossDate = regressionCrossDate();
+  if(!crossDate){
+    noteEl.textContent = 'Regression is flat or trending up — not projected to drop below 30.0 at this rate.';
+    return;
+  }
+  const readable = new Date(crossDate+'T00:00:00').toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
+  noteEl.innerHTML = `Regression projected to drop below 30.0 on <strong>${readable}</strong>.`;
+}
+
 // ================= ROUND DETAIL MODAL =================
 const detailOverlay = document.getElementById('detailOverlay');
 const detailModal = document.getElementById('detailModal');
