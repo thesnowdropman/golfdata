@@ -1137,10 +1137,16 @@ function renderCourseRecords(){
 
   const buildCourseRow = (row) => {
     const tr = document.createElement('tr');
+    let expCellContent = '—';
+    if(row.expScore !== null){
+      const diff = row.expScore - row.bestScore;
+      const arrowText = diff === 0 ? 'E' : (diff > 0 ? `↑${diff}` : `↓${Math.abs(diff)}`);
+      expCellContent = `${row.expScore} ${arrowText}`;
+    }
     tr.innerHTML = `
       <td class="course-name">${row.course}<br><span class="topar">(${row.count}, ${shortMonthYear(row.latestDate)})</span></td>
       <td class="diff-cell"><span class="score-topar-wrap"><span class="score-num">${row.bestScore}</span><span class="topar">${toParStr(row.bestScore, row.course)}</span></span></td>
-      <td class="diff-cell">${row.expScore !== null ? row.expScore : '—'}</td>
+      <td class="diff-cell">${expCellContent}</td>
     `;
     tr.addEventListener('click', ()=>{ navStack = []; openCourseDetail(row.course); });
     return tr;
