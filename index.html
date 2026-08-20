@@ -835,8 +835,18 @@ let PAR_BY_COURSE = {
 // ever shown for courses with a known-good location. A course missing from here just
 // silently gets no weather shown -- never a wrong-location guess.
 const COURSE_LOCATIONS = {
-  "Sligo Creek Golf Course": {lat: 38.9897, lon: -77.0303}, // Silver Spring, MD
-  "Patty Jewett Golf Course": {lat: 38.8564, lon: -104.9127}, // Manitou Springs, CO
+  "Sligo Creek Golf Course": {lat: 39.0126, lon: -77.0186}, // Silver Spring, MD 20901
+  "Needwood Executive": {lat: 39.1348, lon: -77.1497}, // Derwood, MD 20855
+  "Paint Branch Golf Course": {lat: 38.9807, lon: -76.9369}, // College Park, MD 20740
+  "Northwest - Inside 9": {lat: 39.0762, lon: -77.0555}, // Silver Spring, MD 20906
+  "East Potomac Golf Links (B)": {lat: 38.8786, lon: -77.0157}, // Washington, DC 20024
+  "Oak Creek Golf Club": {lat: 38.8262, lon: -76.7852}, // Upper Marlboro, MD 20774 -- not in round history yet
+  "Bowie Golf Club": {lat: 39.0068, lon: -76.7791}, // Bowie, MD 20715
+  "Patty Jewett Golf Course": {lat: 38.8600, lon: -104.8214}, // Colorado Springs, CO 80907
+  "Enterprise Golf Course": {lat: 38.8892, lon: -76.7458}, // Mitchellville, MD 20721
+  "Laytonsville Golf Course": {lat: 39.2298, lon: -77.1341}, // Laytonsville, MD 20882
+  "Rock Creek Golf Course": {lat: 38.9528, lon: -77.0225}, // Washington, DC 20011
+  "Rehoboth Beach CC": {lat: 38.7204, lon: -75.0760}, // Rehoboth Beach, DE 19971
 };
 // Snapshot of the hardcoded defaults, taken before anything can mutate PAR_BY_COURSE.
 // Cloud/local sync always merges onto THIS, never onto whatever PAR_BY_COURSE currently
@@ -1107,7 +1117,7 @@ async function attachFutureRoundsWeather(){
     const icon = weatherIconFor(daily.weathercode[idx]);
     const temp = Math.round(daily.temperature_2m_max[idx]);
     const rain = Math.round(daily.precipitation_probability_max[idx]);
-    el.innerHTML = `${icon} ${temp}° · ${rain}%`;
+    el.innerHTML = ` ${icon}${temp}° · ${rain}%🌧️`;
     el.style.display = '';
   }
 }
