@@ -375,6 +375,7 @@
     <h3 id="editCourseTitle">Edit course</h3>
     <p class="note" style="margin-top:2px;">Updates the default rating/slope used to autofill future rounds here, and the location used for weather. Doesn't change ratings/slopes already saved on past rounds.</p>
     <div class="form-grid">
+      <div class="full"><label>Course name</label><input id="ec-name" type="text"></div>
       <div><label>Course rating</label><input id="ec-rating" type="number" step="0.1" placeholder="e.g. 69.8"></div>
       <div><label>Slope rating</label><input id="ec-slope" type="number" step="1" placeholder="e.g. 116"></div>
       <div class="full">
@@ -1196,11 +1197,11 @@ const weatherCache = {}; // keyed by "lat,lon" -- one fetch per course location 
 async function fetchWeatherFor(lat, lon){
   const key = `${lat},${lon}`;
   if(weatherCache[key]) return weatherCache[key];
-  const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=weathercode,temperature_2m_max,precipitation_probability_max&temperature_unit=fahrenheit&forecast_days=16&timezone=auto`;
+  const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=temperature_2m,precipitation_probability,precipitation,weathercode&temperature_unit=fahrenheit&precipitation_unit=inch&forecast_days=16&timezone=auto`;
   try {
     const res = await fetch(url);
     const data = await res.json();
-    weatherCache[key] = data.daily || null;
+    weatherCache[key] = data.hourly || null;
     return weatherCache[key];
   } catch(e){
     weatherCache[key] = null;
@@ -1208,26 +1209,72 @@ async function fetchWeatherFor(lat, lon){
   }
 }
 
-// Attaches a small icon + temp + rain% line to each future-round row that has a known
-// course location and falls within Open-Meteo's forecast window (~16 days out). Runs
-// AFTER the rows are already rendered, so a slow/failed fetch never blocks the table
-// itself from showing.
+// Pulls out just the hours belonging to one specific date from the full 16-day hourly
+// series -- Open-Meteo returns one continuous run of hourly timestamps, not split by day.
+function hoursForDate(hourly, dateStr){
+  if(!hourly || !hourly.time) return [];
+  const out = [];
+  hourly.time.forEach((t, i) => {
+    if(t.slice(0,10) === dateStr){
+      out.push({
+        hour: parseInt(t.slice(11,13), 10),
+        temp: hourly.temperature_2m[i],
+        rain: hourly.precipitation_probability[i],
+        precipIn: hourly.precipitation[i],
+        code: hourly.weathercode[i]
+      });
+    }
+  });
+  return out;
+}
+
+// Attaches a compact weather summary to each future-round row that has a known course
+// location and falls within Open-Meteo's forecast window (~16 days out): the icon and
+// temp AT tee time, plus the WORST-CASE (max) rain chance across tee time and the three
+// hours after -- the window that actually matters for whether you'll get rained on.
+// Runs AFTER the rows are already rendered, so a slow/failed fetch never blocks the
+// table itself from showing.
 async function attachFutureRoundsWeather(){
   const rowsNeedingWeather = document.querySelectorAll('[data-weather-lat]');
   for(const el of rowsNeedingWeather){
     const lat = el.dataset.weatherLat;
     const lon = el.dataset.weatherLon;
     const dateStr = el.dataset.weatherDate;
-    const daily = await fetchWeatherFor(lat, lon);
-    if(!daily || !daily.time) continue;
-    const idx = daily.time.indexOf(dateStr);
-    if(idx === -1) continue; // date outside the forecast window
-    const icon = weatherIconFor(daily.weathercode[idx]);
-    const temp = Math.round(daily.temperature_2m_max[idx]);
-    const rain = Math.round(daily.precipitation_probability_max[idx]);
-    el.innerHTML = ` ${icon}${temp}° · ${rain}%🌧️`;
+    const teeHour = parseInt(el.dataset.weatherHour, 10);
+    const hourly = await fetchWeatherFor(lat, lon);
+    const dayHours = hoursForDate(hourly, dateStr);
+    if(dayHours.length === 0) continue; // date outside the forecast window
+    const teeHourData = dayHours.find(h => h.hour === teeHour) || dayHours[0];
+    const window = dayHours.filter(h => h.hour >= teeHour && h.hour <= teeHour + 3);
+    const maxRain = window.length ? Math.max(...window.map(h => h.rain)) : teeHourData.rain;
+    const icon = weatherIconFor(teeHourData.code);
+    const temp = Math.round(teeHourData.temp);
+    el.innerHTML = ` ${icon}${temp}° · ${Math.round(maxRain)}%🌧️`;
     el.style.display = '';
   }
+}
+
+// Renders the full day's hour-by-hour temp + rain chance for a future round's detail
+// view -- reuses whatever's already cached from the row-level fetch, so this is usually
+// instant; only fetches fresh if this course's location hasn't been pulled yet this
+// page load.
+async function attachHourlyWeatherDetail(f){
+  const container = document.getElementById('futureHourlyWeather');
+  if(!container) return;
+  const loc = COURSE_LOCATIONS[f.course];
+  if(!loc) return;
+  const hourly = await fetchWeatherFor(loc.lat, loc.lon);
+  const dayHours = hoursForDate(hourly, f.date);
+  if(dayHours.length === 0) return; // date outside the forecast window
+  const teeHour = f.hour != null ? f.hour : 9;
+  const rows = dayHours.map(h => {
+    const isTeeHour = h.hour === teeHour;
+    return `<div style="display:flex;justify-content:space-between;padding:3px 0;${isTeeHour ? 'font-weight:700;color:var(--fairway);' : ''}">
+      <span>${formatHourLabel(h.hour)}${isTeeHour ? ' ⛳' : ''}</span>
+      <span>${weatherIconFor(h.code)} ${Math.round(h.temp)}° · ${Math.round(h.rain)}%🌧️ · ${h.precipIn.toFixed(2)}in</span>
+    </div>`;
+  }).join('');
+  container.innerHTML = `<p class="note" style="margin:14px 0 4px;">Hour-by-hour forecast</p>${rows}`;
 }
 
 function parForFutureRound(f){
@@ -1273,8 +1320,9 @@ function renderFutureRounds(){
     }
 
     const loc = COURSE_LOCATIONS[f.course];
+    const teeHour = f.hour != null ? f.hour : 9;
     const weatherPlaceholder = loc
-      ? `<span class="idx-note" style="display:none;" data-weather-lat="${loc.lat}" data-weather-lon="${loc.lon}" data-weather-date="${f.date}"></span>`
+      ? `<span class="idx-note" style="display:none;" data-weather-lat="${loc.lat}" data-weather-lon="${loc.lon}" data-weather-date="${f.date}" data-weather-hour="${teeHour}"></span>`
       : '';
 
     return `
@@ -1792,7 +1840,7 @@ function openCourseDetail(courseName){
     .sort((a,b) => new Date(b.date) - new Date(a.date));
 
   document.getElementById('detailTitle').innerHTML = `${courseName} <span class="crr-rs">${atCourse[0].rating.toFixed(1)}/${atCourse[0].slope}</span>`;
-  document.getElementById('detailMiiRow').innerHTML = `<div style="text-align:right;"><button class="btn secondary" id="courseEditBtn" type="button" style="padding:4px 10px;font-size:12px;">Edit</button></div>`;
+  document.getElementById('detailMiiRow').innerHTML = `<div style="text-align:left;"><button class="btn secondary" id="courseEditBtn" type="button" style="padding:2px 7px;font-size:10px;">Edit</button></div>`;
   document.getElementById('courseEditBtn').addEventListener('click', ()=> openEditCourseModal(courseName));
 
   const buildRow = (r) => {
@@ -2259,6 +2307,7 @@ let editingCourseName = null;
 function openEditCourseModal(courseName){
   editingCourseName = courseName;
   document.getElementById('editCourseTitle').textContent = `Edit ${courseName}`;
+  document.getElementById('ec-name').value = courseName;
   const key = courseName.trim().toLowerCase();
   const reg = courseRegistry[key];
   document.getElementById('ec-rating').value = reg ? reg.rating : '';
@@ -2281,20 +2330,35 @@ document.getElementById('editCourseCancel').addEventListener('click', ()=>{
 });
 document.getElementById('editCourseSave').addEventListener('click', ()=>{
   if(!editingCourseName) return;
+
+  // Renaming first, if the name changed -- reuses the app's existing rename mechanism,
+  // which now correctly carries par, rating/slope, and location over to the new name
+  // before any explicit edits below get applied on top of it.
+  const newName = document.getElementById('ec-name').value.trim();
+  let activeCourseName = editingCourseName;
+  if(newName && newName !== editingCourseName){
+    courseRenames[editingCourseName] = newName;
+    persistRenames();
+    applyCourseRenames();
+    rebuildRoundsArray();
+    activeCourseName = newName;
+  }
+
   const rating = parseFloat(document.getElementById('ec-rating').value);
   const slope = parseFloat(document.getElementById('ec-slope').value);
   if(!isNaN(rating) && !isNaN(slope)){
-    const holesAtCourse = rounds.find(r => r.course === editingCourseName);
-    saveCourseInfoToRegistry(editingCourseName, rating, slope, holesAtCourse ? holesAtCourse.holes : 18);
+    const holesAtCourse = rounds.find(r => r.course === activeCourseName);
+    saveCourseInfoToRegistry(activeCourseName, rating, slope, holesAtCourse ? holesAtCourse.holes : 18);
   }
   const resolvedLoc = editCourseLocationInput.getResolved();
   if(resolvedLoc){
-    COURSE_LOCATIONS[editingCourseName] = {lat: resolvedLoc.lat, lon: resolvedLoc.lon};
+    COURSE_LOCATIONS[activeCourseName] = {lat: resolvedLoc.lat, lon: resolvedLoc.lon};
     persistLocations();
   }
   document.getElementById('editCourseOverlay').classList.remove('open');
   navStack = [];
-  openCourseDetail(editingCourseName);
+  recompute();
+  openCourseDetail(activeCourseName);
 });
 
 document.getElementById('ff-course').addEventListener('input', (e)=>{
@@ -2484,6 +2548,8 @@ function openFutureRoundDetail(id){
     body += `<p class="note" style="margin:16px 0 6px;">No par entered yet — you can add it when you log this round.</p>`;
   }
 
+  body += `<div id="futureHourlyWeather"></div>`;
+
   body += `<div style="text-align:center;margin-top:14px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
     <button class="btn" id="enterScoreBtn" type="button">Enter Score</button>
     <button class="btn secondary" id="editFutureBtn" type="button">Edit</button>
@@ -2493,6 +2559,7 @@ function openFutureRoundDetail(id){
   document.getElementById('detailBody').innerHTML = body;
   detailOverlay.classList.add('open');
   updateBackButton();
+  attachHourlyWeatherDetail(f);
 
   document.getElementById('enterScoreBtn').addEventListener('click', ()=>{
     enterScoreForFuture(f);
