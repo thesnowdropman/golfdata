@@ -1264,14 +1264,14 @@ async function attachHourlyWeatherDetail(f){
   const loc = COURSE_LOCATIONS[f.course];
   if(!loc) return;
   const hourly = await fetchWeatherFor(loc.lat, loc.lon);
-  const dayHours = hoursForDate(hourly, f.date).filter(h => h.hour >= 6 && h.hour <= 19);
-  if(dayHours.length === 0) return; // date outside the forecast window
   const teeHour = f.hour != null ? f.hour : 9;
+  const dayHours = hoursForDate(hourly, f.date).filter(h => h.hour >= teeHour - 1 && h.hour <= teeHour + 5);
+  if(dayHours.length === 0) return; // date outside the forecast window
   const rows = dayHours.map(h => {
     const isTeeHour = h.hour === teeHour;
     return `<div style="display:flex;justify-content:space-between;padding:3px 0;${isTeeHour ? 'font-weight:700;color:var(--fairway);' : ''}">
       <span>${formatHourLabel(h.hour)}${isTeeHour ? ' ⛳' : ''}</span>
-      <span>${weatherIconFor(h.code)} ${Math.round(h.temp)}° · ${Math.round(h.rain)}%🌧️ · ${h.precipIn.toFixed(2)}in</span>
+      <span>${Math.round(h.temp)}° ${weatherIconFor(h.code)} · ${Math.round(h.rain)}% 🌧️</span>
     </div>`;
   }).join('');
   container.innerHTML = `<p class="note" style="margin:14px 0 4px;">Hour-by-hour forecast</p>${rows}`;
