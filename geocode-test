@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Course Geocode Test</title>
+<style>
+  body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;max-width:700px;margin:24px auto;padding:0 16px;color:#28321F;background:#FBF8F0;}
+  h1{font-size:20px;}
+  p.note{color:#8a8368;font-size:13px;}
+  table{width:100%;border-collapse:collapse;margin-top:16px;}
+  th,td{text-align:left;padding:8px;border-bottom:1px solid #d8cfae;font-size:14px;vertical-align:top;}
+  th{font-size:11px;text-transform:uppercase;letter-spacing:0.05em;color:#8a8368;}
+  .match{color:#33553B;}
+  .none{color:#A8402F;}
+  .coords{font-family:ui-monospace,monospace;font-size:12px;color:#666;}
+  .status{font-style:italic;color:#8a8368;}
+</style>
+</head>
+<body>
+<h1>Course Geocode Test</h1>
+<p class="note">Calling the real Open-Meteo geocoding API (no key needed) directly from your browser for each course name currently in your data. Nothing here touches the main app — this is just to review match quality first.</p>
+<table id="resultsTable">
+  <thead><tr><th>Course Name (as stored)</th><th>Best Match Found</th><th>Coordinates</th></tr></thead>
+  <tbody id="resultsBody"></tbody>
+</table>
+
+<script>
+const courses = ["Patty Jewett Golf Course","Sligo Creek Golf Course","Enterprise Golf Course","Northwest - Inside 9","Laytonsville Golf Course","East Potomac Golf Links (B)","Bowie Golf Club","Needwood Executive","Rock Creek Golf Course","Rehoboth Beach CC","Paint Branch Golf Course"];
+
+async function geocode(name){
+  // Strip parenthetical suffixes like "(B)" before searching -- these are user notation, not part of the real place name
+  const cleanName = name.replace(/\s*\([^)]*\)\s*$/, '').trim();
+  const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(cleanName)}&count=1&language=en&format=json`;
+  try {
+    const res = await fetch(url);
+    const data = await res.json();
+    if(data.results && data.results.length > 0){
+      const r = data.results[0];
+      return { found: true, matchName: r.name, admin: [r.admin2, r.admin1, r.country].filter(Boolean).join(', '), lat: r.latitude, lon: r.longitude };
+    }
+    return { found: false };
+  } catch(e){
+    return { found: false, error: e.message };
+  }
+}
+
+async function run(){
+  const tbody = document.getElementById('resultsBody');
+  for(const course of courses){
+    const row = document.createElement('tr');
+    row.innerHTML = `<td>${course}</td><td class="status" colspan="2">Looking up…</td>`;
+    tbody.appendChild(row);
+    const result = await geocode(course);
+    if(result.found){
+      row.innerHTML = `
+        <td>${course}</td>
+        <td class="match">${result.matchName}<br><span class="coords">${result.admin}</span></td>
+        <td class="coords">${result.lat.toFixed(4)}, ${result.lon.toFixed(4)}</td>
+      `;
+    } else {
+      row.innerHTML = `<td>${course}</td><td class="none">No match found${result.error ? ' (' + result.error + ')' : ''}</td><td>—</td>`;
+    }
+  }
+}
+run();
+</script>
+</body>
+</html>
