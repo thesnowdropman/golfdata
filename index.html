@@ -280,13 +280,15 @@
   </section>
 
   <section>
-    <h2><span class="wii-only">🏆</span>Course Records</h2>
-    <p class="idx-note" style="margin-bottom:0;">Click for more data</p>
-    <table class="course-records-table">
-      <thead><tr><th>Course (#, Last)</th><th style="text-align:right">Best<br>Score</th><th style="text-align:right">Curr. Exp.</th></tr></thead>
-      <tbody id="course-record-table"></tbody>
+    <div class="h2-row">
+      <h2><span class="wii-only">🗓️</span>Future Rounds</h2>
+      <button class="btn" id="addFutureBtn" type="button">+ Add Future Round</button>
+    </div>
+    <table class="future-rounds-table">
+      <thead><tr><th>Course</th><th style="text-align:right">Exp. Score</th></tr></thead>
+      <tbody id="futureRoundsList"></tbody>
     </table>
-    <p class="note" id="courseRecordsSeeMore" style="font-style:italic;cursor:pointer;margin:8px 0 0;display:none;">Show more…</p>
+    <p class="note" id="noFutureRoundsNote" style="display:none;">Nothing planned yet.</p>
   </section>
 
   <section>
@@ -302,15 +304,13 @@
   </section>
 
   <section>
-    <div class="h2-row">
-      <h2><span class="wii-only">🗓️</span>Future Rounds</h2>
-      <button class="btn" id="addFutureBtn" type="button">+ Add Future Round</button>
-    </div>
-    <table class="future-rounds-table">
-      <thead><tr><th>Course</th><th style="text-align:right">Exp. Score</th></tr></thead>
-      <tbody id="futureRoundsList"></tbody>
+    <h2><span class="wii-only">🏆</span>Course Records</h2>
+    <p class="idx-note" style="margin-bottom:0;">Click for more data</p>
+    <table class="course-records-table">
+      <thead><tr><th>Course (#, Last)</th><th style="text-align:right">Best<br>Score</th><th style="text-align:right">Curr. Exp.</th></tr></thead>
+      <tbody id="course-record-table"></tbody>
     </table>
-    <p class="note" id="noFutureRoundsNote" style="display:none;">Nothing planned yet.</p>
+    <p class="note" id="courseRecordsSeeMore" style="font-style:italic;cursor:pointer;margin:8px 0 0;display:none;">Show more…</p>
   </section>
 
 </div>
