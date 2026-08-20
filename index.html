@@ -1247,9 +1247,13 @@ async function attachFutureRoundsWeather(){
     const teeHourData = dayHours.find(h => h.hour === teeHour) || dayHours[0];
     const window = dayHours.filter(h => h.hour >= teeHour && h.hour <= teeHour + 3);
     const worstHour = window.length ? window.reduce((a,b)=> b.rain > a.rain ? b : a) : teeHourData;
+    // Rain % still reflects the single worst hour in the window (the "how likely" question),
+    // but inches now sums every hour in that same window -- the "how much total" question,
+    // not just whatever fell in the single worst hour.
+    const totalInches = window.length ? window.reduce((s,h)=> s + h.precipIn, 0) : teeHourData.precipIn;
     const icon = weatherIconFor(teeHourData.code);
     const temp = Math.round(teeHourData.temp);
-    el.innerHTML = ` · ${icon} ${temp}° · ${Math.round(worstHour.rain)}% rain (${worstHour.precipIn.toFixed(2)}in)`;
+    el.innerHTML = ` · ${icon} ${temp}° ☔️ ${Math.round(worstHour.rain)}% ${totalInches.toFixed(1)}”`;
     el.style.display = '';
   }
 }
