@@ -1249,7 +1249,7 @@ async function attachFutureRoundsWeather(){
     const maxRain = window.length ? Math.max(...window.map(h => h.rain)) : teeHourData.rain;
     const icon = weatherIconFor(teeHourData.code);
     const temp = Math.round(teeHourData.temp);
-    el.innerHTML = ` ${icon}${temp}° · ${Math.round(maxRain)}%🌧️`;
+    el.innerHTML = ` · ${temp}°${icon} · ${Math.round(maxRain)}%🌧️`;
     el.style.display = '';
   }
 }
@@ -1264,7 +1264,7 @@ async function attachHourlyWeatherDetail(f){
   const loc = COURSE_LOCATIONS[f.course];
   if(!loc) return;
   const hourly = await fetchWeatherFor(loc.lat, loc.lon);
-  const dayHours = hoursForDate(hourly, f.date);
+  const dayHours = hoursForDate(hourly, f.date).filter(h => h.hour >= 6 && h.hour <= 19);
   if(dayHours.length === 0) return; // date outside the forecast window
   const teeHour = f.hour != null ? f.hour : 9;
   const rows = dayHours.map(h => {
