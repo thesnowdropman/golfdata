@@ -831,6 +831,13 @@ let PAR_BY_COURSE = {
   "Rock Creek Golf Course": 32,
   "Paint Branch Golf Course": 31,
 };
+// Coordinates supplied directly rather than auto-geocoded, so weather forecasts are only
+// ever shown for courses with a known-good location. A course missing from here just
+// silently gets no weather shown -- never a wrong-location guess.
+const COURSE_LOCATIONS = {
+  "Sligo Creek Golf Course": {lat: 38.9897, lon: -77.0303}, // Silver Spring, MD
+  "Patty Jewett Golf Course": {lat: 38.8564, lon: -104.9127}, // Manitou Springs, CO
+};
 // Snapshot of the hardcoded defaults, taken before anything can mutate PAR_BY_COURSE.
 // Cloud/local sync always merges onto THIS, never onto whatever PAR_BY_COURSE currently
 // holds -- so a course renamed or added in the file always wins over stale synced data
@@ -1052,6 +1059,59 @@ function formatFutureDateTime(f){
   return `${dateFmt}, ${formatTimeLabel(f.hour, f.minute || 0)}`;
 }
 
+// Small icon set for the WMO weather codes Open-Meteo returns. Covers the common daily
+// summary codes; anything unmapped falls back to a generic cloud rather than nothing.
+function weatherIconFor(code){
+  if(code === 0) return '☀️';
+  if(code === 1 || code === 2) return '⛅';
+  if(code === 3) return '☁️';
+  if(code === 45 || code === 48) return '🌫️';
+  if(code >= 51 && code <= 67) return '🌧️';
+  if(code >= 71 && code <= 77) return '🌨️';
+  if(code >= 80 && code <= 82) return '🌧️';
+  if(code >= 85 && code <= 86) return '🌨️';
+  if(code >= 95) return '⛈️';
+  return '☁️';
+}
+
+const weatherCache = {}; // keyed by "lat,lon" -- one fetch per course location per page load, not per round
+async function fetchWeatherFor(lat, lon){
+  const key = `${lat},${lon}`;
+  if(weatherCache[key]) return weatherCache[key];
+  const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=weathercode,temperature_2m_max,precipitation_probability_max&temperature_unit=fahrenheit&forecast_days=16&timezone=auto`;
+  try {
+    const res = await fetch(url);
+    const data = await res.json();
+    weatherCache[key] = data.daily || null;
+    return weatherCache[key];
+  } catch(e){
+    weatherCache[key] = null;
+    return null;
+  }
+}
+
+// Attaches a small icon + temp + rain% line to each future-round row that has a known
+// course location and falls within Open-Meteo's forecast window (~16 days out). Runs
+// AFTER the rows are already rendered, so a slow/failed fetch never blocks the table
+// itself from showing.
+async function attachFutureRoundsWeather(){
+  const rowsNeedingWeather = document.querySelectorAll('[data-weather-lat]');
+  for(const el of rowsNeedingWeather){
+    const lat = el.dataset.weatherLat;
+    const lon = el.dataset.weatherLon;
+    const dateStr = el.dataset.weatherDate;
+    const daily = await fetchWeatherFor(lat, lon);
+    if(!daily || !daily.time) continue;
+    const idx = daily.time.indexOf(dateStr);
+    if(idx === -1) continue; // date outside the forecast window
+    const icon = weatherIconFor(daily.weathercode[idx]);
+    const temp = Math.round(daily.temperature_2m_max[idx]);
+    const rain = Math.round(daily.precipitation_probability_max[idx]);
+    el.innerHTML = `${icon} ${temp}° · ${rain}%`;
+    el.style.display = '';
+  }
+}
+
 function parForFutureRound(f){
   if(f.pars) return f.pars.reduce((s,x)=>s+x,0);
   return PAR_BY_COURSE[f.course] != null ? PAR_BY_COURSE[f.course] : null;
@@ -1094,9 +1154,14 @@ function renderFutureRounds(){
       }
     }
 
+    const loc = COURSE_LOCATIONS[f.course];
+    const weatherPlaceholder = loc
+      ? `<span class="idx-note" style="display:none;" data-weather-lat="${loc.lat}" data-weather-lon="${loc.lon}" data-weather-date="${f.date}"></span>`
+      : '';
+
     return `
       <tr class="future-round-row" data-id="${f.id}" style="cursor:pointer;">
-        <td class="course-name"><span class="date-cell">${formatFutureDateTime(f)}</span><br><span class="badge ${f.holes===18?'b18':'b9'}">${f.holes===18?'18':'9'}</span>${f.course}</td>
+        <td class="course-name"><span class="date-cell">${formatFutureDateTime(f)}</span>${weatherPlaceholder}<br><span class="badge ${f.holes===18?'b18':'b9'}">${f.holes===18?'18':'9'}</span>${f.course}</td>
         <td class="diff-cell">${exp !== null ? exp + toParTextFor(exp, par) : '—'}${probLineHtml}</td>
       </tr>`;
   }).join('');
@@ -1106,6 +1171,7 @@ function renderFutureRounds(){
       openFutureRoundDetail(el.dataset.id);
     });
   });
+  attachFutureRoundsWeather();
 }
 
 function renderCourseRecords(){
