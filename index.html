@@ -349,6 +349,9 @@
         <label>Par per hole <span class="idx-note" style="margin:0;display:inline;">— new course, only needed once</span></label>
         <div class="hole-inputs" id="parInputsRow"></div>
         <p class="idx-note" id="parTotalReadout" style="margin:6px 0 0;"></p>
+        <label style="margin-top:10px;display:block;">Location (city, state) <span class="idx-note" style="margin:0;display:inline;">— for weather on future rounds, optional</span></label>
+        <input id="f-location" type="text" placeholder="e.g. Silver Spring, MD">
+        <p class="idx-note" id="f-location-preview" style="margin:4px 0 0;"></p>
       </div>
       <div class="full">
         <label>Score per hole</label>
@@ -361,6 +364,28 @@
     <div class="form-actions">
       <button class="btn secondary" id="addCancel" type="button">Cancel</button>
       <button class="btn" id="addSave" type="button">Save round</button>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT COURSE INFO MODAL -->
+<div class="overlay" id="editCourseOverlay">
+  <div class="modal" id="editCourseModal">
+    <button class="modal-close" id="editCourseClose" aria-label="Close">✕</button>
+    <h3 id="editCourseTitle">Edit course</h3>
+    <p class="note" style="margin-top:2px;">Updates the default rating/slope used to autofill future rounds here, and the location used for weather. Doesn't change ratings/slopes already saved on past rounds.</p>
+    <div class="form-grid">
+      <div><label>Course rating</label><input id="ec-rating" type="number" step="0.1" placeholder="e.g. 69.8"></div>
+      <div><label>Slope rating</label><input id="ec-slope" type="number" step="1" placeholder="e.g. 116"></div>
+      <div class="full">
+        <label>Location (city, state)</label>
+        <input id="ec-location" type="text" placeholder="e.g. Silver Spring, MD">
+        <p class="idx-note" id="ec-location-preview" style="margin:4px 0 0;"></p>
+      </div>
+    </div>
+    <div class="form-actions">
+      <button class="btn secondary" id="editCourseCancel" type="button">Cancel</button>
+      <button class="btn" id="editCourseSave" type="button">Save</button>
     </div>
   </div>
 </div>
@@ -390,6 +415,9 @@
         <label>Par per hole <span class="idx-note" style="margin:0;display:inline;">— optional, only needed once</span></label>
         <div class="hole-inputs" id="futureParInputsRow"></div>
         <p class="idx-note" id="futureParTotalReadout" style="margin:6px 0 0;"></p>
+        <label style="margin-top:10px;display:block;">Location (city, state) <span class="idx-note" style="margin:0;display:inline;">— for weather on future rounds, optional</span></label>
+        <input id="ff-location" type="text" placeholder="e.g. Silver Spring, MD">
+        <p class="idx-note" id="ff-location-preview" style="margin:4px 0 0;"></p>
       </div>
     </div>
     <div class="form-error" id="futureFormError">Fill in the course, date, rating, and slope.</div>
@@ -571,16 +599,31 @@ function rebuildRoundsArray(){
 // to any future round added under the old plain name too.
 function applyCourseRenames(){
   if(Object.keys(courseRenames).length === 0) return;
-  // Only relabels the round's course text. Deliberately does NOT touch PAR_BY_COURSE --
-  // par is never copied or shared between the old and new names, so the two courses
-  // stay fully independent aside from the rename itself. If the renamed round's own
-  // par isn't registered under its new name yet, it's set from that SAME round's own
-  // stored hole pars -- self-contained, never borrowed from the other course.
+  // Only relabels the round's course text. Deliberately does NOT touch PAR_BY_COURSE or
+  // courseRegistry (rating/slope) -- both are genuinely tied to a specific tee
+  // configuration (a course's 9-hole and 18-hole versions can have real, different par
+  // and rating/slope), so the two names stay fully independent aside from the rename
+  // itself. If the renamed round's own par/rating/slope isn't registered under its new
+  // name yet, each is backfilled from that SAME round's own stored data -- self-contained,
+  // never borrowed from the other course.
   [...baseRounds, ...addedRounds].forEach(r=>{
     if(courseRenames[r.course]){
+      const oldName = r.course;
       r.course = courseRenames[r.course];
       if(PAR_BY_COURSE[r.course] == null && r.holeDetail){
         PAR_BY_COURSE[r.course] = r.holeDetail.pars.reduce((s,x)=>s+x,0);
+      }
+      const newKey = r.course.trim().toLowerCase();
+      if(courseRegistry[newKey] == null && !isNaN(r.rating) && !isNaN(r.slope)){
+        courseRegistry[newKey] = {rating: r.rating, slope: r.slope, holes: r.holes};
+        persistCourseRegistry();
+      }
+      // Location is the one exception to "never shared between old and new names" --
+      // a course's (9) and (18) variants are the same physical place, so the new name
+      // inherits whatever location the old name already had, if it doesn't have its own.
+      if(COURSE_LOCATIONS[r.course] == null && COURSE_LOCATIONS[oldName] != null){
+        COURSE_LOCATIONS[r.course] = COURSE_LOCATIONS[oldName];
+        persistLocations();
       }
     }
   });
@@ -597,7 +640,7 @@ function gatherSyncableState(){
   return {
     addedRounds, deletedKeys, courseRenames,
     addedFutureRounds, deletedFutureRoundIds,
-    courseRegistry, customPars: PAR_BY_COURSE,
+    courseRegistry, customPars: PAR_BY_COURSE, customLocations: COURSE_LOCATIONS,
     updatedAt: Date.now()
   };
 }
@@ -620,6 +663,7 @@ function applyRemoteState(data){
   if(data.deletedFutureRoundIds) deletedFutureRoundIds = data.deletedFutureRoundIds;
   if(data.courseRegistry) courseRegistry = Object.assign({}, COURSE_REGISTRY_DEFAULTS, data.courseRegistry);
   if(data.customPars) PAR_BY_COURSE = Object.assign({}, PAR_BY_COURSE_DEFAULTS, data.customPars);
+  if(data.customLocations) COURSE_LOCATIONS = Object.assign({}, COURSE_LOCATIONS_DEFAULTS, data.customLocations);
 
   // keep the localStorage mirror current too, so the offline fallback matches the cloud
   if(hasStorage){
@@ -631,6 +675,7 @@ function applyRemoteState(data){
       window.localStorage.setItem('anges-golf-future-rounds-deleted', JSON.stringify(deletedFutureRoundIds));
       window.localStorage.setItem('anges-golf-course-registry', JSON.stringify(courseRegistry));
       window.localStorage.setItem('anges-golf-custom-pars', JSON.stringify(PAR_BY_COURSE));
+      window.localStorage.setItem('anges-golf-course-locations', JSON.stringify(COURSE_LOCATIONS));
     }catch(e){}
   }
 
@@ -737,6 +782,7 @@ function loadPersisted(){
   }
   rebuildFutureRoundsArray();
   loadPersistedPars();
+  loadPersistedLocations();
   applyCourseRenames();
   rebuildRoundsArray();
   recompute();
@@ -834,13 +880,13 @@ let PAR_BY_COURSE = {
 // Coordinates supplied directly rather than auto-geocoded, so weather forecasts are only
 // ever shown for courses with a known-good location. A course missing from here just
 // silently gets no weather shown -- never a wrong-location guess.
-const COURSE_LOCATIONS = {
+let COURSE_LOCATIONS = {
   "Sligo Creek Golf Course": {lat: 39.0126, lon: -77.0186}, // Silver Spring, MD 20901
   "Needwood Executive": {lat: 39.1348, lon: -77.1497}, // Derwood, MD 20855
   "Paint Branch Golf Course": {lat: 38.9807, lon: -76.9369}, // College Park, MD 20740
   "Northwest - Inside 9": {lat: 39.0762, lon: -77.0555}, // Silver Spring, MD 20906
   "East Potomac Golf Links (B)": {lat: 38.8786, lon: -77.0157}, // Washington, DC 20024
-  "Oak Creek Golf Club": {lat: 38.8262, lon: -76.7852}, // Upper Marlboro, MD 20774 -- not in round history yet
+  "Oak Creek Golf Club": {lat: 38.8513, lon: -76.8331}, // Brock Hall, MD -- not in round history yet
   "Bowie Golf Club": {lat: 39.0068, lon: -76.7791}, // Bowie, MD 20715
   "Patty Jewett Golf Course": {lat: 38.8600, lon: -104.8214}, // Colorado Springs, CO 80907
   "Enterprise Golf Course": {lat: 38.8892, lon: -76.7458}, // Mitchellville, MD 20721
@@ -848,6 +894,19 @@ const COURSE_LOCATIONS = {
   "Rock Creek Golf Course": {lat: 38.9528, lon: -77.0225}, // Washington, DC 20011
   "Rehoboth Beach CC": {lat: 38.7204, lon: -75.0760}, // Rehoboth Beach, DE 19971
 };
+const COURSE_LOCATIONS_DEFAULTS = { ...COURSE_LOCATIONS };
+function persistLocations(){
+  if(!hasStorage) return;
+  try{ window.localStorage.setItem('anges-golf-course-locations', JSON.stringify(COURSE_LOCATIONS)); }catch(e){}
+  scheduleFirebaseSync();
+}
+function loadPersistedLocations(){
+  if(!hasStorage) return;
+  try{
+    const raw = window.localStorage.getItem('anges-golf-course-locations');
+    if(raw) COURSE_LOCATIONS = Object.assign({}, COURSE_LOCATIONS_DEFAULTS, JSON.parse(raw));
+  }catch(e){}
+}
 // Snapshot of the hardcoded defaults, taken before anything can mutate PAR_BY_COURSE.
 // Cloud/local sync always merges onto THIS, never onto whatever PAR_BY_COURSE currently
 // holds -- so a course renamed or added in the file always wins over stale synced data
@@ -1082,6 +1141,55 @@ function weatherIconFor(code){
   if(code >= 85 && code <= 86) return '🌨️';
   if(code >= 95) return '⛈️';
   return '☁️';
+}
+
+// Live geocoding for a user-typed "city, state" string when adding a new course. Shows
+// the resolved match back to the user BEFORE it's saved, so a bad match can be caught
+// immediately rather than discovered later from a wrong forecast.
+async function geocodeLocation(query){
+  if(!query || !query.trim()) return null;
+  const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query.trim())}&count=1&language=en&format=json`;
+  try {
+    const res = await fetch(url);
+    const data = await res.json();
+    if(data.results && data.results.length > 0){
+      const r = data.results[0];
+      return {
+        lat: r.latitude, lon: r.longitude,
+        label: [r.name, r.admin1, r.country].filter(Boolean).join(', ')
+      };
+    }
+    return null;
+  } catch(e){
+    return null;
+  }
+}
+
+// Wires a "city, state" text input to live-geocode on blur, showing the match in the
+// given preview element. Returns a getter for whatever was last successfully resolved,
+// so the calling form can commit it to COURSE_LOCATIONS on save (or skip it if the
+// field was left blank / never resolved).
+function wireLocationInput(inputId, previewId){
+  const input = document.getElementById(inputId);
+  const preview = document.getElementById(previewId);
+  let resolved = null;
+  input.addEventListener('blur', async ()=>{
+    const query = input.value.trim();
+    if(!query){ resolved = null; preview.textContent = ''; return; }
+    preview.textContent = 'Looking up…';
+    const match = await geocodeLocation(query);
+    if(match){
+      resolved = match;
+      preview.innerHTML = `Matched: <strong>${match.label}</strong>`;
+    } else {
+      resolved = null;
+      preview.textContent = 'No match found — location will be skipped (weather just won\u2019t show for this course).';
+    }
+  });
+  return {
+    reset(){ input.value = ''; preview.textContent = ''; resolved = null; },
+    getResolved(){ return resolved; }
+  };
 }
 
 const weatherCache = {}; // keyed by "lat,lon" -- one fetch per course location per page load, not per round
@@ -1684,7 +1792,8 @@ function openCourseDetail(courseName){
     .sort((a,b) => new Date(b.date) - new Date(a.date));
 
   document.getElementById('detailTitle').innerHTML = `${courseName} <span class="crr-rs">${atCourse[0].rating.toFixed(1)}/${atCourse[0].slope}</span>`;
-  document.getElementById('detailMiiRow').innerHTML = '';
+  document.getElementById('detailMiiRow').innerHTML = `<div style="text-align:right;"><button class="btn secondary" id="courseEditBtn" type="button" style="padding:4px 10px;font-size:12px;">Edit</button></div>`;
+  document.getElementById('courseEditBtn').addEventListener('click', ()=> openEditCourseModal(courseName));
 
   const buildRow = (r) => {
     const dateFmt = new Date(r.date+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
@@ -2001,6 +2110,7 @@ function openAddModal(){
   document.getElementById('newCourseBadge').style.display = 'none';
   document.getElementById('parInputsSection').style.display = 'none';
   document.getElementById('newCourseBestMsg').style.display = 'none';
+  mainLocationInput.reset();
   buildHoleInputs();
   addOverlay.classList.add('open');
 }
@@ -2057,6 +2167,12 @@ document.getElementById('addSave').addEventListener('click', ()=>{
       applyCourseRenames();
       rebuildRoundsArray();
     }
+    // The (18) course itself is the same physical place as its plain-name version --
+    // inherit that known location automatically rather than require re-entering it.
+    if(COURSE_LOCATIONS[course] == null && COURSE_LOCATIONS[baseName] != null){
+      COURSE_LOCATIONS[course] = COURSE_LOCATIONS[baseName];
+      persistLocations();
+    }
   }
 
   const newRound = {
@@ -2068,6 +2184,11 @@ document.getElementById('addSave').addEventListener('click', ()=>{
   PAR_BY_COURSE[course] = parTotal;
   persistPars();
   saveCourseInfoToRegistry(course, rating, slope, holes);
+  const resolvedLoc = mainLocationInput.getResolved();
+  if(resolvedLoc){
+    COURSE_LOCATIONS[course] = {lat: resolvedLoc.lat, lon: resolvedLoc.lon};
+    persistLocations();
+  }
 
   addedRounds.unshift(newRound);
   persistAdded();
@@ -2130,6 +2251,52 @@ function updateFutureExpScoreHint(){
   hint.style.display = 'block';
 }
 
+const mainLocationInput = wireLocationInput('f-location', 'f-location-preview');
+const futureLocationInput = wireLocationInput('ff-location', 'ff-location-preview');
+const editCourseLocationInput = wireLocationInput('ec-location', 'ec-location-preview');
+
+let editingCourseName = null;
+function openEditCourseModal(courseName){
+  editingCourseName = courseName;
+  document.getElementById('editCourseTitle').textContent = `Edit ${courseName}`;
+  const key = courseName.trim().toLowerCase();
+  const reg = courseRegistry[key];
+  document.getElementById('ec-rating').value = reg ? reg.rating : '';
+  document.getElementById('ec-slope').value = reg ? reg.slope : '';
+  editCourseLocationInput.reset();
+  const loc = COURSE_LOCATIONS[courseName];
+  if(loc){
+    document.getElementById('ec-location-preview').innerHTML = `Currently set. Enter a new location above to replace it.`;
+  }
+  detailOverlay.classList.remove('open');
+  document.getElementById('editCourseOverlay').classList.add('open');
+}
+document.getElementById('editCourseClose').addEventListener('click', ()=>{
+  document.getElementById('editCourseOverlay').classList.remove('open');
+  detailOverlay.classList.add('open');
+});
+document.getElementById('editCourseCancel').addEventListener('click', ()=>{
+  document.getElementById('editCourseOverlay').classList.remove('open');
+  detailOverlay.classList.add('open');
+});
+document.getElementById('editCourseSave').addEventListener('click', ()=>{
+  if(!editingCourseName) return;
+  const rating = parseFloat(document.getElementById('ec-rating').value);
+  const slope = parseFloat(document.getElementById('ec-slope').value);
+  if(!isNaN(rating) && !isNaN(slope)){
+    const holesAtCourse = rounds.find(r => r.course === editingCourseName);
+    saveCourseInfoToRegistry(editingCourseName, rating, slope, holesAtCourse ? holesAtCourse.holes : 18);
+  }
+  const resolvedLoc = editCourseLocationInput.getResolved();
+  if(resolvedLoc){
+    COURSE_LOCATIONS[editingCourseName] = {lat: resolvedLoc.lat, lon: resolvedLoc.lon};
+    persistLocations();
+  }
+  document.getElementById('editCourseOverlay').classList.remove('open');
+  navStack = [];
+  openCourseDetail(editingCourseName);
+});
+
 document.getElementById('ff-course').addEventListener('input', (e)=>{
   const typed = e.target.value.trim();
   const match = lookupCourseInfo(typed);
@@ -2180,6 +2347,7 @@ function openAddFutureModal(){
   document.getElementById('ffExpScoreHint').style.display = 'none';
   document.getElementById('futureNewCourseBadge').style.display = 'none';
   document.getElementById('futureParInputsSection').style.display = 'none';
+  futureLocationInput.reset();
   populateFutureTimeDropdowns();
   document.getElementById('ff-hour').value = 9;
   document.getElementById('ff-minute').value = 0;
@@ -2192,6 +2360,7 @@ function openEditFutureModal(f){
   document.getElementById('addFutureModalTitle').textContent = 'Edit planned round';
   document.getElementById('addFutureSave').textContent = 'Save changes';
   document.getElementById('futureFormError').style.display = 'none';
+  futureLocationInput.reset();
   document.getElementById('ff-course').value = f.course;
   document.getElementById('ff-date').value = f.date;
   document.getElementById('ff-holes').value = f.holes;
@@ -2272,6 +2441,11 @@ document.getElementById('addFutureSave').addEventListener('click', ()=>{
   }
   rebuildFutureRoundsArray();
   saveCourseInfoToRegistry(course, rating, slope, holes);
+  const resolvedLoc = futureLocationInput.getResolved();
+  if(resolvedLoc){
+    COURSE_LOCATIONS[course] = {lat: resolvedLoc.lat, lon: resolvedLoc.lon};
+    persistLocations();
+  }
   addFutureOverlay.classList.remove('open');
   renderFutureRounds();
 });
