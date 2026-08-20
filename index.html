@@ -882,18 +882,18 @@ let PAR_BY_COURSE = {
 // ever shown for courses with a known-good location. A course missing from here just
 // silently gets no weather shown -- never a wrong-location guess.
 let COURSE_LOCATIONS = {
-  "Sligo Creek Golf Course": {lat: 39.0126, lon: -77.0186}, // Silver Spring, MD 20901
-  "Needwood Executive": {lat: 39.1348, lon: -77.1497}, // Derwood, MD 20855
-  "Paint Branch Golf Course": {lat: 38.9807, lon: -76.9369}, // College Park, MD 20740
-  "Northwest - Inside 9": {lat: 39.0762, lon: -77.0555}, // Silver Spring, MD 20906
-  "East Potomac Golf Links (B)": {lat: 38.8786, lon: -77.0157}, // Washington, DC 20024
-  "Oak Creek Golf Club": {lat: 38.8513, lon: -76.8331}, // Brock Hall, MD -- not in round history yet
-  "Bowie Golf Club": {lat: 39.0068, lon: -76.7791}, // Bowie, MD 20715
-  "Patty Jewett Golf Course": {lat: 38.8600, lon: -104.8214}, // Colorado Springs, CO 80907
-  "Enterprise Golf Course": {lat: 38.8892, lon: -76.7458}, // Mitchellville, MD 20721
-  "Laytonsville Golf Course": {lat: 39.2298, lon: -77.1341}, // Laytonsville, MD 20882
-  "Rock Creek Golf Course": {lat: 38.9528, lon: -77.0225}, // Washington, DC 20011
-  "Rehoboth Beach CC": {lat: 38.7204, lon: -75.0760}, // Rehoboth Beach, DE 19971
+  "Sligo Creek Golf Course": {lat: 39.0126, lon: -77.0186, label: "Silver Spring, MD 20901"},
+  "Needwood Executive": {lat: 39.1348, lon: -77.1497, label: "Derwood, MD 20855"},
+  "Paint Branch Golf Course": {lat: 38.9807, lon: -76.9369, label: "College Park, MD 20740"},
+  "Northwest - Inside 9": {lat: 39.0762, lon: -77.0555, label: "Silver Spring, MD 20906"},
+  "East Potomac Golf Links (B)": {lat: 38.8786, lon: -77.0157, label: "Washington, DC 20024"},
+  "Oak Creek Golf Club": {lat: 38.8513, lon: -76.8331, label: "Brock Hall, MD"},
+  "Bowie Golf Club": {lat: 39.0068, lon: -76.7791, label: "Bowie, MD 20715"},
+  "Patty Jewett Golf Course": {lat: 38.8600, lon: -104.8214, label: "Colorado Springs, CO 80907"},
+  "Enterprise Golf Course": {lat: 38.8892, lon: -76.7458, label: "Mitchellville, MD 20721"},
+  "Laytonsville Golf Course": {lat: 39.2298, lon: -77.1341, label: "Laytonsville, MD 20882"},
+  "Rock Creek Golf Course": {lat: 38.9528, lon: -77.0225, label: "Washington, DC 20011"},
+  "Rehoboth Beach CC": {lat: 38.7204, lon: -75.0760, label: "Rehoboth Beach, DE 19971"},
 };
 const COURSE_LOCATIONS_DEFAULTS = { ...COURSE_LOCATIONS };
 function persistLocations(){
@@ -1548,9 +1548,10 @@ function moodEmoji(diff, allDiffs){
 function openDetail(idx){
   const r = rounds[idx];
   const isFirstRoundAtCourse = rounds.filter(x => x.course === r.course).length === 1;
-  document.getElementById('detailTitle').innerHTML = isFirstRoundAtCourse
-    ? `${r.course}<br><span class="new-best-num" style="font-style:italic;font-size:13px;font-weight:700;">New Course!</span>`
-    : r.course;
+  const loc = COURSE_LOCATIONS[r.course];
+  const locationLine = loc && loc.label ? `<br><span class="crr-rs">${loc.label}</span>` : '';
+  const newCourseLine = isFirstRoundAtCourse ? `<br><span class="new-best-num" style="font-style:italic;font-size:13px;font-weight:700;">New Course!</span>` : '';
+  document.getElementById('detailTitle').innerHTML = `${r.course}${locationLine}${newCourseLine}`;
   const dateFmt = new Date(r.date+'T00:00:00').toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
 
   const allDiffs = rounds.map(x=>x.diff);
@@ -1839,7 +1840,8 @@ function openCourseDetail(courseName){
     .filter(r => r.course === courseName)
     .sort((a,b) => new Date(b.date) - new Date(a.date));
 
-  document.getElementById('detailTitle').innerHTML = `${courseName} <span class="crr-rs">${atCourse[0].rating.toFixed(1)}/${atCourse[0].slope}</span>`;
+  const loc = COURSE_LOCATIONS[courseName];
+  document.getElementById('detailTitle').innerHTML = `${courseName} <span class="crr-rs">${atCourse[0].rating.toFixed(1)}/${atCourse[0].slope}</span>${loc && loc.label ? `<br><span class="crr-rs">${loc.label}</span>` : ''}`;
   document.getElementById('detailMiiRow').innerHTML = `<div style="text-align:left;"><button class="btn secondary" id="courseEditBtn" type="button" style="padding:2px 7px;font-size:10px;">Edit</button></div>`;
   document.getElementById('courseEditBtn').addEventListener('click', ()=> openEditCourseModal(courseName));
 
@@ -2234,7 +2236,7 @@ document.getElementById('addSave').addEventListener('click', ()=>{
   saveCourseInfoToRegistry(course, rating, slope, holes);
   const resolvedLoc = mainLocationInput.getResolved();
   if(resolvedLoc){
-    COURSE_LOCATIONS[course] = {lat: resolvedLoc.lat, lon: resolvedLoc.lon};
+    COURSE_LOCATIONS[course] = {lat: resolvedLoc.lat, lon: resolvedLoc.lon, label: resolvedLoc.label};
     persistLocations();
   }
 
@@ -2314,8 +2316,14 @@ function openEditCourseModal(courseName){
   document.getElementById('ec-slope').value = reg ? reg.slope : '';
   editCourseLocationInput.reset();
   const loc = COURSE_LOCATIONS[courseName];
+  const locationField = document.getElementById('ec-location');
+  const locationPreview = document.getElementById('ec-location-preview');
   if(loc){
-    document.getElementById('ec-location-preview').innerHTML = `Currently set. Enter a new location above to replace it.`;
+    locationField.value = loc.label || `${loc.lat.toFixed(4)}, ${loc.lon.toFixed(4)}`;
+    locationPreview.textContent = 'Current location shown above -- edit and click away to replace it.';
+  } else {
+    locationField.value = '';
+    locationPreview.textContent = '';
   }
   detailOverlay.classList.remove('open');
   document.getElementById('editCourseOverlay').classList.add('open');
@@ -2352,7 +2360,7 @@ document.getElementById('editCourseSave').addEventListener('click', ()=>{
   }
   const resolvedLoc = editCourseLocationInput.getResolved();
   if(resolvedLoc){
-    COURSE_LOCATIONS[activeCourseName] = {lat: resolvedLoc.lat, lon: resolvedLoc.lon};
+    COURSE_LOCATIONS[activeCourseName] = {lat: resolvedLoc.lat, lon: resolvedLoc.lon, label: resolvedLoc.label};
     persistLocations();
   }
   document.getElementById('editCourseOverlay').classList.remove('open');
@@ -2507,7 +2515,7 @@ document.getElementById('addFutureSave').addEventListener('click', ()=>{
   saveCourseInfoToRegistry(course, rating, slope, holes);
   const resolvedLoc = futureLocationInput.getResolved();
   if(resolvedLoc){
-    COURSE_LOCATIONS[course] = {lat: resolvedLoc.lat, lon: resolvedLoc.lon};
+    COURSE_LOCATIONS[course] = {lat: resolvedLoc.lat, lon: resolvedLoc.lon, label: resolvedLoc.label};
     persistLocations();
   }
   addFutureOverlay.classList.remove('open');
