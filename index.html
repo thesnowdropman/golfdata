@@ -1246,10 +1246,10 @@ async function attachFutureRoundsWeather(){
     if(dayHours.length === 0) continue; // date outside the forecast window
     const teeHourData = dayHours.find(h => h.hour === teeHour) || dayHours[0];
     const window = dayHours.filter(h => h.hour >= teeHour && h.hour <= teeHour + 3);
-    const maxRain = window.length ? Math.max(...window.map(h => h.rain)) : teeHourData.rain;
+    const worstHour = window.length ? window.reduce((a,b)=> b.rain > a.rain ? b : a) : teeHourData;
     const icon = weatherIconFor(teeHourData.code);
     const temp = Math.round(teeHourData.temp);
-    el.innerHTML = ` · ${temp}°${icon} · ${Math.round(maxRain)}%🌧️`;
+    el.innerHTML = ` · ${icon} ${temp}° · ${Math.round(worstHour.rain)}% rain (${worstHour.precipIn.toFixed(2)}in)`;
     el.style.display = '';
   }
 }
@@ -1271,7 +1271,7 @@ async function attachHourlyWeatherDetail(f){
     const isTeeHour = h.hour === teeHour;
     return `<div style="display:flex;justify-content:space-between;padding:3px 0;${isTeeHour ? 'font-weight:700;color:var(--fairway);' : ''}">
       <span>${formatHourLabel(h.hour)}${isTeeHour ? ' ⛳' : ''}</span>
-      <span>${Math.round(h.temp)}° ${weatherIconFor(h.code)} · ${Math.round(h.rain)}% 🌧️</span>
+      <span>${weatherIconFor(h.code)} ${Math.round(h.temp)}° · ${Math.round(h.rain)}% rain (${h.precipIn.toFixed(2)}in)</span>
     </div>`;
   }).join('');
   container.innerHTML = `<p class="note" style="margin:14px 0 4px;">Hour-by-hour forecast</p>${rows}`;
