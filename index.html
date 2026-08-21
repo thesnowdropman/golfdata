@@ -1287,7 +1287,7 @@ async function attachHourlyWeatherDetail(f){
   if(dayHours.length === 0) return; // date outside the forecast window
   const rows = dayHours.map(h => {
     const isTeeHour = h.hour === teeHour;
-    return `<div style="display:flex;justify-content:space-between;padding:3px 0;${isTeeHour ? 'font-weight:700;color:var(--fairway);' : ''}">
+    return `<div style="display:flex;justify-content:space-between;padding:3px 0;">
       <span>${formatHourLabel(h.hour)}${isTeeHour ? ' ⛳' : ''}</span>
       <span>${weatherIconFor(h.code)} ${Math.round(h.temp)}° · ${Math.round(h.rain)}% rain (${h.precipIn.toFixed(2)}in)</span>
     </div>`;
@@ -1345,7 +1345,7 @@ function renderFutureRounds(){
 
     return `
       <tr class="future-round-row" data-id="${f.id}" style="cursor:pointer;">
-        <td class="course-name"><span class="date-cell">${formatFutureDateTime(f)}</span>${weatherPlaceholder}<br><span class="badge ${f.holes===18?'b18':'b9'}">${f.holes===18?'18':'9'}</span>${f.course}</td>
+        <td class="course-name"><span class="badge ${f.holes===18?'b18':'b9'}">${f.holes===18?'18':'9'}</span>${f.course}<br><span class="date-cell">${formatFutureDateTime(f)}</span>${weatherPlaceholder}</td>
         <td class="diff-cell">${exp !== null ? exp + toParTextFor(exp, par) : '—'}${probLineHtml}</td>
       </tr>`;
   }).join('');
