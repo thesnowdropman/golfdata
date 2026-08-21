@@ -1170,7 +1170,7 @@ async function geocodeLocation(query){
       const r = data.results[0];
       return {
         lat: r.latitude, lon: r.longitude,
-        label: [r.name, r.admin1, r.country].filter(Boolean).join(', ')
+        label: [r.name, r.admin1].filter(Boolean).join(', ')
       };
     }
     return null;
@@ -1568,7 +1568,7 @@ function openDetail(idx){
   const loc = COURSE_LOCATIONS[r.course];
   const locationLine = loc && loc.label ? `<span class="crr-rs title-subline">${loc.label}</span>` : '';
   const newCourseLine = isFirstRoundAtCourse ? `<span class="new-best-num title-subline" style="font-style:italic;font-size:13px;font-weight:700;">New Course!</span>` : '';
-  document.getElementById('detailTitle').innerHTML = `${r.course} <span class="crr-rs">${r.rating.toFixed(1)}/${r.slope}</span>${locationLine}${newCourseLine}`;
+  document.getElementById('detailTitle').innerHTML = `${r.course}<span class="crr-rs title-subline">${r.rating.toFixed(1)}/${r.slope}</span>${locationLine}${newCourseLine}`;
   const dateFmt = new Date(r.date+'T00:00:00').toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
 
   const allDiffs = rounds.map(x=>x.diff);
@@ -1858,7 +1858,7 @@ function openCourseDetail(courseName){
     .sort((a,b) => new Date(b.date) - new Date(a.date));
 
   const loc = COURSE_LOCATIONS[courseName];
-  document.getElementById('detailTitle').innerHTML = `${courseName} <span class="crr-rs">${atCourse[0].rating.toFixed(1)}/${atCourse[0].slope}</span>${loc && loc.label ? `<span class="crr-rs title-subline">${loc.label}</span>` : ''}`;
+  document.getElementById('detailTitle').innerHTML = `${courseName}<span class="crr-rs title-subline">${atCourse[0].rating.toFixed(1)}/${atCourse[0].slope}</span>${loc && loc.label ? `<span class="crr-rs title-subline">${loc.label}</span>` : ''}`;
   document.getElementById('detailMiiRow').innerHTML = `<div style="text-align:left;"><button class="btn secondary" id="courseEditBtn" type="button" style="padding:2px 7px;font-size:10px;">Edit</button></div>`;
   document.getElementById('courseEditBtn').addEventListener('click', ()=> openEditCourseModal(courseName));
 
@@ -2560,7 +2560,7 @@ function openFutureRoundDetail(id){
 
   document.getElementById('detailMiiRow').innerHTML = '';
   const futureLoc = COURSE_LOCATIONS[f.course];
-  document.getElementById('detailTitle').innerHTML = `${f.course} <span class="crr-rs">${f.rating.toFixed(1)}/${f.slope}</span>${futureLoc && futureLoc.label ? `<span class="crr-rs title-subline">${futureLoc.label}</span>` : ''}`;
+  document.getElementById('detailTitle').innerHTML = `${f.course}<span class="crr-rs title-subline">${f.rating.toFixed(1)}/${f.slope}</span>${futureLoc && futureLoc.label ? `<span class="crr-rs title-subline">${futureLoc.label}</span>` : ''}`;
 
   let body = `<p class="note" style="margin:2px 0 12px;">${dateFmt}${f.hour != null ? ' · ' + formatTimeLabel(f.hour, f.minute || 0) : ''} · ${f.holes} holes · Exp. Score ${exp !== null ? exp : '—'}</p>`;
 
@@ -2632,4 +2632,3 @@ loadPersisted();
 </script>
 </body>
 </html>
- 
