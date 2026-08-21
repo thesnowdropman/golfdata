@@ -1455,7 +1455,13 @@ function renderCharts(theme){
       bestHalfReg.intercept = (bsy - bestHalfReg.slope*bsx) / bn;
     }
   }
-  const diffRoundNums = trendByRoundNum.map(p=>p.x);
+  // Build the line's x-range directly from the SAME source the scatter dots use
+  // (roundNumberOf), rather than from trend's own length -- guarantees the regression
+  // line can never fall short of the actual plotted rounds, regardless of what might
+  // cause trend to diverge from roundNumberOf for some edge-case round.
+  const allPlottedRoundNums = rounds.map(r => roundNumberOf[roundKey(r)]).filter(n => n != null);
+  const maxRoundNum = allPlottedRoundNums.length ? Math.max(...allPlottedRoundNums) : 0;
+  const diffRoundNums = Array.from({length: maxRoundNum}, (_, i) => i + 1);
 
   diffChart = new Chart(document.getElementById('diffChart'), {
     type:'scatter',
