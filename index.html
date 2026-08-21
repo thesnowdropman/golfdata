@@ -186,6 +186,7 @@
   .modal{background:var(--paper);border-radius:calc(var(--radius) + 6px);max-width:520px;width:100%;padding:22px;position:relative;box-shadow:0 20px 50px rgba(0,0,0,0.25);}
   .modal-close{position:absolute;top:14px;right:14px;background:none;border:none;font-size:20px;cursor:pointer;color:var(--ink);}
   .modal-back{position:absolute;top:12px;left:14px;background:none;border:none;font-size:14px;font-weight:600;cursor:pointer;color:var(--fairway);padding:4px 2px;}
+  .modal-edit{display:inline-block;margin:0 0 10px;background:none;border:1.5px solid var(--fairway);border-radius:6px;font-family:var(--font-mono);font-size:11px;font-weight:600;cursor:pointer;color:var(--fairway);padding:3px 8px;}
   .modal h3{font-family:var(--font-display);color:var(--fairway);margin:0 0 4px;font-size:20px;line-height:1.25;}
   html[data-theme="wii"] .modal h3{color:var(--ink);font-weight:700;}
   .modal .mii-row{display:flex;align-items:center;gap:12px;margin-bottom:10px;margin-top:24px;}
@@ -1566,14 +1567,13 @@ function openDetail(idx){
   const r = rounds[idx];
   const isFirstRoundAtCourse = rounds.filter(x => x.course === r.course).length === 1;
   const loc = COURSE_LOCATIONS[r.course];
-  const locationLine = loc && loc.label ? `<span class="crr-rs title-subline">${loc.label}</span>` : '';
+  const rsLocLine = `${r.rating.toFixed(1)}/${r.slope}${loc && loc.label ? ` · ${loc.label}` : ''}`;
   const newCourseLine = isFirstRoundAtCourse ? `<span class="new-best-num title-subline" style="font-style:italic;font-size:13px;font-weight:700;">New Course!</span>` : '';
-  document.getElementById('detailTitle').innerHTML = `${r.course}<span class="crr-rs title-subline">${r.rating.toFixed(1)}/${r.slope}</span>${locationLine}${newCourseLine}`;
+  document.getElementById('detailTitle').innerHTML = `${r.course}<span class="crr-rs title-subline">${rsLocLine}</span>${newCourseLine}`;
   const dateFmt = new Date(r.date+'T00:00:00').toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
 
-  const allDiffs = rounds.map(x=>x.diff);
-  const mood = moodEmoji(r.diff, allDiffs);
-  document.getElementById('detailMiiRow').innerHTML = `<span style="font-size:40px;line-height:1;">${mood.emoji}</span><div style="font-size:13px;">${mood.label}</div>`;
+  document.getElementById('detailMiiRow').innerHTML = '';
+  document.getElementById('detailMiiRow').style.display = 'none';
 
   let body = `<p class="note" style="margin:2px 0 0;">${dateFmt} · ${r.holes}-hole round · Differential ${r.diff.toFixed(1)}</p>`;
 
@@ -1858,9 +1858,12 @@ function openCourseDetail(courseName){
     .sort((a,b) => new Date(b.date) - new Date(a.date));
 
   const loc = COURSE_LOCATIONS[courseName];
-  document.getElementById('detailTitle').innerHTML = `${courseName}<span class="crr-rs title-subline">${atCourse[0].rating.toFixed(1)}/${atCourse[0].slope}</span>${loc && loc.label ? `<span class="crr-rs title-subline">${loc.label}</span>` : ''}`;
-  document.getElementById('detailMiiRow').innerHTML = `<div style="text-align:left;"><button class="btn secondary" id="courseEditBtn" type="button" style="padding:2px 7px;font-size:10px;">Edit</button></div>`;
-  document.getElementById('courseEditBtn').addEventListener('click', ()=> openEditCourseModal(courseName));
+  const rsLine = `${atCourse[0].rating.toFixed(1)}/${atCourse[0].slope}`;
+  const locSuffix = loc && loc.label ? ` · ${loc.label}` : '';
+  document.getElementById('detailTitle').innerHTML = `${courseName}<span class="crr-rs title-subline">${rsLine}${locSuffix}</span>`;
+  document.getElementById('detailMiiRow').innerHTML = '';
+  document.getElementById('detailMiiRow').style.display = 'none';
+  let courseDetailBody = `<button class="modal-edit" id="courseEditBtn" type="button">Edit</button>`;
 
   const buildRow = (r) => {
     const dateFmt = new Date(r.date+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
@@ -1897,6 +1900,7 @@ function openCourseDetail(courseName){
   `;
 
   document.getElementById('detailBody').innerHTML = `
+    ${courseDetailBody}
     ${summaryHtml}
     <p class="note" style="margin:2px 0 10px;">${atCourse.length} round${atCourse.length===1?'':'s'} at this course · tap one for details</p>
     <div class="course-round-list">${shownHtml}</div>
@@ -1905,6 +1909,7 @@ function openCourseDetail(courseName){
   `;
   detailOverlay.classList.add('open');
   updateBackButton();
+  document.getElementById('courseEditBtn').addEventListener('click', ()=> openEditCourseModal(courseName));
 
   document.querySelectorAll('.course-round-row').forEach(el=>{
     el.addEventListener('click', ()=>{
@@ -2560,7 +2565,8 @@ function openFutureRoundDetail(id){
 
   document.getElementById('detailMiiRow').innerHTML = '';
   const futureLoc = COURSE_LOCATIONS[f.course];
-  document.getElementById('detailTitle').innerHTML = `${f.course}<span class="crr-rs title-subline">${f.rating.toFixed(1)}/${f.slope}</span>${futureLoc && futureLoc.label ? `<span class="crr-rs title-subline">${futureLoc.label}</span>` : ''}`;
+  const futureRsLocLine = `${f.rating.toFixed(1)}/${f.slope}${futureLoc && futureLoc.label ? ` · ${futureLoc.label}` : ''}`;
+  document.getElementById('detailTitle').innerHTML = `${f.course}<span class="crr-rs title-subline">${futureRsLocLine}</span>`;
 
   let body = `<p class="note" style="margin:2px 0 12px;">${dateFmt}${f.hour != null ? ' · ' + formatTimeLabel(f.hour, f.minute || 0) : ''} · ${f.holes} holes · Exp. Score ${exp !== null ? exp : '—'}</p>`;
 
