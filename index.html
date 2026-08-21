@@ -1861,9 +1861,11 @@ function openCourseDetail(courseName){
   const rsLine = `${atCourse[0].rating.toFixed(1)}/${atCourse[0].slope}`;
   const locSuffix = loc && loc.label ? ` · ${loc.label}` : '';
   document.getElementById('detailTitle').innerHTML = `${courseName}<span class="crr-rs title-subline">${rsLine}${locSuffix}</span>`;
-  document.getElementById('detailMiiRow').innerHTML = '';
-  document.getElementById('detailMiiRow').style.display = 'none';
-  let courseDetailBody = `<button class="modal-edit" id="courseEditBtn" type="button">Edit</button>`;
+  document.getElementById('detailMiiRow').innerHTML = `<button class="modal-edit" id="courseEditBtn" type="button">Edit</button>`;
+  document.getElementById('detailMiiRow').style.display = '';
+  document.getElementById('detailMiiRow').style.marginTop = '8px';
+  document.getElementById('detailMiiRow').style.marginBottom = '4px';
+  let courseDetailBody = '';
 
   const buildRow = (r) => {
     const dateFmt = new Date(r.date+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
