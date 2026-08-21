@@ -213,6 +213,10 @@
   .sc-noscore{font-size:13px;color:#cfd3e0;padding:16px 4px;text-align:center;}
 
   .btn.danger{background:#B23A2E;color:#fff;}
+  .view-toggle{border:1.5px solid var(--fairway);border-radius:8px;overflow:hidden;}
+  .view-toggle-btn{flex:1;font-family:var(--font-mono);font-size:13px;font-weight:600;padding:9px 0;background:#fff;color:var(--fairway);border:none;cursor:pointer;}
+  .view-toggle-btn.active{background:var(--fairway);color:#fff;}
+  .view-toggle-btn:not(:last-child){border-right:1.5px solid var(--fairway);}
 
   /* add-round form */
   .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px;}
@@ -1131,6 +1135,14 @@ function formatFutureDateTime(f){
 
 // Small icon set for the WMO weather codes Open-Meteo returns. Covers the common daily
 // summary codes; anything unmapped falls back to a generic cloud rather than nothing.
+// Drops the leading zero on a sub-inch amount (0.2 -> .2), keeps it for anything 1.0 or
+// over -- checks the threshold against the ROUNDED value, not the raw one, so a value
+// like 0.95 (which rounds to 1.0) doesn't end up displayed as ".9" by mistake.
+function formatInches(val){
+  const fixed = val.toFixed(1);
+  return parseFloat(fixed) < 1 ? fixed.replace(/^0/, '') : fixed;
+}
+
 function weatherIconFor(code){
   if(code === 0) return '☀️';
   if(code === 1 || code === 2) return '⛅';
@@ -1253,7 +1265,7 @@ async function attachFutureRoundsWeather(){
     const totalInches = window.length ? window.reduce((s,h)=> s + h.precipIn, 0) : teeHourData.precipIn;
     const icon = weatherIconFor(teeHourData.code);
     const temp = Math.round(teeHourData.temp);
-    el.innerHTML = ` · ${icon} ${temp}° ☔️ ${Math.round(worstHour.rain)}% ${totalInches.toFixed(1)}”`;
+    el.innerHTML = ` · ${icon} ${temp}° ☔️ ${Math.round(worstHour.rain)}% ${formatInches(totalInches)}”`;
     el.style.display = '';
   }
 }
@@ -2551,16 +2563,22 @@ function openFutureRoundDetail(id){
   let body = `<p class="note" style="margin:2px 0 12px;">${dateFmt}${f.hour != null ? ' · ' + formatTimeLabel(f.hour, f.minute || 0) : ''} · ${f.holes} holes · Exp. Score ${exp !== null ? exp : '—'}</p>`;
 
   const atCourse = rounds.filter(r => r.course.trim().toLowerCase() === f.course.trim().toLowerCase());
+  let scorecardHtml = '';
   if(atCourse.some(r => r.holeDetail)){
-    body += buildHoleStatsHtml(atCourse);
+    scorecardHtml = buildHoleStatsHtml(atCourse);
   } else if(f.pars){
     const rows = [{label:'Par', rawFn:(h)=>f.pars[h], isPar:true}];
-    body += `<p class="note" style="margin:16px 0 6px;">Planned par (no rounds played here yet)</p>${renderScorecardChunks(f.holes, f.pars, rows)}`;
+    scorecardHtml = `<p class="note" style="margin:16px 0 6px;">Planned par (no rounds played here yet)</p>${renderScorecardChunks(f.holes, f.pars, rows)}`;
   } else {
-    body += `<p class="note" style="margin:16px 0 6px;">No par entered yet — you can add it when you log this round.</p>`;
+    scorecardHtml = `<p class="note" style="margin:16px 0 6px;">No par entered yet — you can add it when you log this round.</p>`;
   }
 
+  body += `<div class="view-toggle" style="display:flex;margin-top:12px;">
+    <button class="view-toggle-btn active" id="futureViewWeatherBtn" type="button">Weather</button>
+    <button class="view-toggle-btn" id="futureViewScorecardBtn" type="button">Scorecard</button>
+  </div>`;
   body += `<div id="futureHourlyWeather"></div>`;
+  body += `<div id="futureScorecardView" style="display:none;">${scorecardHtml}</div>`;
 
   body += `<div style="text-align:center;margin-top:14px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
     <button class="btn" id="enterScoreBtn" type="button">Enter Score</button>
@@ -2572,6 +2590,19 @@ function openFutureRoundDetail(id){
   detailOverlay.classList.add('open');
   updateBackButton();
   attachHourlyWeatherDetail(f);
+
+  document.getElementById('futureViewWeatherBtn').addEventListener('click', ()=>{
+    document.getElementById('futureViewWeatherBtn').classList.add('active');
+    document.getElementById('futureViewScorecardBtn').classList.remove('active');
+    document.getElementById('futureHourlyWeather').style.display = '';
+    document.getElementById('futureScorecardView').style.display = 'none';
+  });
+  document.getElementById('futureViewScorecardBtn').addEventListener('click', ()=>{
+    document.getElementById('futureViewScorecardBtn').classList.add('active');
+    document.getElementById('futureViewWeatherBtn').classList.remove('active');
+    document.getElementById('futureScorecardView').style.display = '';
+    document.getElementById('futureHourlyWeather').style.display = 'none';
+  });
 
   document.getElementById('enterScoreBtn').addEventListener('click', ()=>{
     enterScoreForFuture(f);
