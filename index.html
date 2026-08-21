@@ -1259,11 +1259,12 @@ async function attachFutureRoundsWeather(){
     const dayHours = hoursForDate(hourly, dateStr);
     if(dayHours.length === 0) continue; // date outside the forecast window
     const teeHourData = dayHours.find(h => h.hour === teeHour) || dayHours[0];
-    const window = dayHours.filter(h => h.hour >= teeHour && h.hour <= teeHour + 3);
+    // Matches exactly the hour range shown in the hourly detail card (tee-1 through
+    // tee+5), so the row summary always reflects precisely what you'd see if you tapped in.
+    const window = dayHours.filter(h => h.hour >= teeHour - 1 && h.hour <= teeHour + 5);
     const worstHour = window.length ? window.reduce((a,b)=> b.rain > a.rain ? b : a) : teeHourData;
-    // Rain % still reflects the single worst hour in the window (the "how likely" question),
-    // but inches now sums every hour in that same window -- the "how much total" question,
-    // not just whatever fell in the single worst hour.
+    // Rain % is the largest single-hour chance across that window; inches is the total
+    // summed across the same window -- two different questions ("how likely" vs "how much").
     const totalInches = window.length ? window.reduce((s,h)=> s + h.precipIn, 0) : teeHourData.precipIn;
     const icon = weatherIconFor(teeHourData.code);
     const temp = Math.round(teeHourData.temp);
