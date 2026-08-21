@@ -159,6 +159,7 @@
   .crr-mood{font-size:16px;line-height:1;flex-shrink:0;}
   .crr-date{color:#7a7461;font-size:12px;flex:1;}
   .crr-rs{font-family:var(--font-mono);font-size:10px;color:#8a8368;}
+  .title-subline{display:block;line-height:1.2;margin-top:1px;}
   html[data-theme="wii"] .crr-rs{color:#7C97A8;}
   html[data-theme="wii"] .crr-date{color:#7C97A8;}
   .crr-score{font-family:var(--font-mono);font-weight:600;flex:1;text-align:center;}
@@ -185,7 +186,7 @@
   .modal{background:var(--paper);border-radius:calc(var(--radius) + 6px);max-width:520px;width:100%;padding:22px;position:relative;box-shadow:0 20px 50px rgba(0,0,0,0.25);}
   .modal-close{position:absolute;top:14px;right:14px;background:none;border:none;font-size:20px;cursor:pointer;color:var(--ink);}
   .modal-back{position:absolute;top:12px;left:14px;background:none;border:none;font-size:14px;font-weight:600;cursor:pointer;color:var(--fairway);padding:4px 2px;}
-  .modal h3{font-family:var(--font-display);color:var(--fairway);margin:0 0 4px;font-size:20px;}
+  .modal h3{font-family:var(--font-display);color:var(--fairway);margin:0 0 4px;font-size:20px;line-height:1.25;}
   html[data-theme="wii"] .modal h3{color:var(--ink);font-weight:700;}
   .modal .mii-row{display:flex;align-items:center;gap:12px;margin-bottom:10px;margin-top:24px;}
 
@@ -886,18 +887,18 @@ let PAR_BY_COURSE = {
 // ever shown for courses with a known-good location. A course missing from here just
 // silently gets no weather shown -- never a wrong-location guess.
 let COURSE_LOCATIONS = {
-  "Sligo Creek Golf Course": {lat: 39.0126, lon: -77.0186, label: "Silver Spring, MD 20901"},
-  "Needwood Executive": {lat: 39.1348, lon: -77.1497, label: "Derwood, MD 20855"},
-  "Paint Branch Golf Course": {lat: 38.9807, lon: -76.9369, label: "College Park, MD 20740"},
-  "Northwest - Inside 9": {lat: 39.0762, lon: -77.0555, label: "Silver Spring, MD 20906"},
-  "East Potomac Golf Links (B)": {lat: 38.8786, lon: -77.0157, label: "Washington, DC 20024"},
-  "Oak Creek Golf Club": {lat: 38.8513, lon: -76.8331, label: "Brock Hall, MD"},
-  "Bowie Golf Club": {lat: 39.0068, lon: -76.7791, label: "Bowie, MD 20715"},
-  "Patty Jewett Golf Course": {lat: 38.8600, lon: -104.8214, label: "Colorado Springs, CO 80907"},
-  "Enterprise Golf Course": {lat: 38.8892, lon: -76.7458, label: "Mitchellville, MD 20721"},
-  "Laytonsville Golf Course": {lat: 39.2298, lon: -77.1341, label: "Laytonsville, MD 20882"},
-  "Rock Creek Golf Course": {lat: 38.9528, lon: -77.0225, label: "Washington, DC 20011"},
-  "Rehoboth Beach CC": {lat: 38.7204, lon: -75.0760, label: "Rehoboth Beach, DE 19971"},
+  "Sligo Creek Golf Course": {lat: 39.0126, lon: -77.0186, label: "Silver Spring, Maryland"},
+  "Needwood Executive": {lat: 39.1348, lon: -77.1497, label: "Derwood, Maryland"},
+  "Paint Branch Golf Course": {lat: 38.9807, lon: -76.9369, label: "College Park, Maryland"},
+  "Northwest - Inside 9": {lat: 39.0762, lon: -77.0555, label: "Silver Spring, Maryland"},
+  "East Potomac Golf Links (B)": {lat: 38.8786, lon: -77.0157, label: "Washington, D.C."},
+  "Oak Creek Golf Club": {lat: 38.8513, lon: -76.8331, label: "Brock Hall, Maryland"},
+  "Bowie Golf Club": {lat: 39.0068, lon: -76.7791, label: "Bowie, Maryland"},
+  "Patty Jewett Golf Course": {lat: 38.8600, lon: -104.8214, label: "Colorado Springs, Colorado"},
+  "Enterprise Golf Course": {lat: 38.8892, lon: -76.7458, label: "Mitchellville, Maryland"},
+  "Laytonsville Golf Course": {lat: 39.2298, lon: -77.1341, label: "Laytonsville, Maryland"},
+  "Rock Creek Golf Course": {lat: 38.9528, lon: -77.0225, label: "Washington, D.C."},
+  "Rehoboth Beach CC": {lat: 38.7204, lon: -75.0760, label: "Rehoboth Beach, Delaware"},
 };
 const COURSE_LOCATIONS_DEFAULTS = { ...COURSE_LOCATIONS };
 function persistLocations(){
@@ -1565,16 +1566,16 @@ function openDetail(idx){
   const r = rounds[idx];
   const isFirstRoundAtCourse = rounds.filter(x => x.course === r.course).length === 1;
   const loc = COURSE_LOCATIONS[r.course];
-  const locationLine = loc && loc.label ? `<br><span class="crr-rs">${loc.label}</span>` : '';
-  const newCourseLine = isFirstRoundAtCourse ? `<br><span class="new-best-num" style="font-style:italic;font-size:13px;font-weight:700;">New Course!</span>` : '';
-  document.getElementById('detailTitle').innerHTML = `${r.course}${locationLine}${newCourseLine}`;
+  const locationLine = loc && loc.label ? `<span class="crr-rs title-subline">${loc.label}</span>` : '';
+  const newCourseLine = isFirstRoundAtCourse ? `<span class="new-best-num title-subline" style="font-style:italic;font-size:13px;font-weight:700;">New Course!</span>` : '';
+  document.getElementById('detailTitle').innerHTML = `${r.course} <span class="crr-rs">${r.rating.toFixed(1)}/${r.slope}</span>${locationLine}${newCourseLine}`;
   const dateFmt = new Date(r.date+'T00:00:00').toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
 
   const allDiffs = rounds.map(x=>x.diff);
   const mood = moodEmoji(r.diff, allDiffs);
   document.getElementById('detailMiiRow').innerHTML = `<span style="font-size:40px;line-height:1;">${mood.emoji}</span><div style="font-size:13px;">${mood.label}</div>`;
 
-  let body = `<p class="note" style="margin:2px 0 0;">${dateFmt} · ${r.holes}-hole round · Differential ${r.diff.toFixed(1)} · Rating/Slope ${r.rating.toFixed(1)}/${r.slope}</p>`;
+  let body = `<p class="note" style="margin:2px 0 0;">${dateFmt} · ${r.holes}-hole round · Differential ${r.diff.toFixed(1)}</p>`;
 
   body += buildSingleRoundScorecardHtml(r);
 
@@ -1857,7 +1858,7 @@ function openCourseDetail(courseName){
     .sort((a,b) => new Date(b.date) - new Date(a.date));
 
   const loc = COURSE_LOCATIONS[courseName];
-  document.getElementById('detailTitle').innerHTML = `${courseName} <span class="crr-rs">${atCourse[0].rating.toFixed(1)}/${atCourse[0].slope}</span>${loc && loc.label ? `<br><span class="crr-rs">${loc.label}</span>` : ''}`;
+  document.getElementById('detailTitle').innerHTML = `${courseName} <span class="crr-rs">${atCourse[0].rating.toFixed(1)}/${atCourse[0].slope}</span>${loc && loc.label ? `<span class="crr-rs title-subline">${loc.label}</span>` : ''}`;
   document.getElementById('detailMiiRow').innerHTML = `<div style="text-align:left;"><button class="btn secondary" id="courseEditBtn" type="button" style="padding:2px 7px;font-size:10px;">Edit</button></div>`;
   document.getElementById('courseEditBtn').addEventListener('click', ()=> openEditCourseModal(courseName));
 
@@ -2558,7 +2559,8 @@ function openFutureRoundDetail(id){
   const exp = computeExpScoreFor(f.rating, f.slope, f.holes);
 
   document.getElementById('detailMiiRow').innerHTML = '';
-  document.getElementById('detailTitle').innerHTML = `${f.course} <span class="crr-rs">${f.rating.toFixed(1)}/${f.slope}</span>`;
+  const futureLoc = COURSE_LOCATIONS[f.course];
+  document.getElementById('detailTitle').innerHTML = `${f.course} <span class="crr-rs">${f.rating.toFixed(1)}/${f.slope}</span>${futureLoc && futureLoc.label ? `<span class="crr-rs title-subline">${futureLoc.label}</span>` : ''}`;
 
   let body = `<p class="note" style="margin:2px 0 12px;">${dateFmt}${f.hour != null ? ' · ' + formatTimeLabel(f.hour, f.minute || 0) : ''} · ${f.holes} holes · Exp. Score ${exp !== null ? exp : '—'}</p>`;
 
