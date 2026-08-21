@@ -1141,7 +1141,7 @@ function formatFutureDateTime(f){
 // over -- checks the threshold against the ROUNDED value, not the raw one, so a value
 // like 0.95 (which rounds to 1.0) doesn't end up displayed as ".9" by mistake.
 function formatInches(val){
-  const fixed = val.toFixed(1);
+  const fixed = val.toFixed(2);
   return parseFloat(fixed) < 1 ? fixed.replace(/^0/, '') : fixed;
 }
 
