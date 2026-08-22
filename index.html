@@ -1489,7 +1489,7 @@ function renderCharts(theme){
       plugins:{legend:{labels:{color:c.ink,font:{family:c.font,size:13}}}},
       scales:{
         y:{title:{display:true,text:'Differential',color:c.ink,font:{family:c.font,size:14}},ticks:{color:c.ink,font:{family:c.font,size:13}},grid:{color:c.grid}},
-        x:{type:'linear',min:0.5,max:Math.max(1,lastX)+0.5,title:{display:true,text:'Round Number',color:c.ink,font:{family:c.font,size:13}},ticks:{display:false},grid:{display:false}}
+        x:{type:'linear',min:0,max:Math.max(1,lastX)+1,title:{display:true,text:'Round Number',color:c.ink,font:{family:c.font,size:13}},ticks:{display:false},grid:{display:false}}
       },
       onClick: (evt, elements) => {
         if(elements.length > 0){
