@@ -496,6 +496,13 @@ const baseRounds = [
       strokeIndex:[1,13,9,7,11,15,3,17,5],
       scores:[7,7,5,6,6,4,6,5,6]
     }},
+  {score:"48Ni", date:"2026-08-11", rating:31.0, slope:101, diff:36.3, course:"Sligo Creek Golf Course", holes:9},
+  {score:"104A", date:"2026-08-12", rating:32.8, slope:112, diff:35.3, course:"Bowie Golf Club (18)", holes:18},
+  {score:"96A", date:"2026-08-14", rating:68.5, slope:118, diff:29.2, course:"Oak Creek Golf Club", holes:18},
+  {score:"44Ni", date:"2026-08-16", rating:68.2, slope:107, diff:31.3, course:"East Potomac Golf Links (WC)", holes:9},
+  {score:"40Ni", date:"2026-08-19", rating:29.4, slope:85, diff:30.5, course:"Paint Branch Golf Course", holes:9},
+  {score:"46Ni", date:"2026-08-20", rating:31.0, slope:101, diff:32.9, course:"Sligo Creek Golf Course", holes:9},
+  {score:"100A", date:"2026-08-21", rating:68.2, slope:107, diff:33.6, course:"East Potomac Golf Links (BC)", holes:18},
   {score:"49Ni", date:"2026-08-05", rating:31.0, slope:101, diff:37.3, course:"Sligo Creek Golf Course", holes:9,
     holeDetail:{
       yards:[254,135,285,160,252,260,278,252,394],
@@ -1436,7 +1443,15 @@ function colorsFor(theme){
 function renderCharts(theme){
   const c = colorsFor(theme);
 
-  if(diffChart) diffChart.destroy();
+  if(diffChart){ diffChart.destroy(); diffChart = null; }
+  // Explicitly wipe the canvas pixel buffer too, not just the Chart.js instance --
+  // belt-and-suspenders against any possibility of a prior render's pixels lingering
+  // visually if destroy() doesn't fully clear the canvas on some browser/environment.
+  {
+    const canvasEl = document.getElementById('diffChart');
+    const ctx2d = canvasEl && canvasEl.getContext && canvasEl.getContext('2d');
+    if(ctx2d) ctx2d.clearRect(0, 0, canvasEl.width, canvasEl.height);
+  }
 
   // Single source of truth for every dot AND the regression line -- round number, raw
   // differential, and holes, for every round that has a valid round-number assignment.
@@ -1500,11 +1515,10 @@ function renderCharts(theme){
     type:'scatter',
     data:{datasets:[
       {label:'9-hole', data: chartPoints.filter(p=>p.holes===9).map(p=>({x:p.x, y:p.y, idx:p.idx})), backgroundColor:c.c9, pointRadius:5},
-      {label:'18-hole', data: chartPoints.filter(p=>p.holes===18).map(p=>({x:p.x, y:p.y, idx:p.idx})), backgroundColor:c.c18, pointRadius:5},
-      {label:'Regression', type:'line', data: regressionLineData, borderColor:c.regLine, borderDash:[5,4], borderWidth:1.5, pointRadius:0, tension:0}
+      {label:'18-hole', data: chartPoints.filter(p=>p.holes===18).map(p=>({x:p.x, y:p.y, idx:p.idx})), backgroundColor:c.c18, pointRadius:5}
     ]},
     options:{responsive:true, maintainAspectRatio:false,
-      plugins:{legend:{labels:{color:c.ink,font:{family:c.font,size:13},filter:(item)=>item.text !== 'Regression'}}},
+      plugins:{legend:{labels:{color:c.ink,font:{family:c.font,size:13}}}},
       scales:{
         y:{title:{display:true,text:'Differential',color:c.ink,font:{family:c.font,size:14}},ticks:{color:c.ink,font:{family:c.font,size:13}},grid:{color:c.grid}},
         x:{type:'linear',title:{display:true,text:'Round Number',color:c.ink,font:{family:c.font,size:13}},ticks:{display:false},grid:{display:false}}
@@ -1519,7 +1533,39 @@ function renderCharts(theme){
       onHover: (evt, elements) => {
         evt.native.target.style.cursor = elements.length > 0 ? 'pointer' : 'default';
       }
-    }
+    },
+    plugins: [{
+      // Draws the regression line directly on the canvas using the chart's own scale
+      // conversion (getPixelForValue), completely bypassing Chart.js's dataset-based
+      // line rendering -- sidesteps a known Chart.js quirk where a 'line'-type dataset
+      // mixed into a 'scatter'-type chart can be positioned using a different implicit
+      // scale than the scatter data, even when both reference the same declared axis.
+      id: 'manualRegressionLine',
+      afterDraw: (chartInstance) => {
+        if(regressionLineData.length < 2) return;
+        const {ctx, scales} = chartInstance;
+        const x1 = scales.x.getPixelForValue(regressionLineData[0].x);
+        const y1 = scales.y.getPixelForValue(regressionLineData[0].y);
+        const x2 = scales.x.getPixelForValue(regressionLineData[1].x);
+        const y2 = scales.y.getPixelForValue(regressionLineData[1].y);
+        const dbgEl = document.getElementById('debugDiagnostic');
+        if(dbgEl){
+          dbgEl.setAttribute('data-linepx', `LINEPX: x1=${x1.toFixed(0)} y1=${y1.toFixed(0)} x2=${x2.toFixed(0)} y2=${y2.toFixed(0)} `
+            + `canvasW=${chartInstance.width} canvasH=${chartInstance.height} `
+            + `scaleXmax=${scales.x.max} scaleXright=${scales.x.right}`);
+          dbgEl.innerHTML = dbgEl.innerHTML.replace(/ \| LINEPX:.*/, '') + ' | ' + dbgEl.getAttribute('data-linepx');
+        }
+        ctx.save();
+        ctx.beginPath();
+        ctx.setLineDash([5,4]);
+        ctx.lineWidth = 1.5;
+        ctx.strokeStyle = c.regLine;
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+        ctx.restore();
+      }
+    }]
   });
 }
 
