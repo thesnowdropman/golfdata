@@ -283,6 +283,7 @@
     <h2><span class="wii-only">⛳</span>Differential <span class="idx">every posted round</span></h2>
     <div class="chart-box"><canvas id="diffChart" height="130"></canvas></div>
     <p class="note" id="regressionCrossNote" style="margin-top:8px;"></p>
+    <p class="note" id="debugDiagnostic" style="margin-top:8px;font-size:11px;color:#999;word-break:break-word;"></p>
   </section>
 
   <section>
@@ -1470,6 +1471,30 @@ function renderCharts(theme){
   const regressionLineData = chartPoints.length > 1
     ? [{x: firstX, y: regSlope*firstX + regIntercept}, {x: lastX, y: regSlope*lastX + regIntercept}]
     : [];
+
+  // TEMPORARY DIAGNOSTIC -- the fix attempts so far haven't resolved a reported visual
+  // gap between the regression line and the rightmost dots, and I can't reproduce it
+  // against my own sample data. Dumping the real shape of the live data here so it can
+  // be read directly off the page. Safe to remove once resolved.
+  {
+    const dbgEl = document.getElementById('debugDiagnostic');
+    if(dbgEl){
+      const allXs = chartPoints.map(p=>p.x).sort((a,b)=>a-b);
+      const gaps = [];
+      for(let i=1; i<allXs.length; i++){
+        if(allXs[i] - allXs[i-1] > 1) gaps.push(`${allXs[i-1]}->${allXs[i]}`);
+      }
+      const badPoints = chartPoints.filter(p => p.x == null || isNaN(p.x) || p.y == null || isNaN(p.y));
+      const nineCount = chartPoints.filter(p=>p.holes===9).length;
+      const eighteenCount = chartPoints.filter(p=>p.holes===18).length;
+      dbgEl.innerHTML = `DEBUG2: rounds=${rounds.length} chartPoints=${chartPoints.length} `
+        + `xRange=${allXs[0]}..${allXs[allXs.length-1]} `
+        + `9holeCount=${nineCount} 18holeCount=${eighteenCount} `
+        + `gaps=${gaps.length ? gaps.join(',') : 'none'} `
+        + `badPoints=${badPoints.length} `
+        + `lineData=${JSON.stringify(regressionLineData)}`;
+    }
+  }
 
   diffChart = new Chart(document.getElementById('diffChart'), {
     type:'scatter',
