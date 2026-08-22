@@ -283,7 +283,6 @@
     <h2><span class="wii-only">⛳</span>Differential <span class="idx">every posted round</span></h2>
     <div class="chart-box"><canvas id="diffChart" height="130"></canvas></div>
     <p class="note" id="regressionCrossNote" style="margin-top:8px;"></p>
-    <p class="note" id="debugDiagnostic" style="margin-top:8px;font-size:11px;color:#999;word-break:break-word;"></p>
   </section>
 
   <section>
@@ -1480,30 +1479,6 @@ function renderCharts(theme){
     ? [{x: firstX, y: regSlope*firstX + regIntercept}, {x: lastX, y: regSlope*lastX + regIntercept}]
     : [];
 
-  // TEMPORARY DIAGNOSTIC -- the fix attempts so far haven't resolved a reported visual
-  // gap between the regression line and the rightmost dots, and I can't reproduce it
-  // against my own sample data. Dumping the real shape of the live data here so it can
-  // be read directly off the page. Safe to remove once resolved.
-  {
-    const dbgEl = document.getElementById('debugDiagnostic');
-    if(dbgEl){
-      const allXs = chartPoints.map(p=>p.x).sort((a,b)=>a-b);
-      const gaps = [];
-      for(let i=1; i<allXs.length; i++){
-        if(allXs[i] - allXs[i-1] > 1) gaps.push(`${allXs[i-1]}->${allXs[i]}`);
-      }
-      const badPoints = chartPoints.filter(p => p.x == null || isNaN(p.x) || p.y == null || isNaN(p.y));
-      const nineCount = chartPoints.filter(p=>p.holes===9).length;
-      const eighteenCount = chartPoints.filter(p=>p.holes===18).length;
-      dbgEl.innerHTML = `DEBUG2: rounds=${rounds.length} chartPoints=${chartPoints.length} `
-        + `xRange=${allXs[0]}..${allXs[allXs.length-1]} `
-        + `9holeCount=${nineCount} 18holeCount=${eighteenCount} `
-        + `gaps=${gaps.length ? gaps.join(',') : 'none'} `
-        + `badPoints=${badPoints.length} `
-        + `lineData=${JSON.stringify(regressionLineData)}`;
-    }
-  }
-
   diffChart = new Chart(document.getElementById('diffChart'), {
     type:'scatter',
     data:{datasets:[
@@ -1514,7 +1489,7 @@ function renderCharts(theme){
       plugins:{legend:{labels:{color:c.ink,font:{family:c.font,size:13}}}},
       scales:{
         y:{title:{display:true,text:'Differential',color:c.ink,font:{family:c.font,size:14}},ticks:{color:c.ink,font:{family:c.font,size:13}},grid:{color:c.grid}},
-        x:{type:'linear',title:{display:true,text:'Round Number',color:c.ink,font:{family:c.font,size:13}},ticks:{display:false},grid:{display:false}}
+        x:{type:'linear',min:0.5,max:Math.max(1,lastX)+0.5,title:{display:true,text:'Round Number',color:c.ink,font:{family:c.font,size:13}},ticks:{display:false},grid:{display:false}}
       },
       onClick: (evt, elements) => {
         if(elements.length > 0){
@@ -1541,13 +1516,6 @@ function renderCharts(theme){
         const y1 = scales.y.getPixelForValue(regressionLineData[0].y);
         const x2 = scales.x.getPixelForValue(regressionLineData[1].x);
         const y2 = scales.y.getPixelForValue(regressionLineData[1].y);
-        const dbgEl = document.getElementById('debugDiagnostic');
-        if(dbgEl){
-          dbgEl.setAttribute('data-linepx', `LINEPX: x1=${x1.toFixed(0)} y1=${y1.toFixed(0)} x2=${x2.toFixed(0)} y2=${y2.toFixed(0)} `
-            + `canvasW=${chartInstance.width} canvasH=${chartInstance.height} `
-            + `scaleXmax=${scales.x.max} scaleXright=${scales.x.right}`);
-          dbgEl.innerHTML = dbgEl.innerHTML.replace(/ \| LINEPX:.*/, '') + ' | ' + dbgEl.getAttribute('data-linepx');
-        }
         ctx.save();
         ctx.beginPath();
         ctx.setLineDash([5,4]);
