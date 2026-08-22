@@ -1437,18 +1437,19 @@ function renderCharts(theme){
 
   if(diffChart) diffChart.destroy();
 
-  // Regression line for this chart is fit using the best-n/2 trend values (not the raw
-  // scattered per-round diffs) -- trend[i] lines up with round number i+1 since both are
-  // built from the same chronological order. Only the resulting LINE is plotted here;
-  // the best-n/2 points themselves are never shown on this chart.
+  // Regression line is fit directly on the raw per-round differentials actually shown
+  // as dots on this chart (same x/y values, no smoothing or substitution) -- guarantees
+  // the fit reflects exactly what's plotted, not a different underlying series.
   let bestHalfReg = {slope:0, intercept:0};
-  const trendByRoundNum = trend.map((p,i)=>({x:i+1, y:p.index}));
-  if(trendByRoundNum.length > 1){
-    const bn = trendByRoundNum.length;
-    const bsx = trendByRoundNum.reduce((s,p)=>s+p.x,0);
-    const bsy = trendByRoundNum.reduce((s,p)=>s+p.y,0);
-    const bsxy = trendByRoundNum.reduce((s,p)=>s+p.x*p.y,0);
-    const bsxx = trendByRoundNum.reduce((s,p)=>s+p.x*p.x,0);
+  const rawDiffByRoundNum = rounds
+    .map(r => ({x: roundNumberOf[roundKey(r)], y: r.diff}))
+    .filter(p => p.x != null);
+  if(rawDiffByRoundNum.length > 1){
+    const bn = rawDiffByRoundNum.length;
+    const bsx = rawDiffByRoundNum.reduce((s,p)=>s+p.x,0);
+    const bsy = rawDiffByRoundNum.reduce((s,p)=>s+p.y,0);
+    const bsxy = rawDiffByRoundNum.reduce((s,p)=>s+p.x*p.y,0);
+    const bsxx = rawDiffByRoundNum.reduce((s,p)=>s+p.x*p.x,0);
     const bdenom = (bn*bsxx - bsx*bsx);
     if(bdenom !== 0){
       bestHalfReg.slope = (bn*bsxy - bsx*bsy) / bdenom;
