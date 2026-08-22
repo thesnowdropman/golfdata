@@ -1437,39 +1437,46 @@ function renderCharts(theme){
 
   if(diffChart) diffChart.destroy();
 
-  // Regression line is fit directly on the raw per-round differentials actually shown
-  // as dots on this chart (same x/y values, no smoothing or substitution) -- guarantees
-  // the fit reflects exactly what's plotted, not a different underlying series.
-  let bestHalfReg = {slope:0, intercept:0};
-  const rawDiffByRoundNum = rounds
-    .map(r => ({x: roundNumberOf[roundKey(r)], y: r.diff}))
-    .filter(p => p.x != null);
-  if(rawDiffByRoundNum.length > 1){
-    const bn = rawDiffByRoundNum.length;
-    const bsx = rawDiffByRoundNum.reduce((s,p)=>s+p.x,0);
-    const bsy = rawDiffByRoundNum.reduce((s,p)=>s+p.y,0);
-    const bsxy = rawDiffByRoundNum.reduce((s,p)=>s+p.x*p.y,0);
-    const bsxx = rawDiffByRoundNum.reduce((s,p)=>s+p.x*p.x,0);
-    const bdenom = (bn*bsxx - bsx*bsx);
-    if(bdenom !== 0){
-      bestHalfReg.slope = (bn*bsxy - bsx*bsy) / bdenom;
-      bestHalfReg.intercept = (bsy - bestHalfReg.slope*bsx) / bn;
+  // Single source of truth for every dot AND the regression line -- round number, raw
+  // differential, and holes, for every round that has a valid round-number assignment.
+  // Everything below derives from this one array, so the dots and the line can never
+  // reference different data.
+  const chartPoints = rounds
+    .map((r, idx) => ({ x: roundNumberOf[roundKey(r)], y: r.diff, idx, holes: r.holes }))
+    .filter(p => p.x != null)
+    .sort((a,b) => a.x - b.x);
+
+  // Ordinary least-squares fit directly on chartPoints -- same data as the dots, no
+  // smoothing or substitution.
+  let regSlope = 0, regIntercept = 0;
+  if(chartPoints.length > 1){
+    const n = chartPoints.length;
+    const sumX = chartPoints.reduce((s,p)=>s+p.x,0);
+    const sumY = chartPoints.reduce((s,p)=>s+p.y,0);
+    const sumXY = chartPoints.reduce((s,p)=>s+p.x*p.y,0);
+    const sumXX = chartPoints.reduce((s,p)=>s+p.x*p.x,0);
+    const denom = n*sumXX - sumX*sumX;
+    if(denom !== 0){
+      regSlope = (n*sumXY - sumX*sumY) / denom;
+      regIntercept = (sumY - regSlope*sumX) / n;
     }
   }
-  // Build the line's x-range directly from the SAME source the scatter dots use
-  // (roundNumberOf), rather than from trend's own length -- guarantees the regression
-  // line can never fall short of the actual plotted rounds, regardless of what might
-  // cause trend to diverge from roundNumberOf for some edge-case round.
-  const allPlottedRoundNums = rounds.map(r => roundNumberOf[roundKey(r)]).filter(n => n != null);
-  const maxRoundNum = allPlottedRoundNums.length ? Math.max(...allPlottedRoundNums) : 0;
-  const diffRoundNums = Array.from({length: maxRoundNum}, (_, i) => i + 1);
+  // A straight line is fully defined by two endpoints -- plotting just the first and
+  // last x-values (rather than one point per round) means there's no possibility of
+  // Chart.js decimating, skipping, or otherwise partially rendering a long multi-point
+  // line dataset. The line will always span exactly the same range as the dots.
+  const firstX = chartPoints.length ? chartPoints[0].x : 0;
+  const lastX = chartPoints.length ? chartPoints[chartPoints.length-1].x : 0;
+  const regressionLineData = chartPoints.length > 1
+    ? [{x: firstX, y: regSlope*firstX + regIntercept}, {x: lastX, y: regSlope*lastX + regIntercept}]
+    : [];
 
   diffChart = new Chart(document.getElementById('diffChart'), {
     type:'scatter',
     data:{datasets:[
-      {label:'9-hole', data: rounds.filter(r=>r.holes===9).map(r=>({x:roundNumberOf[roundKey(r)], y:r.diff, idx:rounds.indexOf(r)})), backgroundColor:c.c9, pointRadius:5},
-      {label:'18-hole', data: rounds.filter(r=>r.holes===18).map(r=>({x:roundNumberOf[roundKey(r)], y:r.diff, idx:rounds.indexOf(r)})), backgroundColor:c.c18, pointRadius:5},
-      {label:'Regression', type:'line', data: diffRoundNums.map(x=>({x, y: bestHalfReg.slope*x + bestHalfReg.intercept})), borderColor:c.regLine, borderDash:[5,4], borderWidth:1.5, pointRadius:0, tension:0}
+      {label:'9-hole', data: chartPoints.filter(p=>p.holes===9).map(p=>({x:p.x, y:p.y, idx:p.idx})), backgroundColor:c.c9, pointRadius:5},
+      {label:'18-hole', data: chartPoints.filter(p=>p.holes===18).map(p=>({x:p.x, y:p.y, idx:p.idx})), backgroundColor:c.c18, pointRadius:5},
+      {label:'Regression', type:'line', data: regressionLineData, borderColor:c.regLine, borderDash:[5,4], borderWidth:1.5, pointRadius:0, tension:0}
     ]},
     options:{responsive:true, maintainAspectRatio:false,
       plugins:{legend:{labels:{color:c.ink,font:{family:c.font,size:13},filter:(item)=>item.text !== 'Regression'}}},
