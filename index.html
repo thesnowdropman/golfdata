@@ -283,6 +283,7 @@
     <h2><span class="wii-only">⛳</span>Differential <span class="idx">every posted round</span></h2>
     <div class="chart-box"><canvas id="diffChart" height="130"></canvas></div>
     <p class="note" id="regressionCrossNote" style="margin-top:8px;"></p>
+    <p class="note" id="debugDiagnostic" style="margin-top:8px;font-size:11px;color:#999;"></p>
   </section>
 
   <section>
@@ -1462,6 +1463,24 @@ function renderCharts(theme){
   const allPlottedRoundNums = rounds.map(r => roundNumberOf[roundKey(r)]).filter(n => n != null);
   const maxRoundNum = allPlottedRoundNums.length ? Math.max(...allPlottedRoundNums) : 0;
   const diffRoundNums = Array.from({length: maxRoundNum}, (_, i) => i + 1);
+
+  // TEMPORARY DIAGNOSTIC -- pinpointing a reported bug where the regression line falls
+  // short of the rightmost scatter dots after adding a same-day round. Safe to remove
+  // once resolved.
+  {
+    const dbgEl = document.getElementById('debugDiagnostic');
+    if(dbgEl){
+      const chronoRounds = [...rounds].sort((a,b)=> new Date(a.date) - new Date(b.date));
+      const newest = chronoRounds[chronoRounds.length-1];
+      const keyCounts = {};
+      rounds.forEach(r => { const k = roundKey(r); keyCounts[k] = (keyCounts[k]||0)+1; });
+      const duplicateKeys = Object.entries(keyCounts).filter(([k,c])=>c>1);
+      dbgEl.innerHTML = `DEBUG: rounds=${rounds.length} trend=${trend.length} maxRoundNum=${maxRoundNum} `
+        + `newestRound="${newest.course}" date=${newest.date} score=${newest.score} `
+        + `newestRoundNum=${roundNumberOf[roundKey(newest)]} `
+        + `duplicateKeys=${duplicateKeys.length}${duplicateKeys.length ? ' (' + duplicateKeys.map(([k,c])=>k+' x'+c).join('; ') + ')' : ''}`;
+    }
+  }
 
   diffChart = new Chart(document.getElementById('diffChart'), {
     type:'scatter',
