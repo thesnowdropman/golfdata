@@ -1642,6 +1642,10 @@ function openDetail(idx){
 
   document.getElementById('detailMiiRow').innerHTML = '';
   document.getElementById('detailMiiRow').style.display = 'none';
+  // If a Back button will be showing, its absolute top-left position would otherwise
+  // clip through the title text, since detailMiiRow (which normally provides clearance)
+  // is hidden entirely in this view.
+  document.getElementById('detailTitle').style.marginTop = navStack.length > 0 ? '28px' : '0';
 
   let body = `<p class="note" style="margin:2px 0 0;">${dateFmt} · ${r.holes}-hole round · Differential ${r.diff.toFixed(1)}</p>`;
 
@@ -1880,6 +1884,7 @@ function openHoleDetail(courseName, holeIndex){
 
   document.getElementById('detailMiiRow').innerHTML = '';
   document.getElementById('detailTitle').innerHTML = `${courseName} <span class="crr-rs">Hole ${holeIndex+1} · Par ${par}</span>`;
+  document.getElementById('detailTitle').style.marginTop = navStack.length > 0 ? '20px' : '0';
 
   const listHtml = [...chronoAtCourse].reverse().map(r => {
     const s = r.holeDetail.scores[holeIndex];
@@ -2653,6 +2658,7 @@ function openFutureRoundDetail(id){
   const futureLoc = COURSE_LOCATIONS[f.course];
   const futureRsLocLine = `${f.rating.toFixed(1)}/${f.slope}${futureLoc && futureLoc.label ? ` · ${futureLoc.label}` : ''}`;
   document.getElementById('detailTitle').innerHTML = `${f.course}<span class="crr-rs title-subline">${futureRsLocLine}</span>`;
+  document.getElementById('detailTitle').style.marginTop = navStack.length > 0 ? '20px' : '0';
 
   let body = `<p class="note" style="margin:2px 0 12px;">${dateFmt}${f.hour != null ? ' · ' + formatTimeLabel(f.hour, f.minute || 0) : ''} · ${f.holes} holes · Exp. Score ${exp !== null ? exp : '—'}</p>`;
 
