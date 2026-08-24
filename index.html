@@ -1935,7 +1935,11 @@ function openCourseDetail(courseName){
   const rsLine = `${atCourse[0].rating.toFixed(1)}/${atCourse[0].slope}`;
   const locSuffix = loc && loc.label ? ` · ${loc.label}` : '';
   document.getElementById('detailTitle').innerHTML = `${courseName}<span class="crr-rs title-subline">${rsLine}${locSuffix}</span>`;
-  document.getElementById('detailMiiRow').innerHTML = `<button class="modal-edit" id="courseEditBtn" type="button">Edit</button>`;
+  // If a Back button will be showing (navStack has something to return to), the Back
+  // button's absolute top-left position would otherwise overlap/clip through the Edit
+  // button, which normally sits right at the top of this same area.
+  const editTopMargin = navStack.length > 0 ? '28px' : '0';
+  document.getElementById('detailMiiRow').innerHTML = `<button class="modal-edit" id="courseEditBtn" type="button" style="margin-top:${editTopMargin};">Edit</button>`;
   document.getElementById('detailMiiRow').style.display = '';
   document.getElementById('detailMiiRow').style.marginTop = '8px';
   document.getElementById('detailMiiRow').style.marginBottom = '4px';
@@ -2729,14 +2733,24 @@ function openFutureRoundDetail(id){
   document.getElementById('futureViewWeatherBtn').addEventListener('click', ()=>{
     document.getElementById('futureViewWeatherBtn').classList.add('active');
     document.getElementById('futureViewScorecardBtn').classList.remove('active');
-    document.getElementById('futureHourlyWeather').style.display = '';
+    document.getElementById('futureScorecardView').classList.remove('shown');
     document.getElementById('futureScorecardView').style.display = 'none';
+    const weatherEl = document.getElementById('futureHourlyWeather');
+    weatherEl.style.display = '';
+    weatherEl.classList.remove('shown');
+    weatherEl.classList.add('reveal-row');
+    requestAnimationFrame(() => requestAnimationFrame(() => weatherEl.classList.add('shown')));
   });
   document.getElementById('futureViewScorecardBtn').addEventListener('click', ()=>{
     document.getElementById('futureViewScorecardBtn').classList.add('active');
     document.getElementById('futureViewWeatherBtn').classList.remove('active');
-    document.getElementById('futureScorecardView').style.display = '';
+    document.getElementById('futureHourlyWeather').classList.remove('shown');
     document.getElementById('futureHourlyWeather').style.display = 'none';
+    const scorecardEl = document.getElementById('futureScorecardView');
+    scorecardEl.style.display = '';
+    scorecardEl.classList.remove('shown');
+    scorecardEl.classList.add('reveal-row');
+    requestAnimationFrame(() => requestAnimationFrame(() => scorecardEl.classList.add('shown')));
   });
 
   document.getElementById('enterScoreBtn').addEventListener('click', ()=>{
