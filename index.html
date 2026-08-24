@@ -215,6 +215,10 @@
   .sc-noscore{font-size:13px;color:#cfd3e0;padding:16px 4px;text-align:center;}
 
   .btn.danger{background:#B23A2E;color:#fff;}
+  .reveal-row{opacity:0;transition:opacity 0.25s ease;}
+  .reveal-row.shown{opacity:1;}
+  .reveal-block{max-height:0;opacity:0;overflow:hidden;transition:max-height 0.3s ease,opacity 0.25s ease;}
+  .reveal-block.shown{max-height:2000px;opacity:1;}
   .view-toggle{border:1.5px solid var(--fairway);border-radius:8px;overflow:hidden;}
   .view-toggle-btn{flex:1;font-family:var(--font-mono);font-size:13px;font-weight:600;padding:9px 0;background:#fff;color:var(--fairway);border:none;cursor:pointer;}
   .view-toggle-btn.active{background:var(--fairway);color:#fff;}
@@ -1048,7 +1052,15 @@ function recompute(){
     seeMoreEl.style.display = 'block';
     seeMoreEl.onclick = () => {
       expanded = !expanded;
-      restRowEls.forEach(tr => { tr.style.display = expanded ? '' : 'none'; });
+      if(expanded){
+        restRowEls.forEach(tr => {
+          tr.style.display = '';
+          tr.classList.add('reveal-row');
+          requestAnimationFrame(() => requestAnimationFrame(() => tr.classList.add('shown')));
+        });
+      } else {
+        restRowEls.forEach(tr => { tr.style.display = 'none'; tr.classList.remove('shown'); });
+      }
       seeMoreEl.textContent = expanded ? 'Show less' : moreLabel;
     };
   } else {
@@ -1378,7 +1390,7 @@ function renderCourseRecords(){
           ? Math.round((currentIndex/2) * latest.slope / 113 + latest.rating)
           : Math.round(currentIndex * latest.slope / 113 + latest.rating))
       : null;
-    return {course, count:list.length, bestScore, bestDiff, medianScore, expScore, latestDate:latest.date};
+    return {course, count:list.length, bestScore, bestDiff, medianScore, expScore, latestDate:latest.date, holes:latest.holes};
   }).sort((a,b)=> b.count - a.count || new Date(b.latestDate) - new Date(a.latestDate));
 
   const tbody = document.getElementById('course-record-table');
@@ -1393,7 +1405,7 @@ function renderCourseRecords(){
       expCellContent = `${row.expScore}${arrowText}`;
     }
     tr.innerHTML = `
-      <td class="course-name">${row.course}<br><span class="topar">(${row.count}, ${shortMonthYear(row.latestDate)})</span></td>
+      <td class="course-name"><span class="badge ${row.holes===18?'b18':'b9'}">${row.holes===18?'18':'9'}</span>${row.course}<br><span class="topar">(${row.count}, ${shortMonthYear(row.latestDate)})</span></td>
       <td class="diff-cell"><span class="score-topar-wrap"><span class="score-num">${row.bestScore}</span><span class="topar">${toParStr(row.bestScore, row.course)}</span></span></td>
       <td class="diff-cell">${expCellContent}</td>
     `;
@@ -1417,7 +1429,15 @@ function renderCourseRecords(){
     seeMoreEl.style.display = 'block';
     seeMoreEl.onclick = () => {
       expanded = !expanded;
-      restRowEls.forEach(tr => { tr.style.display = expanded ? '' : 'none'; });
+      if(expanded){
+        restRowEls.forEach(tr => {
+          tr.style.display = '';
+          tr.classList.add('reveal-row');
+          requestAnimationFrame(() => requestAnimationFrame(() => tr.classList.add('shown')));
+        });
+      } else {
+        restRowEls.forEach(tr => { tr.style.display = 'none'; tr.classList.remove('shown'); });
+      }
       seeMoreEl.textContent = expanded ? 'Show less' : moreLabel;
     };
   } else {
@@ -1625,6 +1645,8 @@ function openDetail(idx){
 
   let body = `<p class="note" style="margin:2px 0 0;">${dateFmt} · ${r.holes}-hole round · Differential ${r.diff.toFixed(1)}</p>`;
 
+  body += `<button class="modal-edit" id="roundCourseRecordBtn" type="button" style="margin:10px 0 0;">Course Record</button>`;
+
   body += buildSingleRoundScorecardHtml(r);
 
   body += `<div style="text-align:center;margin-top:14px;"><button class="btn danger" id="deleteRoundBtn" type="button">Delete this round</button></div>`;
@@ -1633,6 +1655,10 @@ function openDetail(idx){
   detailOverlay.classList.add('open');
   updateBackButton();
 
+  document.getElementById('roundCourseRecordBtn').addEventListener('click', ()=>{
+    navStack.push(()=>openDetail(idx));
+    openCourseDetail(r.course);
+  });
   document.querySelectorAll('.hole-num-clickable, .hole-stat-clickable').forEach(el=>{
     el.addEventListener('click', (e)=>{
       e.stopPropagation();
@@ -1935,7 +1961,7 @@ function openCourseDetail(courseName){
   const restHtml = rest.map(buildRow).join('');
 
   const seeMoreHtml = rest.length > 0
-    ? `<div id="courseRoundsMoreWrap" style="display:none;">${restHtml}</div>
+    ? `<div id="courseRoundsMoreWrap" class="reveal-block">${restHtml}</div>
        <p class="note" id="courseRoundsSeeMore" style="font-style:italic;cursor:pointer;margin:6px 0 0;">See more (${rest.length} earlier round${rest.length===1?'':'s'})</p>`
     : '';
 
@@ -1982,7 +2008,7 @@ function openCourseDetail(courseName){
   if(seeMoreEl){
     seeMoreEl.addEventListener('click', ()=>{
       const wrap = document.getElementById('courseRoundsMoreWrap');
-      wrap.style.display = 'block';
+      wrap.classList.add('shown');
       wrap.querySelectorAll('.course-round-row').forEach(el=>{
         el.addEventListener('click', ()=>{
           const idx = parseInt(el.dataset.idx, 10);
@@ -2646,12 +2672,14 @@ function openFutureRoundDetail(id){
     const minScore = exp - 7;
     const maxScore = exp + 4;
     const options = [];
+    const currentHC = (trend && trend.length) ? trend[trend.length-1].index : null;
     for(let s = minScore; s <= maxScore; s++){
-      const toParPlain = parForPicker != null
-        ? (() => { const d = s - parForPicker; return d === 0 ? ' (E)' : ` (${d > 0 ? '+' : ''}${d})`; })()
-        : '';
+      const toParDelta = parForPicker != null ? (s - parForPicker) : null;
+      const toParLabel = toParDelta == null ? '—' : (toParDelta === 0 ? 'E' : (toParDelta > 0 ? `+${toParDelta}` : `${toParDelta}`));
       const diffForScore = computeDiff(s, f.rating, f.slope, f.holes);
-      options.push(`<option value="${s}"${s === exp ? ' selected' : ''}>${s}${toParPlain} \u2192 ${diffForScore.toFixed(1)}</option>`);
+      const hcDelta = currentHC != null ? Math.round(diffForScore - currentHC) : null;
+      const hcLabel = hcDelta == null ? '—' : (hcDelta === 0 ? 'E' : (hcDelta > 0 ? `+${hcDelta}` : `${hcDelta}`));
+      options.push(`<option value="${s}"${s === exp ? ' selected' : ''}>${s} (${toParLabel}, ${hcLabel}) \u2192 ${diffForScore.toFixed(1)}</option>`);
     }
     scoreSelectorHtml = `
       <div style="margin:12px 0 16px;">
@@ -2662,6 +2690,7 @@ function openFutureRoundDetail(id){
     `;
   }
   scorecardHtml = scoreSelectorHtml + scorecardHtml;
+  scorecardHtml = `<button class="modal-edit" id="futureCourseRecordBtn" type="button" style="margin-bottom:10px;">Course Record</button>` + scorecardHtml;
 
   body += `<div class="view-toggle" style="display:flex;margin-top:12px;">
     <button class="view-toggle-btn active" id="futureViewWeatherBtn" type="button">Weather</button>
@@ -2691,6 +2720,11 @@ function openFutureRoundDetail(id){
     scoreSelectorEl.addEventListener('change', updateDiffNote);
     updateDiffNote();
   }
+
+  document.getElementById('futureCourseRecordBtn').addEventListener('click', ()=>{
+    navStack.push(()=>openFutureRoundDetail(id));
+    openCourseDetail(f.course);
+  });
 
   document.getElementById('futureViewWeatherBtn').addEventListener('click', ()=>{
     document.getElementById('futureViewWeatherBtn').classList.add('active');
@@ -2727,6 +2761,7 @@ function openFutureRoundDetail(id){
 }
 
 // ================= INIT =================
+
 loadPersisted();
 </script>
 </body>
