@@ -1553,16 +1553,18 @@ function renderCharts(theme){
 
 // ================= PROJECTION =================
 function regressionCrossDate(){
-  // Fit a regression against OUTING NUMBER (one per round played, 9 or 18 holes both count
-  // as one), find how many more outings are needed to cross below 30.0, then convert that
-  // into a real date using the player's actual pace (outings per day) -- measured against
-  // TODAY's real date, not the last round's date. That means every day that passes without
-  // a new round pushes the projected date further out, since the pace keeps dropping while
-  // the calendar keeps moving.
-  if(!trend || trend.length === 0) return null;
+  // Fit a regression against ROUND NUMBER using the exact same raw per-round differentials
+  // as the Differential chart's dashed line (not the best-half-of-segments trend) -- so
+  // this projection can never contradict what the chart is visually showing. Find how many
+  // more rounds are needed to cross below 30.0, then convert that into a real date using
+  // the player's actual pace (rounds per day) -- measured against TODAY's real date, not
+  // the last round's date. That means every day that passes without a new round pushes the
+  // projected date further out, since the pace keeps dropping while the calendar keeps moving.
+  if(!rounds || rounds.length === 0) return null;
 
-  const totalOutings = trend.length;
-  const outingPoints = trend.map((p, i) => ({ x: i + 1, y: p.index }));
+  const chrono = [...rounds].sort((a,b)=> new Date(a.date) - new Date(b.date));
+  const totalOutings = chrono.length;
+  const outingPoints = chrono.map((r, i) => ({ x: i + 1, y: r.diff }));
   const n = outingPoints.length;
   const sx = outingPoints.reduce((s,p)=>s+p.x, 0);
   const sy = outingPoints.reduce((s,p)=>s+p.y, 0);
@@ -1583,7 +1585,7 @@ function regressionCrossDate(){
     return today.toISOString().slice(0,10);
   }
 
-  const firstRoundDate = new Date(trend[0].date+'T00:00:00');
+  const firstRoundDate = new Date(chrono[0].date+'T00:00:00');
   const daysSinceFirstRound = Math.max(1, Math.round((today - firstRoundDate) / 86400000));
   const avgOutingsPerDay = totalOutings / daysSinceFirstRound;
   if(avgOutingsPerDay <= 0) return null;
