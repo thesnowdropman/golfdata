@@ -2155,6 +2155,25 @@ function buildHoleInputs(){
   updateHoleBestHighlights();
 }
 
+// Parses a pasted "code string" of the form:
+//   Course Name|par1,par2,...|rating|slope|City, State
+// into structured course data, so a single paste into the course-name field can
+// auto-fill rating, slope, every par box, and location instead of typing each in.
+function tryParseCourseCodeString(rawValue){
+  if(!rawValue || rawValue.indexOf('|') === -1) return null;
+  const parts = rawValue.split('|');
+  if(parts.length !== 5) return null;
+  const name = parts[0].trim();
+  const pars = parts[1].split(',').map(s => parseInt(s.trim(), 10));
+  const rating = parseFloat(parts[2].trim());
+  const slope = parseInt(parts[3].trim(), 10);
+  const location = parts[4].trim();
+  if(!name || pars.length === 0 || pars.some(isNaN)) return null;
+  if(pars.length !== 9 && pars.length !== 18) return null;
+  if(isNaN(rating) || isNaN(slope) || !location) return null;
+  return {name, pars, rating, slope, location};
+}
+
 function getCurrentFormPar(){
   const courseTyped = document.getElementById('f-course').value.trim();
   const holes = parseInt(document.getElementById('f-holes').value, 10);
@@ -2231,6 +2250,24 @@ function updateNewCourseBestMsg(gross){
 
 document.getElementById('f-course').addEventListener('input', (e)=>{
   const typed = e.target.value.trim();
+
+  const parsed = tryParseCourseCodeString(typed);
+  if(parsed){
+    document.getElementById('f-course').value = parsed.name;
+    document.getElementById('f-holes').value = parsed.pars.length;
+    document.getElementById('f-rating').value = parsed.rating;
+    document.getElementById('f-slope').value = parsed.slope;
+    updateNewCourseUI();
+    const parBoxes = Array.from(document.querySelectorAll('.hole-par-box'));
+    parBoxes.forEach((box, i) => { if(parsed.pars[i] != null) box.value = parsed.pars[i]; });
+    updateParTotalReadout('.hole-par-box', 'parTotalReadout');
+    buildHoleInputs();
+    updateExpectedScoreHint();
+    document.getElementById('f-location').value = parsed.location;
+    document.getElementById('f-location').dispatchEvent(new Event('blur'));
+    return;
+  }
+
   const match = lookupCourseInfo(typed);
   if(match){
     document.getElementById('f-rating').value = match.rating;
@@ -2524,6 +2561,23 @@ document.getElementById('editCourseSave').addEventListener('click', ()=>{
 
 document.getElementById('ff-course').addEventListener('input', (e)=>{
   const typed = e.target.value.trim();
+
+  const parsed = tryParseCourseCodeString(typed);
+  if(parsed){
+    document.getElementById('ff-course').value = parsed.name;
+    document.getElementById('ff-holes').value = parsed.pars.length;
+    document.getElementById('ff-rating').value = parsed.rating;
+    document.getElementById('ff-slope').value = parsed.slope;
+    updateFutureNewCourseUI();
+    const parBoxes = Array.from(document.querySelectorAll('.future-hole-par-box'));
+    parBoxes.forEach((box, i) => { if(parsed.pars[i] != null) box.value = parsed.pars[i]; });
+    updateParTotalReadout('.future-hole-par-box', 'futureParTotalReadout');
+    updateFutureExpScoreHint();
+    document.getElementById('ff-location').value = parsed.location;
+    document.getElementById('ff-location').dispatchEvent(new Event('blur'));
+    return;
+  }
+
   const match = lookupCourseInfo(typed);
   if(match){
     document.getElementById('ff-rating').value = match.rating;
