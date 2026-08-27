@@ -468,11 +468,18 @@
     <div id="betaPanelPick">
       <div id="betaPickGridView">
         <p class="idx-note" style="margin:0 0 10px;">Tap a course to schedule it</p>
-        <div id="betaCourseGrid" style="display:flex;flex-wrap:wrap;gap:8px;"></div>
+        <div id="betaCourseGrid" style="display:flex;flex-wrap:wrap;gap:8px;align-items:flex-start;"></div>
+        <button class="modal-edit" id="betaShowSavedBtn" type="button" style="display:block;margin:16px auto 0;">Saved New Courses →</button>
+      </div>
+      <div id="betaSavedCoursesView" style="display:none;">
+        <button class="modal-edit" id="betaBackFromSaved" type="button" style="margin-bottom:12px;">‹ Back</button>
+        <p class="idx-note" style="margin:0 0 10px;">Set up before, never played yet</p>
+        <div id="betaSavedCourseGrid" style="display:flex;flex-wrap:wrap;gap:8px;align-items:flex-start;"></div>
+        <p class="idx-note" id="betaSavedEmptyNote" style="display:none;">No saved courses without a round played yet.</p>
       </div>
       <div id="betaPickDateView" style="display:none;">
         <button class="modal-edit" id="betaBackToGrid" type="button" style="margin-bottom:12px;">‹ Change course</button>
-        <p class="crr-rs" id="betaSelectedCourseLabel" style="font-size:18px;font-family:var(--font-display);color:var(--fairway);margin:0 0 12px;"></p>
+        <p id="betaSelectedCourseLabel" style="font-size:18px;font-family:var(--font-display);color:var(--fairway);margin:0 0 12px;"></p>
         <div class="form-grid">
           <div class="full"><label>Date</label><input type="date" id="beta-quick-date"></div>
           <div><label>Hour</label><select id="beta-quick-hour"></select></div>
@@ -481,6 +488,15 @@
         <div class="form-actions">
           <button class="btn secondary" id="betaQuickCancel" type="button">Cancel</button>
           <button class="btn" id="betaQuickSave" type="button">Save planned round</button>
+        </div>
+      </div>
+      <div id="betaHolePickView" style="display:none;">
+        <button class="modal-edit" id="betaBackFromHolePick" type="button" style="margin-bottom:12px;">‹ Change course</button>
+        <p style="font-family:var(--font-display);color:var(--fairway);font-size:18px;margin:0 0 14px;" id="betaHolePickLabel"></p>
+        <p class="idx-note" style="margin:0 0 10px;">How many holes?</p>
+        <div class="view-toggle" style="display:flex;">
+          <button class="view-toggle-btn" id="betaHolePick9" type="button">9 holes</button>
+          <button class="view-toggle-btn" id="betaHolePick18" type="button">18 holes</button>
         </div>
       </div>
     </div>
@@ -739,7 +755,7 @@ function gatherSyncableState(){
   return {
     addedRounds, deletedKeys, courseRenames,
     addedFutureRounds, deletedFutureRoundIds,
-    courseRegistry, customPars: PAR_BY_COURSE, customLocations: COURSE_LOCATIONS,
+    courseRegistry, customPars: PAR_BY_COURSE, customLocations: COURSE_LOCATIONS, savedNewCourses,
     updatedAt: Date.now()
   };
 }
@@ -767,6 +783,7 @@ function applyRemoteState(data){
   if(data.courseRegistry) courseRegistry = Object.assign({}, COURSE_REGISTRY_DEFAULTS, data.courseRegistry);
   if(data.customPars) PAR_BY_COURSE = Object.assign({}, PAR_BY_COURSE_DEFAULTS, data.customPars);
   if(data.customLocations) COURSE_LOCATIONS = Object.assign({}, COURSE_LOCATIONS_DEFAULTS, data.customLocations);
+  if(data.savedNewCourses) savedNewCourses = Object.assign({}, savedNewCourses, data.savedNewCourses);
 
   // keep the localStorage mirror current too, so the offline fallback matches the cloud
   if(hasStorage){
@@ -779,6 +796,7 @@ function applyRemoteState(data){
       window.localStorage.setItem('anges-golf-course-registry', JSON.stringify(courseRegistry));
       window.localStorage.setItem('anges-golf-custom-pars', JSON.stringify(PAR_BY_COURSE));
       window.localStorage.setItem('anges-golf-course-locations', JSON.stringify(COURSE_LOCATIONS));
+      window.localStorage.setItem('anges-golf-saved-new-courses', JSON.stringify(savedNewCourses));
     }catch(e){}
   }
 
@@ -886,6 +904,7 @@ function loadPersisted(){
   rebuildFutureRoundsArray();
   loadPersistedPars();
   loadPersistedLocations();
+  loadPersistedSavedNewCourses();
   applyCourseRenames();
   rebuildRoundsArray();
   recompute();
@@ -1003,6 +1022,23 @@ function persistLocations(){
   if(!hasStorage) return;
   try{ window.localStorage.setItem('anges-golf-course-locations', JSON.stringify(COURSE_LOCATIONS)); }catch(e){}
   scheduleFirebaseSync();
+}
+// Courses ever entered via a Future Round's New Entry form, keyed by lowercase name --
+// persists even if that future round is later deleted, so a course you've set up once
+// (rating/slope/holes) doesn't need to be re-typed from scratch if you plan another
+// round there before ever actually playing it.
+let savedNewCourses = {};
+function persistSavedNewCourses(){
+  if(!hasStorage) return;
+  try{ window.localStorage.setItem('anges-golf-saved-new-courses', JSON.stringify(savedNewCourses)); }catch(e){}
+  scheduleFirebaseSync();
+}
+function loadPersistedSavedNewCourses(){
+  if(!hasStorage) return;
+  try{
+    const raw = window.localStorage.getItem('anges-golf-saved-new-courses');
+    if(raw) savedNewCourses = JSON.parse(raw);
+  }catch(e){}
 }
 function loadPersistedLocations(){
   if(!hasStorage) return;
@@ -3009,15 +3045,30 @@ function openBetaFutureModal(){
   betaLocationInput.reset();
 
   const grid = document.getElementById('betaCourseGrid');
-  const knownCourses = Object.values(courseLookup).sort((a,b)=>a.name.localeCompare(b.name));
-  grid.innerHTML = knownCourses.map(c =>
-    `<button type="button" class="beta-course-btn" data-course="${c.name.replace(/"/g,'&quot;')}"
-      style="flex:1 1 auto;min-width:110px;max-width:calc(50% - 4px);font-family:var(--font-mono);font-size:12.5px;line-height:1.3;background:var(--paper-tan);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:10px;cursor:pointer;text-align:center;">${c.name}</button>`
+  const knownCourses = Object.values(courseLookup);
+  const groupedCourses = groupCoursesForPicker(knownCourses);
+  grid.innerHTML = groupedCourses.map(g =>
+    `<button type="button" class="beta-course-btn" data-key="${g.key.replace(/"/g,'&quot;')}"
+      style="flex:1 1 auto;min-width:0;max-width:calc(33.333% - 6px);background:var(--paper-tan);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:10px 6px;cursor:pointer;text-align:center;">
+      <span class="beta-course-name" style="display:block;font-family:var(--font-mono);line-height:1.3;">${g.display}</span>
+    </button>`
   ).join('');
   grid.querySelectorAll('.beta-course-btn').forEach(btn=>{
-    btn.addEventListener('click', ()=> showBetaDatePrompt(btn.dataset.course));
+    const g = groupedCourses.find(x => x.key === btn.dataset.key);
+    btn.addEventListener('click', ()=>{
+      betaCameFromSaved = false;
+      if(g.variants.solo){
+        betaCameFromHolePick = false;
+        showBetaDatePrompt(g.variants.solo.name, g.variants.solo);
+      } else {
+        showBetaHolePick(g);
+      }
+    });
   });
+  fitCourseButtonText(grid);
 
+  renderBetaSavedNewCourses();
+  document.getElementById('betaSavedCoursesView').style.display = 'none';
   document.getElementById('betaPickGridView').style.display = 'block';
   document.getElementById('betaPickDateView').style.display = 'none';
   document.getElementById('betaPanelPick').style.display = 'block';
@@ -3029,15 +3080,163 @@ function openBetaFutureModal(){
 }
 
 let betaSelectedCourse = null;
-function showBetaDatePrompt(courseName){
+let betaSelectedCourseInfo = null;
+// Detects "Base Name (9)" + "Base Name (18)" pairs -- when BOTH exist, consolidates them
+// into one picker entry so the same physical course doesn't show as two near-duplicate
+// buttons. A course with only ONE of the two suffixes (no real pair) is left as-is,
+// showing its full name including the suffix.
+function groupCoursesForPicker(entries){
+  const byBase = {};
+  entries.forEach(e => {
+    const m = e.name.match(/^(.*)\s\((9|18)\)$/i);
+    if(m){
+      const base = m[1].trim();
+      if(!byBase[base]) byBase[base] = {};
+      byBase[base][m[2]] = e;
+    }
+  });
+  const consolidatedNames = new Set();
+  const grouped = [];
+  Object.entries(byBase).forEach(([base, variants]) => {
+    if(variants['9'] && variants['18']){
+      grouped.push({display: base, variants, key: base});
+      consolidatedNames.add(variants['9'].name);
+      consolidatedNames.add(variants['18'].name);
+    }
+  });
+  entries.forEach(e => {
+    if(!consolidatedNames.has(e.name)){
+      grouped.push({display: e.name, variants: {solo: e}, key: e.name});
+    }
+  });
+  return grouped.sort((a,b)=>a.display.localeCompare(b.display));
+}
+
+// Shrinks font-size on any course button whose name genuinely wraps past 2 lines --
+// measures actual rendered height rather than guessing from character count, since real
+// text wrapping depends on glyph widths, not just string length.
+function fitCourseButtonText(containerEl){
+  containerEl.querySelectorAll('.beta-course-btn, .beta-saved-course-btn').forEach(btn=>{
+    const nameSpan = btn.querySelector('.beta-course-name') || btn;
+    let size = 12;
+    nameSpan.style.fontSize = size + 'px';
+    const lineHeight = size * 1.3;
+    const maxTwoLineHeight = lineHeight * 2 + 2;
+    let guard = 0;
+    while(nameSpan.scrollHeight > maxTwoLineHeight && size > 9 && guard < 6){
+      size -= 0.5;
+      nameSpan.style.fontSize = size + 'px';
+      guard++;
+    }
+  });
+}
+
+function renderBetaSavedNewCourses(){
+  const grid = document.getElementById('betaSavedCourseGrid');
+  const entries = Object.values(savedNewCourses)
+    .filter(c => courseLookup[c.name.trim().toLowerCase()] == null);
+  const grouped = groupCoursesForPicker(entries);
+  document.getElementById('betaSavedEmptyNote').style.display = grouped.length === 0 ? 'block' : 'none';
+  grid.innerHTML = grouped.map(g =>
+    `<div class="beta-saved-course-wrap" style="position:relative;flex:1 1 auto;min-width:0;max-width:calc(33.333% - 6px);">
+      <button type="button" class="beta-saved-course-btn" data-key="${g.key.replace(/"/g,'&quot;')}"
+        style="width:100%;background:var(--paper-tan);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:10px 6px;cursor:pointer;text-align:center;">
+        <span class="beta-course-name" style="display:block;font-family:var(--font-mono);line-height:1.3;">${g.display}</span>
+        <span style="display:block;font-size:10px;color:#8a8368;margin-top:3px;">0 rounds played</span>
+      </button>
+      <button type="button" class="beta-saved-delete-btn" data-key="${g.key.replace(/"/g,'&quot;')}" aria-label="Delete"
+        style="position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;background:var(--flag);color:#fff;border:none;font-size:12px;line-height:1;cursor:pointer;">✕</button>
+    </div>`
+  ).join('');
+  grid.querySelectorAll('.beta-saved-course-btn').forEach(btn=>{
+    const g = grouped.find(x => x.key === btn.dataset.key);
+    btn.addEventListener('click', ()=>{
+      betaCameFromSaved = true;
+      if(g.variants.solo){
+        betaCameFromHolePick = false;
+        showBetaDatePrompt(g.variants.solo.name, g.variants.solo);
+      } else {
+        showBetaHolePick(g);
+      }
+    });
+  });
+  grid.querySelectorAll('.beta-saved-delete-btn').forEach(btn=>{
+    btn.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      const g = grouped.find(x => x.key === btn.dataset.key);
+      const namesToDelete = g.variants.solo ? [g.variants.solo.name] : [g.variants['9'].name, g.variants['18'].name];
+      namesToDelete.forEach(name => { delete savedNewCourses[name.trim().toLowerCase()]; });
+      persistSavedNewCourses();
+      renderBetaSavedNewCourses();
+    });
+  });
+  fitCourseButtonText(grid);
+}
+document.getElementById('betaShowSavedBtn').addEventListener('click', ()=>{
+  renderBetaSavedNewCourses();
+  document.getElementById('betaPickGridView').style.display = 'none';
+  document.getElementById('betaSavedCoursesView').style.display = 'block';
+});
+document.getElementById('betaBackFromSaved').addEventListener('click', ()=>{
+  document.getElementById('betaSavedCoursesView').style.display = 'none';
+  document.getElementById('betaPickGridView').style.display = 'block';
+});
+
+let betaHolePickGroup = null;
+function showBetaHolePick(g){
+  betaHolePickGroup = g;
+  document.getElementById('betaHolePickLabel').textContent = g.display;
+  document.getElementById('betaPickGridView').style.display = 'none';
+  document.getElementById('betaSavedCoursesView').style.display = 'none';
+  document.getElementById('betaHolePickView').style.display = 'block';
+}
+document.getElementById('betaBackFromHolePick').addEventListener('click', ()=>{
+  document.getElementById('betaHolePickView').style.display = 'none';
+  if(betaCameFromSaved){
+    document.getElementById('betaSavedCoursesView').style.display = 'block';
+  } else {
+    document.getElementById('betaPickGridView').style.display = 'block';
+  }
+});
+document.getElementById('betaHolePick9').addEventListener('click', ()=>{
+  const v = betaHolePickGroup.variants['9'];
+  document.getElementById('betaHolePickView').style.display = 'none';
+  betaCameFromHolePick = true;
+  showBetaDatePrompt(v.name, v);
+});
+document.getElementById('betaHolePick18').addEventListener('click', ()=>{
+  const v = betaHolePickGroup.variants['18'];
+  document.getElementById('betaHolePickView').style.display = 'none';
+  betaCameFromHolePick = true;
+  showBetaDatePrompt(v.name, v);
+});
+
+function showBetaDatePrompt(courseName, info){
   betaSelectedCourse = courseName;
-  document.getElementById('betaSelectedCourseLabel').textContent = courseName;
+  betaSelectedCourseInfo = info;
+  const loc = COURSE_LOCATIONS[courseName];
+  const rsLocLine = `${info.rating.toFixed(1)}/${info.slope}${loc && loc.label ? ` · ${loc.label}` : ''}`;
+  const exp = computeExpScoreFor(info.rating, info.slope, info.holes);
+  const par = parForFutureRound({course: courseName, holes: info.holes});
+  const expLine = exp !== null
+    ? `<span class="crr-rs title-subline">Expected Score: ${exp}${toParTextFor(exp, par)}</span>`
+    : '';
+  document.getElementById('betaSelectedCourseLabel').innerHTML =
+    `${courseName}<span class="crr-rs title-subline">${rsLocLine}</span>${expLine}`;
   document.getElementById('betaPickGridView').style.display = 'none';
   document.getElementById('betaPickDateView').style.display = 'block';
 }
+let betaCameFromSaved = false;
+let betaCameFromHolePick = false;
 document.getElementById('betaBackToGrid').addEventListener('click', ()=>{
-  document.getElementById('betaPickGridView').style.display = 'block';
   document.getElementById('betaPickDateView').style.display = 'none';
+  if(betaCameFromHolePick){
+    document.getElementById('betaHolePickView').style.display = 'block';
+  } else if(betaCameFromSaved){
+    document.getElementById('betaSavedCoursesView').style.display = 'block';
+  } else {
+    document.getElementById('betaPickGridView').style.display = 'block';
+  }
 });
 
 document.getElementById('betaFutureBtn').addEventListener('click', openBetaFutureModal);
@@ -3059,7 +3258,7 @@ document.getElementById('betaTabNew').addEventListener('click', ()=>{
 });
 
 document.getElementById('betaQuickSave').addEventListener('click', ()=>{
-  const info = courseLookup[betaSelectedCourse.trim().toLowerCase()];
+  const info = betaSelectedCourseInfo;
   if(!info) return;
   const date = document.getElementById('beta-quick-date').value;
   const hour = parseInt(document.getElementById('beta-quick-hour').value, 10);
@@ -3158,6 +3357,11 @@ document.getElementById('betaNewSave').addEventListener('click', ()=>{
     course, date, hour, minute, holes, rating, slope, pars,
     resolvedLoc: betaLocationInput.getResolved()
   });
+  // Remember this course was ever set up, independent of whether this specific future
+  // round survives -- so it stays available to pick from again even after the round
+  // itself gets deleted.
+  savedNewCourses[course.trim().toLowerCase()] = {name: course, rating, slope, holes};
+  persistSavedNewCourses();
   document.getElementById('betaFutureOverlay').classList.remove('open');
 });
 // ================= END BETA =================
