@@ -420,19 +420,20 @@
   <div class="modal" id="addFutureModal">
     <button class="modal-close" id="addFutureClose" aria-label="Close">✕</button>
     <h3 id="addFutureModalTitle">Plan a future round</h3>
-    <p class="note" style="margin-top:2px;">Par is optional here — you can always fill it in when you actually log the round.</p>
     <div class="form-grid">
       <div class="full">
         <div id="futureNewCourseBadge" class="new-course-badge" style="display:none;">New Course!</div>
         <label>Course name</label>
         <input id="ff-course" type="text" list="courseList" autocomplete="off" placeholder="e.g. Sligo Creek Golf Course">
       </div>
-      <div><label>Date</label><input id="ff-date" type="date"></div>
+      <div class="full" style="display:flex;gap:8px;">
+        <div style="flex:1;min-width:0;"><label>Date</label><input id="ff-date" type="date" style="width:100%;"></div>
+        <div style="flex:1;min-width:0;"><label>Hour</label><select id="ff-hour" style="width:100%;"></select></div>
+        <div style="flex:1;min-width:0;"><label>Minute</label><select id="ff-minute" style="width:100%;"></select></div>
+      </div>
       <div><label>Holes</label>
         <select id="ff-holes"><option value="18">18</option><option value="9">9</option></select>
       </div>
-      <div><label>Hour</label><select id="ff-hour"></select></div>
-      <div><label>Minute</label><select id="ff-minute"></select></div>
       <div><label>Course rating</label><input id="ff-rating" type="number" step="0.1" placeholder="e.g. 69.8"></div>
       <div><label>Slope rating</label><input id="ff-slope" type="number" step="1" placeholder="e.g. 116"></div>
       <div class="full" id="ffExpScoreHint" style="display:none;"><label>Expected Score</label><div class="num" id="ffExpScoreValue" style="font-family:var(--font-mono);font-size:20px;font-weight:600;color:var(--fairway);"></div></div>
@@ -440,7 +441,7 @@
         <label>Par per hole <span class="idx-note" style="margin:0;display:inline;">— optional, only needed once</span></label>
         <div class="hole-inputs" id="futureParInputsRow"></div>
         <p class="idx-note" id="futureParTotalReadout" style="margin:6px 0 0;"></p>
-        <label style="margin-top:10px;display:block;">Location (city, state) <span class="idx-note" style="margin:0;display:inline;">— for weather on future rounds, optional</span></label>
+        <label style="margin-top:10px;display:block;">Location (city, state)</label>
         <input id="ff-location" type="text" placeholder="e.g. Silver Spring, MD">
         <p class="idx-note" id="ff-location-preview" style="margin:4px 0 0;"></p>
       </div>
@@ -1118,17 +1119,20 @@ function normalCDF(x, mean, sd){
 // constant. This is a model, not a guarantee -- real scores aren't perfectly normal, and a
 // small round count makes the variability estimate noisy.
 function breakScoreProbability(f, targetScore){
-  if(!reg || !trend || !trend.length || diffResidualSD == null) return null;
+  // Uses the SAME current-index basis as computeExpScoreFor (trend[last].index), not a
+  // date-projected regression value -- so "Expected Score" and "chance to beat X" can
+  // never contradict each other by assuming different underlying skill levels, no matter
+  // how far in the future the round is.
+  if(!trend || !trend.length || diffResidualSD == null) return null;
   if(isNaN(f.rating) || isNaN(f.slope)) return null;
-  const dayOffset = dayNum(f.date) - t0;
-  const projectedDiff = reg.slope * dayOffset + reg.intercept;
+  const currentIndex = trend[trend.length-1].index;
   const rawDiff = (targetScore - f.rating) * 113 / f.slope;
   // Must mirror computeDiff() exactly, which is the app's real, established formula for
   // what a 9-hole round's differential actually becomes: raw + (currentTrend / 2), not
   // raw doubled. Using anything else produces numbers that don't line up with real stored
   // differentials for the exact same course and score.
-  const neededDiff = f.holes === 9 ? (rawDiff + projectedDiff/2) : rawDiff;
-  const prob = normalCDF(neededDiff, projectedDiff, diffResidualSD);
+  const neededDiff = f.holes === 9 ? (rawDiff + currentIndex/2) : rawDiff;
+  const prob = normalCDF(neededDiff, currentIndex, diffResidualSD);
   // Never display literal 0% or 100% -- a normal-distribution model shouldn't claim
   // mathematical certainty either direction, even when the true value rounds to it.
   return Math.min(99, Math.max(1, Math.round(prob * 100)));
