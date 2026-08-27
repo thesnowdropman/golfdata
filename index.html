@@ -293,7 +293,10 @@
   <section>
     <div class="h2-row">
       <h2><span class="wii-only">🗓️</span>Future Rounds</h2>
-      <button class="btn" id="addFutureBtn" type="button">+ Add Future Round</button>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn" id="addFutureBtn" type="button">+ Add Future Round</button>
+        <button class="btn secondary" id="betaFutureBtn" type="button">Beta New Future Round</button>
+      </div>
     </div>
     <table class="future-rounds-table">
       <thead><tr><th>Course</th><th style="text-align:right">Exp. Score</th></tr></thead>
@@ -451,6 +454,70 @@
     </div>
   </div>
 </div>
+
+<!-- ===== BETA: New Future Round (Pick Course / New Entry) ===== -->
+<div class="overlay" id="betaFutureOverlay">
+  <div class="modal" id="betaFutureModal">
+    <button class="modal-close" id="betaFutureClose" aria-label="Close">✕</button>
+    <h3>Plan a future round</h3>
+    <div class="view-toggle" style="display:flex;margin-bottom:16px;">
+      <button class="view-toggle-btn active" id="betaTabPick" type="button">Pick Course</button>
+      <button class="view-toggle-btn" id="betaTabNew" type="button">New Entry</button>
+    </div>
+
+    <div id="betaPanelPick">
+      <div id="betaPickGridView">
+        <p class="idx-note" style="margin:0 0 10px;">Tap a course to schedule it</p>
+        <div id="betaCourseGrid" style="display:flex;flex-wrap:wrap;gap:8px;"></div>
+      </div>
+      <div id="betaPickDateView" style="display:none;">
+        <button class="modal-edit" id="betaBackToGrid" type="button" style="margin-bottom:12px;">‹ Change course</button>
+        <p class="crr-rs" id="betaSelectedCourseLabel" style="font-size:18px;font-family:var(--font-display);color:var(--fairway);margin:0 0 12px;"></p>
+        <div class="form-grid">
+          <div class="full"><label>Date</label><input type="date" id="beta-quick-date"></div>
+          <div><label>Hour</label><select id="beta-quick-hour"></select></div>
+          <div><label>Minute</label><select id="beta-quick-minute"></select></div>
+        </div>
+        <div class="form-actions">
+          <button class="btn secondary" id="betaQuickCancel" type="button">Cancel</button>
+          <button class="btn" id="betaQuickSave" type="button">Save planned round</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="betaPanelNew" style="display:none;">
+      <div class="form-grid">
+        <div class="full">
+          <div id="betaNewCourseBadge" class="new-course-badge" style="display:none;">New Course!</div>
+          <label>Course name</label>
+          <input id="beta-ff-course" type="text" list="courseList" autocomplete="off" placeholder="e.g. Sligo Creek Golf Course">
+        </div>
+        <div class="full"><label>Date</label><input id="beta-ff-date" type="date"></div>
+        <div><label>Hour</label><select id="beta-ff-hour"></select></div>
+        <div><label>Minute</label><select id="beta-ff-minute"></select></div>
+        <div><label>Holes</label>
+          <select id="beta-ff-holes"><option value="18">18</option><option value="9">9</option></select>
+        </div>
+        <div><label>Course rating</label><input id="beta-ff-rating" type="number" step="0.1" placeholder="e.g. 69.8"></div>
+        <div class="full"><label>Slope rating</label><input id="beta-ff-slope" type="number" step="1" placeholder="e.g. 116"></div>
+        <div class="full" id="betaFutureParInputsSection" style="display:none;">
+          <label>Par per hole <span class="idx-note" style="margin:0;display:inline;">— optional, only needed once</span></label>
+          <div class="hole-inputs" id="betaFutureParInputsRow"></div>
+          <p class="idx-note" id="betaFutureParTotalReadout" style="margin:6px 0 0;"></p>
+          <label style="margin-top:10px;display:block;">Location (city, state)</label>
+          <input id="beta-ff-location" type="text" placeholder="e.g. Silver Spring, MD">
+          <p class="idx-note" id="beta-ff-location-preview" style="margin:4px 0 0;"></p>
+        </div>
+      </div>
+      <div class="form-error" id="betaFutureFormError">Fill in the course, date, rating, and slope.</div>
+      <div class="form-actions">
+        <button class="btn secondary" id="betaNewCancel" type="button">Cancel</button>
+        <button class="btn" id="betaNewSave" type="button">Save planned round</button>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- ===== END BETA ===== -->
 
 <script type="module">
   // Cross-device sync bridge. Everything the app adds locally (rounds, future rounds,
@@ -2889,6 +2956,211 @@ function openFutureRoundDetail(id){
 }
 
 // ================= INIT =================
+
+// ================= BETA: New Future Round (Pick Course / New Entry) =================
+// Self-contained addition alongside the existing Add Future Round modal. Reuses shared
+// utilities (persistAddedFutureRounds, rebuildFutureRoundsArray, saveCourseInfoToRegistry,
+// persistLocations, renderFutureRounds, tryParseCourseCodeString, wireLocationInput,
+// isKnownCourse, updateParTotalReadout) rather than duplicating their logic. Does not
+// modify the existing form's behavior at all. To revert: delete this block, the
+// "BETA:" HTML block, and the betaFutureBtn button next to Add Future Round.
+
+function createBetaFutureRound({course, date, hour, minute, holes, rating, slope, pars, resolvedLoc}){
+  addedFutureRounds.push({
+    id: 'f' + Date.now() + Math.random().toString(36).slice(2,7),
+    date, course, holes, rating, slope, pars: pars || null, hour, minute
+  });
+  persistAddedFutureRounds();
+  rebuildFutureRoundsArray();
+  saveCourseInfoToRegistry(course, rating, slope, holes);
+  if(resolvedLoc){
+    COURSE_LOCATIONS[course] = {lat: resolvedLoc.lat, lon: resolvedLoc.lon, label: resolvedLoc.label};
+    persistLocations();
+  }
+  renderFutureRounds();
+}
+
+function populateHourMinuteSelects(hourId, minuteId){
+  const hourSel = document.getElementById(hourId);
+  if(hourSel.options.length === 0){
+    for(let h=7; h<=19; h++){
+      hourSel.innerHTML += `<option value="${h}" ${h===9?'selected':''}>${formatHourLabel(h)}</option>`;
+    }
+  }
+  const minSel = document.getElementById(minuteId);
+  if(minSel.options.length === 0){
+    for(let m=0; m<=60; m++){
+      minSel.innerHTML += `<option value="${m}" ${m===0?'selected':''}>${pad2(m)}</option>`;
+    }
+  }
+}
+
+function openBetaFutureModal(){
+  populateHourMinuteSelects('beta-quick-hour', 'beta-quick-minute');
+  populateHourMinuteSelects('beta-ff-hour', 'beta-ff-minute');
+  document.getElementById('beta-quick-date').value = todayISO();
+  document.getElementById('beta-ff-date').value = todayISO();
+  document.getElementById('beta-ff-course').value = '';
+  document.getElementById('beta-ff-rating').value = '';
+  document.getElementById('beta-ff-slope').value = '';
+  document.getElementById('betaNewCourseBadge').style.display = 'none';
+  document.getElementById('betaFutureParInputsSection').style.display = 'none';
+  document.getElementById('betaFutureFormError').style.display = 'none';
+  betaLocationInput.reset();
+
+  const grid = document.getElementById('betaCourseGrid');
+  const knownCourses = Object.values(courseLookup).sort((a,b)=>a.name.localeCompare(b.name));
+  grid.innerHTML = knownCourses.map(c =>
+    `<button type="button" class="beta-course-btn" data-course="${c.name.replace(/"/g,'&quot;')}"
+      style="flex:1 1 auto;min-width:110px;max-width:calc(50% - 4px);font-family:var(--font-mono);font-size:12.5px;line-height:1.3;background:var(--paper-tan);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:10px;cursor:pointer;text-align:center;">${c.name}</button>`
+  ).join('');
+  grid.querySelectorAll('.beta-course-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=> showBetaDatePrompt(btn.dataset.course));
+  });
+
+  document.getElementById('betaPickGridView').style.display = 'block';
+  document.getElementById('betaPickDateView').style.display = 'none';
+  document.getElementById('betaPanelPick').style.display = 'block';
+  document.getElementById('betaPanelNew').style.display = 'none';
+  document.getElementById('betaTabPick').classList.add('active');
+  document.getElementById('betaTabNew').classList.remove('active');
+
+  document.getElementById('betaFutureOverlay').classList.add('open');
+}
+
+let betaSelectedCourse = null;
+function showBetaDatePrompt(courseName){
+  betaSelectedCourse = courseName;
+  document.getElementById('betaSelectedCourseLabel').textContent = courseName;
+  document.getElementById('betaPickGridView').style.display = 'none';
+  document.getElementById('betaPickDateView').style.display = 'block';
+}
+document.getElementById('betaBackToGrid').addEventListener('click', ()=>{
+  document.getElementById('betaPickGridView').style.display = 'block';
+  document.getElementById('betaPickDateView').style.display = 'none';
+});
+
+document.getElementById('betaFutureBtn').addEventListener('click', openBetaFutureModal);
+document.getElementById('betaFutureClose').addEventListener('click', ()=> document.getElementById('betaFutureOverlay').classList.remove('open'));
+document.getElementById('betaQuickCancel').addEventListener('click', ()=> document.getElementById('betaFutureOverlay').classList.remove('open'));
+document.getElementById('betaNewCancel').addEventListener('click', ()=> document.getElementById('betaFutureOverlay').classList.remove('open'));
+
+document.getElementById('betaTabPick').addEventListener('click', ()=>{
+  document.getElementById('betaTabPick').classList.add('active');
+  document.getElementById('betaTabNew').classList.remove('active');
+  document.getElementById('betaPanelPick').style.display = 'block';
+  document.getElementById('betaPanelNew').style.display = 'none';
+});
+document.getElementById('betaTabNew').addEventListener('click', ()=>{
+  document.getElementById('betaTabNew').classList.add('active');
+  document.getElementById('betaTabPick').classList.remove('active');
+  document.getElementById('betaPanelNew').style.display = 'block';
+  document.getElementById('betaPanelPick').style.display = 'none';
+});
+
+document.getElementById('betaQuickSave').addEventListener('click', ()=>{
+  const info = courseLookup[betaSelectedCourse.trim().toLowerCase()];
+  if(!info) return;
+  const date = document.getElementById('beta-quick-date').value;
+  const hour = parseInt(document.getElementById('beta-quick-hour').value, 10);
+  const minute = parseInt(document.getElementById('beta-quick-minute').value, 10);
+  if(!date) return;
+  createBetaFutureRound({
+    course: betaSelectedCourse, date, hour, minute,
+    holes: info.holes, rating: info.rating, slope: info.slope,
+    pars: null, resolvedLoc: null
+  });
+  document.getElementById('betaFutureOverlay').classList.remove('open');
+});
+
+function buildBetaFutureParInputs(){
+  const holes = parseInt(document.getElementById('beta-ff-holes').value, 10);
+  const parRow = document.getElementById('betaFutureParInputsRow');
+  parRow.innerHTML = '';
+  for(let h=1; h<=holes; h++){
+    const opts = [3,4,5,6].map(n => `<option value="${n}" ${n===4?'selected':''}>${n}</option>`).join('');
+    parRow.innerHTML += `<div class="hole-box"><div class="hnum">${h}</div><select class="beta-future-hole-par-box" data-hole="${h}">${opts}</select></div>`;
+  }
+  document.querySelectorAll('.beta-future-hole-par-box').forEach(el=>{
+    el.addEventListener('input', ()=>updateParTotalReadout('.beta-future-hole-par-box', 'betaFutureParTotalReadout'));
+  });
+  updateParTotalReadout('.beta-future-hole-par-box', 'betaFutureParTotalReadout');
+}
+function updateBetaNewCourseUI(){
+  const typed = document.getElementById('beta-ff-course').value.trim();
+  const isNew = typed.length > 0 && !isKnownCourse(typed);
+  document.getElementById('betaNewCourseBadge').style.display = isNew ? 'block' : 'none';
+  document.getElementById('betaFutureParInputsSection').style.display = isNew ? 'block' : 'none';
+  if(isNew) buildBetaFutureParInputs();
+}
+
+const betaLocationInput = wireLocationInput('beta-ff-location', 'beta-ff-location-preview');
+
+document.getElementById('beta-ff-course').addEventListener('input', (e)=>{
+  const typed = e.target.value.trim();
+
+  const parsed = tryParseCourseCodeString(typed);
+  if(parsed){
+    document.getElementById('beta-ff-course').value = parsed.name;
+    document.getElementById('beta-ff-holes').value = parsed.pars.length;
+    document.getElementById('beta-ff-rating').value = parsed.rating;
+    document.getElementById('beta-ff-slope').value = parsed.slope;
+    updateBetaNewCourseUI();
+    const parBoxes = Array.from(document.querySelectorAll('.beta-future-hole-par-box'));
+    parBoxes.forEach((box, i) => { if(parsed.pars[i] != null) box.value = parsed.pars[i]; });
+    updateParTotalReadout('.beta-future-hole-par-box', 'betaFutureParTotalReadout');
+    document.getElementById('beta-ff-location').value = parsed.location;
+    document.getElementById('beta-ff-location').dispatchEvent(new Event('blur'));
+    return;
+  }
+
+  const match = lookupCourseInfo(typed);
+  if(match){
+    document.getElementById('beta-ff-rating').value = match.rating;
+    document.getElementById('beta-ff-slope').value = match.slope;
+    document.getElementById('beta-ff-holes').value = match.holes;
+  }
+  updateBetaNewCourseUI();
+});
+document.getElementById('beta-ff-holes').addEventListener('change', ()=>{
+  if(document.getElementById('betaFutureParInputsSection').style.display !== 'none'){
+    buildBetaFutureParInputs();
+  }
+});
+
+document.getElementById('betaNewSave').addEventListener('click', ()=>{
+  const course = document.getElementById('beta-ff-course').value.trim();
+  const date = document.getElementById('beta-ff-date').value;
+  const holes = parseInt(document.getElementById('beta-ff-holes').value, 10);
+  const rating = parseFloat(document.getElementById('beta-ff-rating').value);
+  const slope = parseFloat(document.getElementById('beta-ff-slope').value);
+  const hour = parseInt(document.getElementById('beta-ff-hour').value, 10);
+  const minute = parseInt(document.getElementById('beta-ff-minute').value, 10);
+
+  const valid = course && date && !isNaN(rating) && !isNaN(slope);
+  if(!valid){
+    document.getElementById('betaFutureFormError').style.display = 'block';
+    return;
+  }
+
+  let pars = null;
+  if(document.getElementById('betaFutureParInputsSection').style.display !== 'none'){
+    const parBoxes = Array.from(document.querySelectorAll('.beta-future-hole-par-box'));
+    const enteredPars = parBoxes.map(b => parseInt(b.value, 10));
+    const allValid = enteredPars.length === holes && enteredPars.every(p => !isNaN(p) && p > 0);
+    const allLeftAtDefault = enteredPars.every(p => p === 4);
+    if(allValid && !allLeftAtDefault){
+      pars = enteredPars;
+    }
+  }
+
+  createBetaFutureRound({
+    course, date, hour, minute, holes, rating, slope, pars,
+    resolvedLoc: betaLocationInput.getResolved()
+  });
+  document.getElementById('betaFutureOverlay').classList.remove('open');
+});
+// ================= END BETA =================
 
 loadPersisted();
 </script>
