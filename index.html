@@ -426,11 +426,9 @@
         <label>Course name</label>
         <input id="ff-course" type="text" list="courseList" autocomplete="off" placeholder="e.g. Sligo Creek Golf Course">
       </div>
-      <div class="full" style="display:flex;gap:8px;">
-        <div style="flex:1;min-width:0;"><label>Date</label><input id="ff-date" type="date" style="width:100%;"></div>
-        <div style="flex:1;min-width:0;"><label>Hour</label><select id="ff-hour" style="width:100%;"></select></div>
-        <div style="flex:1;min-width:0;"><label>Minute</label><select id="ff-minute" style="width:100%;"></select></div>
-      </div>
+      <div class="full"><label>Date</label><input id="ff-date" type="date"></div>
+      <div><label>Hour</label><select id="ff-hour"></select></div>
+      <div><label>Minute</label><select id="ff-minute"></select></div>
       <div><label>Holes</label>
         <select id="ff-holes"><option value="18">18</option><option value="9">9</option></select>
       </div>
@@ -684,7 +682,11 @@ function applyRemoteState(data){
   applyingRemoteState = true;
   if(data.addedRounds) addedRounds = data.addedRounds;
   if(data.deletedKeys) deletedKeys = data.deletedKeys;
-  if(data.courseRenames) courseRenames = data.courseRenames;
+  // Merge, not overwrite -- a rename just made locally must never be silently erased by
+  // a slightly-stale snapshot arriving right after it (the sync is debounced, so this is
+  // a real timing window). Renames are additive by nature: once made, a name mapping
+  // should never disappear just because an older snapshot catches up.
+  if(data.courseRenames) courseRenames = Object.assign({}, courseRenames, data.courseRenames);
   if(data.addedFutureRounds) addedFutureRounds = data.addedFutureRounds;
   if(data.deletedFutureRoundIds) deletedFutureRoundIds = data.deletedFutureRoundIds;
   if(data.courseRegistry) courseRegistry = Object.assign({}, COURSE_REGISTRY_DEFAULTS, data.courseRegistry);
