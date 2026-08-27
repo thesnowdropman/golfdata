@@ -633,7 +633,15 @@ function applyCourseRenames(){
   [...baseRounds, ...addedRounds].forEach(r=>{
     if(courseRenames[r.course]){
       const oldName = r.course;
-      r.course = courseRenames[r.course];
+      // Chain through every applicable rename, not just one step -- a course renamed
+      // more than once over time (A -> B, later B -> C) must resolve all the way to its
+      // final name on every fresh load, not get stuck at an intermediate name. Capped to
+      // guard against an accidental circular mapping (A -> B, B -> A).
+      let steps = 0;
+      while(courseRenames[r.course] && courseRenames[r.course] !== r.course && steps < 20){
+        r.course = courseRenames[r.course];
+        steps++;
+      }
       if(PAR_BY_COURSE[r.course] == null && r.holeDetail){
         PAR_BY_COURSE[r.course] = r.holeDetail.pars.reduce((s,x)=>s+x,0);
       }
