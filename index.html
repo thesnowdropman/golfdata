@@ -493,11 +493,8 @@
       <div id="betaHolePickView" style="display:none;">
         <button class="modal-edit" id="betaBackFromHolePick" type="button" style="margin-bottom:12px;">‹ Change course</button>
         <p style="font-family:var(--font-display);color:var(--fairway);font-size:18px;margin:0 0 14px;" id="betaHolePickLabel"></p>
-        <p class="idx-note" style="margin:0 0 10px;">How many holes?</p>
-        <div class="view-toggle" style="display:flex;">
-          <button class="view-toggle-btn" id="betaHolePick9" type="button">9 holes</button>
-          <button class="view-toggle-btn" id="betaHolePick18" type="button">18 holes</button>
-        </div>
+        <p class="idx-note" style="margin:0 0 10px;">Which one?</p>
+        <div class="view-toggle" id="betaHolePickToggle" style="display:flex;"></div>
       </div>
     </div>
 
@@ -3085,23 +3082,29 @@ let betaSelectedCourseInfo = null;
 // into one picker entry so the same physical course doesn't show as two near-duplicate
 // buttons. A course with only ONE of the two suffixes (no real pair) is left as-is,
 // showing its full name including the suffix.
+// Detects "Base Name (X)" + "Base Name (Y)" + ... -- ANY set of courses sharing an
+// identical base name before a parenthetical, regardless of what's inside it. When 2 or
+// more variants share a base, consolidates them into one picker entry; the exact
+// parenthetical text becomes the option label on the follow-up screen. A course with
+// only ONE variant (no sibling to pair with) is left standalone, full name intact.
 function groupCoursesForPicker(entries){
   const byBase = {};
   entries.forEach(e => {
-    const m = e.name.match(/^(.*)\s\((9|18)\)$/i);
+    const m = e.name.match(/^(.*)\s\(([^)]+)\)$/);
     if(m){
       const base = m[1].trim();
+      const suffix = m[2].trim();
       if(!byBase[base]) byBase[base] = {};
-      byBase[base][m[2]] = e;
+      byBase[base][suffix] = e;
     }
   });
   const consolidatedNames = new Set();
   const grouped = [];
   Object.entries(byBase).forEach(([base, variants]) => {
-    if(variants['9'] && variants['18']){
+    const suffixKeys = Object.keys(variants);
+    if(suffixKeys.length > 1){
       grouped.push({display: base, variants, key: base});
-      consolidatedNames.add(variants['9'].name);
-      consolidatedNames.add(variants['18'].name);
+      suffixKeys.forEach(s => consolidatedNames.add(variants[s].name));
     }
   });
   entries.forEach(e => {
@@ -3186,6 +3189,19 @@ let betaHolePickGroup = null;
 function showBetaHolePick(g){
   betaHolePickGroup = g;
   document.getElementById('betaHolePickLabel').textContent = g.display;
+  const toggle = document.getElementById('betaHolePickToggle');
+  const suffixes = Object.keys(g.variants);
+  toggle.innerHTML = suffixes.map((s, i) =>
+    `<button type="button" class="view-toggle-btn${i===0?' active':''}" data-suffix="${s.replace(/"/g,'&quot;')}">${s}</button>`
+  ).join('');
+  toggle.querySelectorAll('button').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const v = g.variants[btn.dataset.suffix];
+      document.getElementById('betaHolePickView').style.display = 'none';
+      betaCameFromHolePick = true;
+      showBetaDatePrompt(v.name, v);
+    });
+  });
   document.getElementById('betaPickGridView').style.display = 'none';
   document.getElementById('betaSavedCoursesView').style.display = 'none';
   document.getElementById('betaHolePickView').style.display = 'block';
@@ -3197,18 +3213,6 @@ document.getElementById('betaBackFromHolePick').addEventListener('click', ()=>{
   } else {
     document.getElementById('betaPickGridView').style.display = 'block';
   }
-});
-document.getElementById('betaHolePick9').addEventListener('click', ()=>{
-  const v = betaHolePickGroup.variants['9'];
-  document.getElementById('betaHolePickView').style.display = 'none';
-  betaCameFromHolePick = true;
-  showBetaDatePrompt(v.name, v);
-});
-document.getElementById('betaHolePick18').addEventListener('click', ()=>{
-  const v = betaHolePickGroup.variants['18'];
-  document.getElementById('betaHolePickView').style.display = 'none';
-  betaCameFromHolePick = true;
-  showBetaDatePrompt(v.name, v);
 });
 
 function showBetaDatePrompt(courseName, info){
