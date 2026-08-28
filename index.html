@@ -294,7 +294,7 @@
     <div class="h2-row">
       <h2><span class="wii-only">🗓️</span>Future Rounds</h2>
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
-        <button class="btn" id="addFutureBtn" type="button">+ Add Future Round</button>
+        <button class="btn" id="addFutureBtn" type="button" style="display:none;">+ Old Add Future Round</button>
         <button class="btn" id="betaFutureBtn" type="button">+ New Future Round</button>
       </div>
     </div>
@@ -506,6 +506,7 @@
     </div>
 
     <div id="betaPanelNew" style="display:none;">
+      <button class="modal-edit" id="betaShowSavedBtn" type="button" style="display:block;margin:0 auto 14px;">Saved New Courses →</button>
       <div class="form-grid">
         <div class="full">
           <div id="betaNewCourseBadge" class="new-course-badge" style="display:none;">New Course!</div>
@@ -534,7 +535,6 @@
         <button class="btn secondary" id="betaNewCancel" type="button">Cancel</button>
         <button class="btn" id="betaNewSave" type="button">Save planned round</button>
       </div>
-      <button class="modal-edit" id="betaShowSavedBtn" type="button" style="display:block;margin:16px auto 0;">Saved New Courses →</button>
     </div>
   </div>
 </div>
@@ -1290,8 +1290,8 @@ function formatTimeLabel(hour24, minute){
 }
 
 function futureSortKey(f){
-  const hh = (f.hour != null) ? f.hour : 12;
-  const mm = (f.minute != null) ? f.minute : 0;
+  const hh = (f.hour != null && !isNaN(f.hour)) ? f.hour : 12;
+  const mm = (f.minute != null && !isNaN(f.minute)) ? f.minute : 0;
   return new Date(`${f.date}T${pad2(hh)}:${pad2(Math.min(mm,59))}:00`).getTime();
 }
 
@@ -3369,7 +3369,8 @@ document.getElementById('betaQuickSave').addEventListener('click', ()=>{
   if(!info) return;
   const date = document.getElementById('beta-quick-date').value;
   const hour = parseInt(document.getElementById('beta-quick-hour').value, 10);
-  const minute = parseInt(document.getElementById('beta-quick-minute').value, 10);
+  let minute = parseInt(document.getElementById('beta-quick-minute').value, 10);
+  if(isNaN(minute)) minute = 0;
   if(!date) return;
   createBetaFutureRound({
     course: betaSelectedCourse, date, hour, minute,
@@ -3446,7 +3447,8 @@ document.getElementById('betaNewSave').addEventListener('click', ()=>{
   const rating = parseFloat(document.getElementById('beta-ff-rating').value);
   const slope = parseFloat(document.getElementById('beta-ff-slope').value);
   const hour = parseInt(document.getElementById('beta-ff-hour').value, 10);
-  const minute = parseInt(document.getElementById('beta-ff-minute').value, 10);
+  let minute = parseInt(document.getElementById('beta-ff-minute').value, 10);
+  if(isNaN(minute)) minute = 0;
 
   const valid = course && date && !isNaN(rating) && !isNaN(slope);
   if(!valid){
