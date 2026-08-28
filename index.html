@@ -455,14 +455,14 @@
   </div>
 </div>
 
-<!-- ===== BETA: New Future Round (Pick Course / New Entry) ===== -->
+<!-- ===== BETA: New Future Round (Past Course / New Course) ===== -->
 <div class="overlay" id="betaFutureOverlay">
   <div class="modal" id="betaFutureModal">
     <button class="modal-close" id="betaFutureClose" aria-label="Close">✕</button>
     <h3>Plan a future round</h3>
     <div class="view-toggle" style="display:flex;margin-bottom:16px;">
-      <button class="view-toggle-btn active" id="betaTabPick" type="button">Pick Course</button>
-      <button class="view-toggle-btn" id="betaTabNew" type="button">New Entry</button>
+      <button class="view-toggle-btn active" id="betaTabPick" type="button">Past Course</button>
+      <button class="view-toggle-btn" id="betaTabNew" type="button">New Course</button>
     </div>
 
     <div id="betaPanelPick">
@@ -521,6 +521,7 @@
         </div>
         <div><label>Course rating</label><input id="beta-ff-rating" type="number" step="0.1" placeholder="e.g. 69.8"></div>
         <div class="full"><label>Slope rating</label><input id="beta-ff-slope" type="number" step="1" placeholder="e.g. 116"></div>
+        <p class="idx-note" id="betaNewExpPreview" style="display:none;margin:-6px 0 0;font-family:var(--font-mono);"></p>
         <div class="full" id="betaFutureParInputsSection" style="display:none;">
           <label>Par per hole <span class="idx-note" style="margin:0;display:inline;">— optional, only needed once</span></label>
           <div class="hole-inputs" id="betaFutureParInputsRow"></div>
@@ -1033,7 +1034,7 @@ function persistLocations(){
   try{ window.localStorage.setItem('anges-golf-course-locations', JSON.stringify(COURSE_LOCATIONS)); }catch(e){}
   scheduleFirebaseSync();
 }
-// Courses ever entered via a Future Round's New Entry form, keyed by lowercase name --
+// Courses ever entered via a Future Round's New Course form, keyed by lowercase name --
 // persists even if that future round is later deleted, so a course you've set up once
 // (rating/slope/holes) doesn't need to be re-typed from scratch if you plan another
 // round there before ever actually playing it.
@@ -1176,7 +1177,7 @@ function recompute(){
   const buildRoundRow = (r) => {
     const idx = rounds.indexOf(r);
     const tr = document.createElement('tr');
-    const dateFmt = new Date(r.date+'T00:00:00').toLocaleDateString('en-US',{month:'2-digit',day:'2-digit',year:'2-digit'});
+    const dateFmt = new Date(r.date+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
     const isLowest = r.diff === lowestDiff;
     tr.innerHTML = `
       <td class="course-name"><span class="badge ${r.holes===18?'b18':'b9'}">${r.holes===18?'18':'9'}</span>${r.course}${isLowest ? `<img class="lowdiff-face wii-only" src="data:image/png;base64,${lowDiffFaceB64}" alt="Best round">` : ''}<br><span class="date-cell">${dateFmt}</span></td>
@@ -2890,7 +2891,7 @@ function openFutureRoundDetail(id){
 
   document.getElementById('detailMiiRow').innerHTML = '';
   const futureLoc = COURSE_LOCATIONS[f.course];
-  const futureRsLocLine = `${f.rating.toFixed(1)}/${f.slope}${futureLoc && futureLoc.label ? ` · ${futureLoc.label}` : ''}`;
+  const futureRsLocLine = `${f.rating.toFixed(1)}/${f.slope}${exp !== null ? `/${exp}` : ''}${futureLoc && futureLoc.label ? ` · ${futureLoc.label}` : ''}`;
   document.getElementById('detailTitle').innerHTML = `${f.course}<span class="crr-rs title-subline">${futureRsLocLine}</span>`;
   document.getElementById('detailTitle').style.marginTop = navStack.length > 0 ? '20px' : '0';
 
@@ -3016,7 +3017,7 @@ function openFutureRoundDetail(id){
 
 // ================= INIT =================
 
-// ================= BETA: New Future Round (Pick Course / New Entry) =================
+// ================= BETA: New Future Round (Past Course / New Course) =================
 // Self-contained addition alongside the existing Add Future Round modal. Reuses shared
 // utilities (persistAddedFutureRounds, rebuildFutureRoundsArray, saveCourseInfoToRegistry,
 // persistLocations, renderFutureRounds, tryParseCourseCodeString, wireLocationInput,
@@ -3063,6 +3064,7 @@ function openBetaFutureModal(){
   document.getElementById('beta-ff-rating').value = '';
   document.getElementById('beta-ff-slope').value = '';
   document.getElementById('betaNewCourseBadge').style.display = 'none';
+  document.getElementById('betaNewExpPreview').style.display = 'none';
   document.getElementById('betaFutureParInputsSection').style.display = 'none';
   document.getElementById('betaFutureFormError').style.display = 'none';
   betaLocationInput.reset();
@@ -3365,6 +3367,20 @@ function updateBetaNewCourseUI(){
 
 const betaLocationInput = wireLocationInput('beta-ff-location', 'beta-ff-location-preview');
 
+function updateBetaNewExpPreview(){
+  const rating = parseFloat(document.getElementById('beta-ff-rating').value);
+  const slope = parseFloat(document.getElementById('beta-ff-slope').value);
+  const holes = parseInt(document.getElementById('beta-ff-holes').value, 10);
+  const preview = document.getElementById('betaNewExpPreview');
+  if(isNaN(rating) || isNaN(slope)){
+    preview.style.display = 'none';
+    return;
+  }
+  const exp = computeExpScoreFor(rating, slope, holes);
+  preview.textContent = `${rating.toFixed(1)}/${slope}${exp !== null ? `/~${exp}` : ''}`;
+  preview.style.display = 'block';
+}
+
 document.getElementById('beta-ff-course').addEventListener('input', (e)=>{
   const typed = e.target.value.trim();
 
@@ -3380,6 +3396,7 @@ document.getElementById('beta-ff-course').addEventListener('input', (e)=>{
     updateParTotalReadout('.beta-future-hole-par-box', 'betaFutureParTotalReadout');
     document.getElementById('beta-ff-location').value = parsed.location;
     document.getElementById('beta-ff-location').dispatchEvent(new Event('blur'));
+    updateBetaNewExpPreview();
     return;
   }
 
@@ -3390,12 +3407,16 @@ document.getElementById('beta-ff-course').addEventListener('input', (e)=>{
     document.getElementById('beta-ff-holes').value = match.holes;
   }
   updateBetaNewCourseUI();
+  updateBetaNewExpPreview();
 });
 document.getElementById('beta-ff-holes').addEventListener('change', ()=>{
   if(document.getElementById('betaFutureParInputsSection').style.display !== 'none'){
     buildBetaFutureParInputs();
   }
+  updateBetaNewExpPreview();
 });
+document.getElementById('beta-ff-rating').addEventListener('input', updateBetaNewExpPreview);
+document.getElementById('beta-ff-slope').addEventListener('input', updateBetaNewExpPreview);
 
 document.getElementById('betaNewSave').addEventListener('click', ()=>{
   const course = document.getElementById('beta-ff-course').value.trim();
