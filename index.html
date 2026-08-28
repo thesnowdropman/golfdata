@@ -295,7 +295,7 @@
       <h2><span class="wii-only">🗓️</span>Future Rounds</h2>
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
         <button class="btn" id="addFutureBtn" type="button">+ Add Future Round</button>
-        <button class="btn secondary" id="betaFutureBtn" type="button">Beta New Future Round</button>
+        <button class="btn" id="betaFutureBtn" type="button">+ New Future Round</button>
       </div>
     </div>
     <table class="future-rounds-table">
@@ -459,7 +459,7 @@
 <div class="overlay" id="betaFutureOverlay">
   <div class="modal" id="betaFutureModal">
     <button class="modal-close" id="betaFutureClose" aria-label="Close">✕</button>
-    <h3>Plan a future round</h3>
+    <h3>Plan A Future Round</h3>
     <div class="view-toggle" style="display:flex;margin-bottom:16px;">
       <button class="view-toggle-btn active" id="betaTabPick" type="button">Past Course</button>
       <button class="view-toggle-btn" id="betaTabNew" type="button">New Course</button>
@@ -469,7 +469,6 @@
       <div id="betaPickGridView">
         <p class="idx-note" style="margin:0 0 10px;">Tap a course to schedule it</p>
         <div id="betaCourseGrid" style="display:flex;flex-wrap:wrap;gap:8px;align-items:flex-start;"></div>
-        <button class="modal-edit" id="betaShowSavedBtn" type="button" style="display:block;margin:16px auto 0;">Saved New Courses →</button>
       </div>
       <div id="betaSavedCoursesView" style="display:none;">
         <button class="modal-edit" id="betaBackFromSaved" type="button" style="margin-bottom:12px;">‹ Back</button>
@@ -521,7 +520,6 @@
         </div>
         <div><label>Course rating</label><input id="beta-ff-rating" type="number" step="0.1" placeholder="e.g. 69.8"></div>
         <div class="full"><label>Slope rating</label><input id="beta-ff-slope" type="number" step="1" placeholder="e.g. 116"></div>
-        <p class="idx-note" id="betaNewExpPreview" style="display:none;margin:-6px 0 0;font-family:var(--font-mono);"></p>
         <div class="full" id="betaFutureParInputsSection" style="display:none;">
           <label>Par per hole <span class="idx-note" style="margin:0;display:inline;">— optional, only needed once</span></label>
           <div class="hole-inputs" id="betaFutureParInputsRow"></div>
@@ -536,6 +534,7 @@
         <button class="btn secondary" id="betaNewCancel" type="button">Cancel</button>
         <button class="btn" id="betaNewSave" type="button">Save planned round</button>
       </div>
+      <button class="modal-edit" id="betaShowSavedBtn" type="button" style="display:block;margin:16px auto 0;">Saved New Courses →</button>
     </div>
   </div>
 </div>
@@ -2228,9 +2227,15 @@ function isKnownCourse(name){
 function updateNewCourseUI(){
   const typed = document.getElementById('f-course').value.trim();
   const isNew = typed.length > 0 && !isKnownCourse(typed);
+  const wasVisible = document.getElementById('parInputsSection').style.display !== 'none';
   document.getElementById('newCourseBadge').style.display = isNew ? 'block' : 'none';
   document.getElementById('parInputsSection').style.display = isNew ? 'block' : 'none';
-  if(isNew) buildParInputs();
+  // Only build fresh par inputs when newly becoming visible or genuinely empty --
+  // rebuilding on every keystroke would silently reset any pars already entered
+  // (manually or via a Delim paste) just because the course name gets edited afterward.
+  if(isNew && (!wasVisible || document.getElementById('parInputsRow').innerHTML === '')){
+    buildParInputs();
+  }
 }
 
 function updateParTotalReadout(boxSelector, readoutId){
@@ -2397,7 +2402,12 @@ document.getElementById('f-course').addEventListener('input', (e)=>{
     document.getElementById('f-holes').value = parsed.pars.length;
     document.getElementById('f-rating').value = parsed.rating;
     document.getElementById('f-slope').value = parsed.slope;
-    updateNewCourseUI();
+    document.getElementById('newCourseBadge').style.display = 'block';
+    document.getElementById('parInputsSection').style.display = 'block';
+    // Always rebuild here, unconditionally -- a Delim paste is an explicit "replace
+    // everything" action (possibly a different course, possibly a different hole count
+    // than whatever was there before), unlike an incidental name edit afterward.
+    buildParInputs();
     const parBoxes = Array.from(document.querySelectorAll('.hole-par-box'));
     parBoxes.forEach((box, i) => { if(parsed.pars[i] != null) box.value = parsed.pars[i]; });
     updateParTotalReadout('.hole-par-box', 'parTotalReadout');
@@ -2604,9 +2614,12 @@ function buildFutureParInputs(){
 function updateFutureNewCourseUI(){
   const typed = document.getElementById('ff-course').value.trim();
   const isNew = typed.length > 0 && !isKnownCourse(typed);
+  const wasVisible = document.getElementById('futureParInputsSection').style.display !== 'none';
   document.getElementById('futureNewCourseBadge').style.display = isNew ? 'block' : 'none';
   document.getElementById('futureParInputsSection').style.display = isNew ? 'block' : 'none';
-  if(isNew) buildFutureParInputs();
+  if(isNew && (!wasVisible || document.getElementById('futureParInputsRow').innerHTML === '')){
+    buildFutureParInputs();
+  }
 }
 
 function updateFutureExpScoreHint(){
@@ -2709,7 +2722,9 @@ document.getElementById('ff-course').addEventListener('input', (e)=>{
     document.getElementById('ff-holes').value = parsed.pars.length;
     document.getElementById('ff-rating').value = parsed.rating;
     document.getElementById('ff-slope').value = parsed.slope;
-    updateFutureNewCourseUI();
+    document.getElementById('futureNewCourseBadge').style.display = 'block';
+    document.getElementById('futureParInputsSection').style.display = 'block';
+    buildFutureParInputs();
     const parBoxes = Array.from(document.querySelectorAll('.future-hole-par-box'));
     parBoxes.forEach((box, i) => { if(parsed.pars[i] != null) box.value = parsed.pars[i]; });
     updateParTotalReadout('.future-hole-par-box', 'futureParTotalReadout');
@@ -2891,7 +2906,7 @@ function openFutureRoundDetail(id){
 
   document.getElementById('detailMiiRow').innerHTML = '';
   const futureLoc = COURSE_LOCATIONS[f.course];
-  const futureRsLocLine = `${f.rating.toFixed(1)}/${f.slope}${exp !== null ? `/${exp}` : ''}${futureLoc && futureLoc.label ? ` · ${futureLoc.label}` : ''}`;
+  const futureRsLocLine = `${f.rating.toFixed(1)}/${f.slope}${futureLoc && futureLoc.label ? ` · ${futureLoc.label}` : ''}`;
   document.getElementById('detailTitle').innerHTML = `${f.course}<span class="crr-rs title-subline">${futureRsLocLine}</span>`;
   document.getElementById('detailTitle').style.marginTop = navStack.length > 0 ? '20px' : '0';
 
@@ -3056,7 +3071,6 @@ function populateHourMinuteSelects(hourId, minuteId){
 // 2-digit field), and clamps/pads to a valid 00-59 value on blur.
 function setupMinuteInput(minuteId){
   const el = document.getElementById(minuteId);
-  if(el.value === '') el.value = '00';
   if(el.dataset.wired) return;
   el.dataset.wired = '1';
   el.addEventListener('input', ()=>{
@@ -3075,13 +3089,14 @@ function setupMinuteInput(minuteId){
 function openBetaFutureModal(){
   populateHourMinuteSelects('beta-quick-hour', 'beta-quick-minute');
   populateHourMinuteSelects('beta-ff-hour', 'beta-ff-minute');
+  document.getElementById('beta-quick-minute').value = '';
+  document.getElementById('beta-ff-minute').value = '';
   document.getElementById('beta-quick-date').value = todayISO();
   document.getElementById('beta-ff-date').value = todayISO();
   document.getElementById('beta-ff-course').value = '';
   document.getElementById('beta-ff-rating').value = '';
   document.getElementById('beta-ff-slope').value = '';
   document.getElementById('betaNewCourseBadge').style.display = 'none';
-  document.getElementById('betaNewExpPreview').style.display = 'none';
   document.getElementById('betaFutureParInputsSection').style.display = 'none';
   document.getElementById('betaFutureFormError').style.display = 'none';
   betaLocationInput.reset();
@@ -3258,12 +3273,15 @@ document.getElementById('betaSavedConfirmDelete').addEventListener('click', ()=>
 });
 document.getElementById('betaShowSavedBtn').addEventListener('click', ()=>{
   renderBetaSavedNewCourses();
+  document.getElementById('betaPanelNew').style.display = 'none';
+  document.getElementById('betaPanelPick').style.display = 'block';
   document.getElementById('betaPickGridView').style.display = 'none';
   document.getElementById('betaSavedCoursesView').style.display = 'block';
 });
 document.getElementById('betaBackFromSaved').addEventListener('click', ()=>{
   document.getElementById('betaSavedCoursesView').style.display = 'none';
-  document.getElementById('betaPickGridView').style.display = 'block';
+  document.getElementById('betaPanelPick').style.display = 'none';
+  document.getElementById('betaPanelNew').style.display = 'block';
 });
 
 let betaHolePickGroup = null;
@@ -3377,26 +3395,15 @@ function buildBetaFutureParInputs(){
 function updateBetaNewCourseUI(){
   const typed = document.getElementById('beta-ff-course').value.trim();
   const isNew = typed.length > 0 && !isKnownCourse(typed);
+  const wasVisible = document.getElementById('betaFutureParInputsSection').style.display !== 'none';
   document.getElementById('betaNewCourseBadge').style.display = isNew ? 'block' : 'none';
   document.getElementById('betaFutureParInputsSection').style.display = isNew ? 'block' : 'none';
-  if(isNew) buildBetaFutureParInputs();
+  if(isNew && (!wasVisible || document.getElementById('betaFutureParInputsRow').innerHTML === '')){
+    buildBetaFutureParInputs();
+  }
 }
 
 const betaLocationInput = wireLocationInput('beta-ff-location', 'beta-ff-location-preview');
-
-function updateBetaNewExpPreview(){
-  const rating = parseFloat(document.getElementById('beta-ff-rating').value);
-  const slope = parseFloat(document.getElementById('beta-ff-slope').value);
-  const holes = parseInt(document.getElementById('beta-ff-holes').value, 10);
-  const preview = document.getElementById('betaNewExpPreview');
-  if(isNaN(rating) || isNaN(slope)){
-    preview.style.display = 'none';
-    return;
-  }
-  const exp = computeExpScoreFor(rating, slope, holes);
-  preview.textContent = `${rating.toFixed(1)}/${slope}${exp !== null ? `/~${exp}` : ''}`;
-  preview.style.display = 'block';
-}
 
 document.getElementById('beta-ff-course').addEventListener('input', (e)=>{
   const typed = e.target.value.trim();
@@ -3407,13 +3414,14 @@ document.getElementById('beta-ff-course').addEventListener('input', (e)=>{
     document.getElementById('beta-ff-holes').value = parsed.pars.length;
     document.getElementById('beta-ff-rating').value = parsed.rating;
     document.getElementById('beta-ff-slope').value = parsed.slope;
-    updateBetaNewCourseUI();
+    document.getElementById('betaNewCourseBadge').style.display = 'block';
+    document.getElementById('betaFutureParInputsSection').style.display = 'block';
+    buildBetaFutureParInputs();
     const parBoxes = Array.from(document.querySelectorAll('.beta-future-hole-par-box'));
     parBoxes.forEach((box, i) => { if(parsed.pars[i] != null) box.value = parsed.pars[i]; });
     updateParTotalReadout('.beta-future-hole-par-box', 'betaFutureParTotalReadout');
     document.getElementById('beta-ff-location').value = parsed.location;
     document.getElementById('beta-ff-location').dispatchEvent(new Event('blur'));
-    updateBetaNewExpPreview();
     return;
   }
 
@@ -3424,16 +3432,12 @@ document.getElementById('beta-ff-course').addEventListener('input', (e)=>{
     document.getElementById('beta-ff-holes').value = match.holes;
   }
   updateBetaNewCourseUI();
-  updateBetaNewExpPreview();
 });
 document.getElementById('beta-ff-holes').addEventListener('change', ()=>{
   if(document.getElementById('betaFutureParInputsSection').style.display !== 'none'){
     buildBetaFutureParInputs();
   }
-  updateBetaNewExpPreview();
 });
-document.getElementById('beta-ff-rating').addEventListener('input', updateBetaNewExpPreview);
-document.getElementById('beta-ff-slope').addEventListener('input', updateBetaNewExpPreview);
 
 document.getElementById('betaNewSave').addEventListener('click', ()=>{
   const course = document.getElementById('beta-ff-course').value.trim();
