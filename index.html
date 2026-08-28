@@ -491,7 +491,7 @@
         <div class="form-grid">
           <div class="full"><label>Date</label><input type="date" id="beta-quick-date"></div>
           <div><label>Hour</label><select id="beta-quick-hour"></select></div>
-          <div><label>Minute</label><select id="beta-quick-minute"></select></div>
+          <div><label>Minute</label><input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" id="beta-quick-minute" placeholder="00"></div>
         </div>
         <div class="form-actions">
           <button class="btn secondary" id="betaQuickCancel" type="button">Cancel</button>
@@ -500,7 +500,7 @@
       </div>
       <div id="betaHolePickView" style="display:none;">
         <button class="modal-edit" id="betaBackFromHolePick" type="button" style="margin-bottom:12px;">‹ Change course</button>
-        <p style="font-family:var(--font-display);color:var(--fairway);font-size:18px;margin:0 0 14px;" id="betaHolePickLabel"></p>
+        <h3 id="betaHolePickLabel"></h3>
         <p class="idx-note" style="margin:0 0 10px;">Which one?</p>
         <div class="view-toggle" id="betaHolePickToggle" style="display:flex;"></div>
       </div>
@@ -515,7 +515,7 @@
         </div>
         <div class="full"><label>Date</label><input id="beta-ff-date" type="date"></div>
         <div><label>Hour</label><select id="beta-ff-hour"></select></div>
-        <div><label>Minute</label><select id="beta-ff-minute"></select></div>
+        <div><label>Minute</label><input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" id="beta-ff-minute" placeholder="00"></div>
         <div><label>Holes</label>
           <select id="beta-ff-holes"><option value="18">18</option><option value="9">9</option></select>
         </div>
@@ -3047,12 +3047,29 @@ function populateHourMinuteSelects(hourId, minuteId){
       hourSel.innerHTML += `<option value="${h}" ${h===9?'selected':''}>${formatHourLabel(h)}</option>`;
     }
   }
-  const minSel = document.getElementById(minuteId);
-  if(minSel.options.length === 0){
-    for(let m=0; m<=60; m++){
-      minSel.innerHTML += `<option value="${m}" ${m===0?'selected':''}>${pad2(m)}</option>`;
-    }
-  }
+  setupMinuteInput(minuteId);
+}
+
+// Minute is a numeric text field, not a <select> -- iOS's inputmode="numeric" brings up
+// the number pad instead of the full keyboard. Strips anything non-numeric as the user
+// types, auto-dismisses the keyboard once 2 digits are in (no need to keep it open for a
+// 2-digit field), and clamps/pads to a valid 00-59 value on blur.
+function setupMinuteInput(minuteId){
+  const el = document.getElementById(minuteId);
+  if(el.value === '') el.value = '00';
+  if(el.dataset.wired) return;
+  el.dataset.wired = '1';
+  el.addEventListener('input', ()=>{
+    let digits = el.value.replace(/\D/g,'').slice(0,2);
+    el.value = digits;
+    if(digits.length === 2) el.blur();
+  });
+  el.addEventListener('blur', ()=>{
+    let n = parseInt(el.value, 10);
+    if(isNaN(n)) n = 0;
+    n = Math.max(0, Math.min(59, n));
+    el.value = pad2(n);
+  });
 }
 
 function openBetaFutureModal(){
@@ -3255,8 +3272,8 @@ function showBetaHolePick(g){
   document.getElementById('betaHolePickLabel').textContent = g.display;
   const toggle = document.getElementById('betaHolePickToggle');
   const suffixes = Object.keys(g.variants);
-  toggle.innerHTML = suffixes.map((s, i) =>
-    `<button type="button" class="view-toggle-btn${i===0?' active':''}" data-suffix="${s.replace(/"/g,'&quot;')}">${s}</button>`
+  toggle.innerHTML = suffixes.map((s) =>
+    `<button type="button" class="view-toggle-btn" data-suffix="${s.replace(/"/g,'&quot;')}">${s}</button>`
   ).join('');
   toggle.querySelectorAll('button').forEach(btn=>{
     btn.addEventListener('click', ()=>{
