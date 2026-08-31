@@ -164,14 +164,13 @@
   .course-round-row{display:flex;justify-content:space-between;align-items:center;gap:6px;padding:9px 6px;border-bottom:1px solid var(--line);cursor:pointer;font-size:13.5px;}
   .course-round-row:hover{background:var(--paper-tan);}
   .course-round-row:last-child{border-bottom:none;}
-  .crr-mood{font-size:16px;line-height:1;flex-shrink:0;}
-  .crr-date{color:#7a7461;font-size:12px;flex:1;}
+  .crr-date{color:#7a7461;font-size:12px;flex:1 1 auto;min-width:0;}
   .crr-rs{font-family:var(--font-mono);font-size:10px;color:#8a8368;}
   .title-subline{display:block;line-height:1.2;margin-top:1px;}
   html[data-theme="wii"] .crr-rs{color:#7C97A8;}
   html[data-theme="wii"] .crr-date{color:#7C97A8;}
-  .crr-score{font-family:var(--font-mono);font-weight:600;flex:1;text-align:center;}
-  .crr-diff{font-family:var(--font-mono);flex:1;text-align:right;color:var(--fairway);}
+  .crr-score{font-family:var(--font-mono);font-weight:600;flex:0 0 auto;text-align:right;white-space:nowrap;}
+  .crr-diff{font-family:var(--font-mono);flex:0 0 auto;text-align:right;color:var(--fairway);white-space:nowrap;}
   .date-cell{font-size:11.5px;color:#7a7461;}
   html[data-theme="wii"] .date-cell{color:#7C97A8;}
   .lowdiff-face{width:20px;height:auto;vertical-align:middle;margin-left:6px;}
@@ -917,7 +916,7 @@ function computeRoundBadges(r){
   if(r.holeDetail){
     const eightCount = r.holeDetail.scores.filter(s => s === 8).length;
     if(eightCount >= 2){
-      badges.push({icon: '☃️', label: `Let It Snow!: Score 2+ 8s`, count: eightCount});
+      badges.push({icon: '☃️', label: `Let It Snow!: Score 2+ 8s`});
     } else if(eightCount === 1){
       badges.push({icon: '⛄️', label: 'Snowman: Score an 8'});
     }
@@ -952,6 +951,15 @@ function renderRoundBadgesHtml(r){
     `<button type="button" class="round-badge-btn" data-label="${b.label.replace(/"/g,'&quot;')}" style="font-size:17px;background:none;border:none;padding:2px;cursor:pointer;">${b.count && b.count > 1 ? `${b.icon}×${b.count}` : b.icon}</button>`
   ).join('');
   return `<span>${iconsHtml}</span>`;
+}
+
+// Plain, non-interactive version for contexts already inside a clickable row (like a
+// course's round list) -- avoids the badge buttons' own clicks bubbling up and also
+// triggering the row's navigation.
+function renderRoundBadgesIconsOnly(r){
+  const badges = computeRoundBadges(r);
+  if(badges.length === 0) return '';
+  return badges.map(b => b.count && b.count > 1 ? `${b.icon}×${b.count}` : b.icon).join(' ');
 }
 // ===== END REMOVABLE =====
 
@@ -1434,8 +1442,15 @@ function recompute(){
     const tr = document.createElement('tr');
     const dateFmt = new Date(r.date+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
     const isLowest = r.diff === lowestDiff;
+    // If the course name ends in a parenthetical (e.g. "(B)", "(9)"), show just the base
+    // name and move the parenthetical content onto the date line instead -- data lookups
+    // (par, differential) still use the full original r.course, only the visible text
+    // changes.
+    const parenMatch = r.course.match(/^(.*)\s\(([^)]+)\)$/);
+    const displayCourse = parenMatch ? parenMatch[1].trim() : r.course;
+    const dateLine = parenMatch ? `${dateFmt} · ${parenMatch[2]}` : dateFmt;
     tr.innerHTML = `
-      <td class="course-name"><span class="badge ${r.holes===18?'b18':'b9'}">${r.holes===18?'18':'9'}</span>${r.course}${isLowest ? `<img class="lowdiff-face wii-only" src="data:image/png;base64,${lowDiffFaceB64}" alt="Best round">` : ''}<br><span class="date-cell">${dateFmt}</span></td>
+      <td class="course-name"><span class="badge ${r.holes===18?'b18':'b9'}">${r.holes===18?'18':'9'}</span>${displayCourse}${isLowest ? `<img class="lowdiff-face wii-only" src="data:image/png;base64,${lowDiffFaceB64}" alt="Best round">` : ''}<br><span class="date-cell">${dateLine}</span></td>
       <td style="text-align:right"><span class="score-tag">${r.score.replace(/(A|Ni)$/,'')}<span class="topar">${toParStr(scoreOf(r), r.course)}</span><br><span class="topar">[Diff: ${r.diff.toFixed(1)}]</span></span></td>
     `;
     tr.addEventListener('click', ()=>{ navStack = []; openDetail(idx); });
@@ -2030,18 +2045,6 @@ document.getElementById('detailBack').addEventListener('click', ()=>{
 });
 detailOverlay.addEventListener('click', e=>{ if(e.target===detailOverlay) detailOverlay.classList.remove('open'); });
 
-function moodEmoji(diff, allDiffs){
-  const min = Math.min(...allDiffs);
-  const max = Math.max(...allDiffs);
-  const range = max - min || 1;
-  const pct = (diff - min) / range; // 0 = best round, 1 = worst round
-  if(pct <= 0.2) return {emoji:'🤩', label:'Ecstatic — one of the best rounds yet!'};
-  if(pct <= 0.4) return {emoji:'😊', label:'Happy — solid round.'};
-  if(pct <= 0.6) return {emoji:'😐', label:'Right around average.'};
-  if(pct <= 0.8) return {emoji:'🙁', label:'A tougher day on the course.'};
-  return {emoji:'😠', label:'Rough one — worth forgetting.'};
-}
-
 function openDetail(idx){
   const r = rounds[idx];
   const isFirstRoundAtCourse = rounds.filter(x => x.course === r.course).length === 1;
@@ -2382,11 +2385,10 @@ function openCourseDetail(courseName){
   const buildRow = (r) => {
     const dateFmt = new Date(r.date+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
     const gross = scoreOf(r);
-    const mood = moodEmoji(r.diff, rounds.map(x=>x.diff));
+    const badgesHtml = renderRoundBadgesIconsOnly(r);
     return `
       <div class="course-round-row" data-idx="${r.idx}">
-        <span class="crr-mood">${mood.emoji}</span>
-        <span class="crr-date">${dateFmt}</span>
+        <span class="crr-date">${dateFmt}${badgesHtml ? ` <span style="font-size:13px;">${badgesHtml}</span>` : ''}</span>
         <span class="crr-score">${gross}<span class="topar">${toParStr(gross, r.course)}</span></span>
         <span class="crr-diff">${r.diff.toFixed(1)}</span>
       </div>`;
