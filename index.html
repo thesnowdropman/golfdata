@@ -1443,12 +1443,16 @@ function recompute(){
     const dateFmt = new Date(r.date+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
     const isLowest = r.diff === lowestDiff;
     // If the course name ends in a parenthetical (e.g. "(B)", "(9)"), show just the base
-    // name and move the parenthetical content onto the date line instead -- data lookups
+    // name and move the parenthetical content onto the date line instead -- except when
+    // it's exactly "9" or "18", which gets hidden entirely rather than moved, since the
+    // hole-count badge to the left already shows that same information. Data lookups
     // (par, differential) still use the full original r.course, only the visible text
     // changes.
     const parenMatch = r.course.match(/^(.*)\s\(([^)]+)\)$/);
     const displayCourse = parenMatch ? parenMatch[1].trim() : r.course;
-    const dateLine = parenMatch ? `${dateFmt} · ${parenMatch[2]}` : dateFmt;
+    const parenContent = parenMatch ? parenMatch[2].trim() : null;
+    const isHoleCountSuffix = parenContent === '9' || parenContent === '18';
+    const dateLine = (parenContent && !isHoleCountSuffix) ? `${dateFmt} · ${parenContent}` : dateFmt;
     tr.innerHTML = `
       <td class="course-name"><span class="badge ${r.holes===18?'b18':'b9'}">${r.holes===18?'18':'9'}</span>${displayCourse}${isLowest ? `<img class="lowdiff-face wii-only" src="data:image/png;base64,${lowDiffFaceB64}" alt="Best round">` : ''}<br><span class="date-cell">${dateLine}</span></td>
       <td style="text-align:right"><span class="score-tag">${r.score.replace(/(A|Ni)$/,'')}<span class="topar">${toParStr(scoreOf(r), r.course)}</span><br><span class="topar">[Diff: ${r.diff.toFixed(1)}]</span></span></td>
@@ -1828,8 +1832,17 @@ function renderCourseRecords(){
       const arrowText = diff === 0 ? 'Ev' : (diff > 0 ? `↑${diff}` : `↓${Math.abs(diff)}`);
       expCellContent = `${row.expScore}${arrowText}`;
     }
+    // Same rule as Round History and Course Records' own detail card: a trailing
+    // parenthetical moves off the name, except "9"/"18" which is hidden entirely since
+    // the hole-count badge already shows that. All functional lookups (click-through,
+    // par) still use the full original row.course, only the visible text changes.
+    const parenMatch = row.course.match(/^(.*)\s\(([^)]+)\)$/);
+    const displayCourseName = parenMatch ? parenMatch[1].trim() : row.course;
+    const parenContent = parenMatch ? parenMatch[2].trim() : null;
+    const isHoleCountSuffix = parenContent === '9' || parenContent === '18';
+    const secondLineSuffix = (parenContent && !isHoleCountSuffix) ? ` · ${parenContent}` : '';
     tr.innerHTML = `
-      <td class="course-name"><span class="badge ${row.holes===18?'b18':'b9'}">${row.holes===18?'18':'9'}</span>${row.course}<br><span class="topar">(${row.count}, ${shortMonthYear(row.latestDate)})</span></td>
+      <td class="course-name"><span class="badge ${row.holes===18?'b18':'b9'}">${row.holes===18?'18':'9'}</span>${displayCourseName}<br><span class="topar">(${row.count}, ${shortMonthYear(row.latestDate)})${secondLineSuffix}</span></td>
       <td class="diff-cell"><span class="score-topar-wrap"><span class="score-num">${row.bestScore}</span><span class="topar">${toParStr(row.bestScore, row.course)}</span></span></td>
       <td class="diff-cell">${expCellContent}</td>
     `;
@@ -2049,9 +2062,17 @@ function openDetail(idx){
   const r = rounds[idx];
   const isFirstRoundAtCourse = rounds.filter(x => x.course === r.course).length === 1;
   const loc = COURSE_LOCATIONS[r.course];
-  const rsLocLine = `${r.rating.toFixed(1)}/${r.slope}${loc && loc.label ? ` · ${loc.label}` : ''}`;
+  // Same rule as everywhere else this pattern now applies: a trailing parenthetical moves
+  // off the title onto the rating/slope/location subline, except "9"/"18" which is hidden
+  // entirely since the round's own holes count is already shown elsewhere on this card.
+  const parenMatch = r.course.match(/^(.*)\s\(([^)]+)\)$/);
+  const displayTitle = parenMatch ? parenMatch[1].trim() : r.course;
+  const parenContent = parenMatch ? parenMatch[2].trim() : null;
+  const isHoleCountSuffix = parenContent === '9' || parenContent === '18';
+  const parenSuffix = (parenContent && !isHoleCountSuffix) ? ` · ${parenContent}` : '';
+  const rsLocLine = `${r.rating.toFixed(1)}/${r.slope}${loc && loc.label ? ` · ${loc.label}` : ''}${parenSuffix}`;
   const newCourseLine = isFirstRoundAtCourse ? `<span class="new-best-num title-subline" style="font-style:italic;font-size:13px;font-weight:700;">New Course!</span>` : '';
-  document.getElementById('detailTitle').innerHTML = `${r.course}<span class="crr-rs title-subline">${rsLocLine}</span>${newCourseLine}`;
+  document.getElementById('detailTitle').innerHTML = `${displayTitle}<span class="crr-rs title-subline">${rsLocLine}</span>${newCourseLine}`;
   const dateFmt = new Date(r.date+'T00:00:00').toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
 
   document.getElementById('detailMiiRow').innerHTML = '';
