@@ -2371,7 +2371,17 @@ function openCourseDetail(courseName){
   const loc = COURSE_LOCATIONS[courseName];
   const rsLine = `${atCourse[0].rating.toFixed(1)}/${atCourse[0].slope}`;
   const locSuffix = loc && loc.label ? ` · ${loc.label}` : '';
-  document.getElementById('detailTitle').innerHTML = `${courseName}<span class="crr-rs title-subline">${rsLine}${locSuffix}</span>`;
+  // Same idea as Round History: a trailing parenthetical moves off the title and onto the
+  // subline instead. But "9" or "18" specifically is hidden entirely rather than moved --
+  // that's just hole-count disambiguation, already redundant with context elsewhere, not
+  // meaningful info worth displaying. Editing still shows the full original name with
+  // parens intact, since openEditCourseModal is called with the untouched courseName.
+  const parenMatch = courseName.match(/^(.*)\s\(([^)]+)\)$/);
+  const displayTitle = parenMatch ? parenMatch[1].trim() : courseName;
+  const parenContent = parenMatch ? parenMatch[2].trim() : null;
+  const isHoleCountSuffix = parenContent === '9' || parenContent === '18';
+  const parenSuffix = (parenContent && !isHoleCountSuffix) ? ` · ${parenContent}` : '';
+  document.getElementById('detailTitle').innerHTML = `${displayTitle}<span class="crr-rs title-subline">${rsLine}${locSuffix}${parenSuffix}</span>`;
   // If a Back button will be showing (navStack has something to return to), the Back
   // button's absolute top-left position would otherwise overlap/clip through the Edit
   // button, which normally sits right at the top of this same area.
