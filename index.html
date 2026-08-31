@@ -845,7 +845,7 @@ function computeRoundBadges(r){
     const requiredPars = 2 * (r.holes / 9);
     const parUnits = Math.floor(parCount / requiredPars);
     if(parUnits >= 1){
-      badges.push({icon: '🅿️', label: `Par-Par Links: 2+ pars per 9 holes played`, count: parUnits});
+      badges.push({icon: '🅿️', label: `Par-Par Links: ${requiredPars}+ pars`, count: parUnits});
     }
   }
 
@@ -875,9 +875,9 @@ function computeRoundBadges(r){
     const actualScore = scoreOf(r);
     const strokeDiff = actualScore - expAtTime;
     if(strokeDiff >= threshold){
-      badges.push({icon: '🫠', label: `Meltdown: 2+ worse per 9 than expected`});
+      badges.push({icon: '🫠', label: `Meltdown: +${threshold} or worse against expected score`});
     } else if(-strokeDiff >= threshold){
-      badges.push({icon: '🔥', label: `On Fire!: 2+ better per 9 than expected`});
+      badges.push({icon: '🔥', label: `On Fire!: -${threshold} or better against expected score`});
     }
   }
 
@@ -946,20 +946,30 @@ function computeRoundBadges(r){
 
 function renderRoundBadgesHtml(r){
   const badges = computeRoundBadges(r);
-  if(badges.length === 0) return '';
+  if(badges.length === 0) return 'No badges earned this round.';
   const iconsHtml = badges.map(b =>
-    `<button type="button" class="round-badge-btn" data-label="${b.label.replace(/"/g,'&quot;')}" style="font-size:17px;background:none;border:none;padding:2px;cursor:pointer;">${b.count && b.count > 1 ? `${b.icon}×${b.count}` : b.icon}</button>`
+    `<button type="button" class="round-badge-btn" title="${b.label.replace(/"/g,'&quot;')}" data-label="${b.label.replace(/"/g,'&quot;')}" style="font-size:17px;background:none;border:none;padding:2px;cursor:pointer;">${b.count && b.count > 1 ? `${b.icon}×${b.count}` : b.icon}</button>`
   ).join('');
   return `<span>${iconsHtml}</span>`;
 }
 
 // Plain, non-interactive version for contexts already inside a clickable row (like a
+// Bolds the part of a badge label before its first colon (the "title", e.g. "Meltdown"
+// in "Meltdown: +2 or worse..."). If there's no colon, the whole label is bold instead.
+function formatBadgeLabelHtml(label){
+  const colonIdx = label.indexOf(':');
+  if(colonIdx === -1) return `<strong>${label}</strong>`;
+  return `<strong>${label.slice(0, colonIdx)}</strong>${label.slice(colonIdx)}`;
+}
+
 // course's round list) -- avoids the badge buttons' own clicks bubbling up and also
 // triggering the row's navigation.
 function renderRoundBadgesIconsOnly(r){
   const badges = computeRoundBadges(r);
   if(badges.length === 0) return '';
-  return badges.map(b => b.count && b.count > 1 ? `${b.icon}×${b.count}` : b.icon).join(' ');
+  return badges.map(b =>
+    `<span title="${b.label.replace(/"/g,'&quot;')}">${b.count && b.count > 1 ? `${b.icon}×${b.count}` : b.icon}</span>`
+  ).join(' ');
 }
 // ===== END REMOVABLE =====
 
@@ -1784,10 +1794,15 @@ function renderFutureRounds(){
     const weatherPlaceholder = loc
       ? `<span class="idx-note" style="display:none;" data-weather-lat="${loc.lat}" data-weather-lon="${loc.lon}" data-weather-date="${f.date}" data-weather-hour="${teeHour}"></span>`
       : '';
+    const fParenMatch = f.course.match(/^(.*)\s\(([^)]+)\)$/);
+    const fDisplayCourse = fParenMatch ? fParenMatch[1].trim() : f.course;
+    const fParenContent = fParenMatch ? fParenMatch[2].trim() : null;
+    const fIsHoleCountSuffix = fParenContent === '9' || fParenContent === '18';
+    const fDateLine = (fParenContent && !fIsHoleCountSuffix) ? `${formatFutureDateTime(f)} · ${fParenContent}` : formatFutureDateTime(f);
 
     return `
       <tr class="future-round-row" data-id="${f.id}" style="cursor:pointer;">
-        <td class="course-name"><span class="badge ${f.holes===18?'b18':'b9'}">${f.holes===18?'18':'9'}</span>${f.course}<br><span class="date-cell">${formatFutureDateTime(f)}</span>${weatherPlaceholder}</td>
+        <td class="course-name"><span class="badge ${f.holes===18?'b18':'b9'}">${f.holes===18?'18':'9'}</span>${fDisplayCourse}<br><span class="date-cell">${fDateLine}</span>${weatherPlaceholder}</td>
         <td class="diff-cell">${exp !== null ? exp + toParTextFor(exp, par) : '—'}${probLineHtml}</td>
       </tr>`;
   }).join('');
@@ -2087,9 +2102,9 @@ function openDetail(idx){
 
   body += `<div style="display:flex;justify-content:space-between;align-items:center;margin:10px 0 0;">
     <button class="modal-edit" id="roundCourseRecordBtn" type="button" style="margin:0;">Course Record</button>
-    ${renderRoundBadgesHtml(r)}
+    <span class="idx-note" style="text-align:right;">Round Badges: ${renderRoundBadgesHtml(r)}</span>
   </div>`;
-  body += `<p class="idx-note" id="roundBadgeExplain" style="display:none;margin:6px 0 0;text-align:right;"></p>`;
+  body += `<p class="idx-note" id="roundBadgeExplain" style="display:none;margin:0;text-align:right;"></p>`;
 
   body += buildSingleRoundScorecardHtml(r);
 
@@ -2106,7 +2121,7 @@ function openDetail(idx){
       if(explainEl.textContent === label && explainEl.style.display !== 'none'){
         explainEl.style.display = 'none';
       } else {
-        explainEl.textContent = label;
+        explainEl.innerHTML = formatBadgeLabelHtml(label);
         explainEl.style.display = 'block';
       }
     });
@@ -3528,8 +3543,13 @@ function openFutureRoundDetail(id){
 
   document.getElementById('detailMiiRow').innerHTML = '';
   const futureLoc = COURSE_LOCATIONS[f.course];
-  const futureRsLocLine = `${f.rating.toFixed(1)}/${f.slope}${futureLoc && futureLoc.label ? ` · ${futureLoc.label}` : ''}`;
-  document.getElementById('detailTitle').innerHTML = `${f.course}<span class="crr-rs title-subline">${futureRsLocLine}</span>`;
+  const fParenMatch2 = f.course.match(/^(.*)\s\(([^)]+)\)$/);
+  const fDisplayTitle = fParenMatch2 ? fParenMatch2[1].trim() : f.course;
+  const fParenContent2 = fParenMatch2 ? fParenMatch2[2].trim() : null;
+  const fIsHoleCountSuffix2 = fParenContent2 === '9' || fParenContent2 === '18';
+  const fParenSuffix2 = (fParenContent2 && !fIsHoleCountSuffix2) ? ` · ${fParenContent2}` : '';
+  const futureRsLocLine = `${f.rating.toFixed(1)}/${f.slope}${futureLoc && futureLoc.label ? ` · ${futureLoc.label}` : ''}${fParenSuffix2}`;
+  document.getElementById('detailTitle').innerHTML = `${fDisplayTitle}<span class="crr-rs title-subline">${futureRsLocLine}</span>`;
   document.getElementById('detailTitle').style.marginTop = navStack.length > 0 ? '20px' : '0';
 
   let body = `<p class="note" style="margin:2px 0 2px;">${dateFmt}${f.hour != null ? ' · ' + formatTimeLabel(f.hour, f.minute || 0) : ''}</p>`;
