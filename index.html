@@ -250,6 +250,19 @@
   .form-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px;}
   .form-error{font-size:12px;color:var(--flag);margin-top:6px;display:none;}
   .score-stat-num{font-family:var(--font-mono);font-size:17px;font-weight:600;white-space:nowrap;}
+  /* ===== REMOVABLE: Score entry keypad ===== */
+  .keypad-btn{font-family:var(--font-mono);font-size:22px;font-weight:700;background:var(--paper-tan);color:var(--fairway);border:1.5px solid var(--line);border-radius:10px;padding:18px 0;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+  .keypad-btn .score-shape{width:38px;height:38px;font-size:22px;font-weight:700;}
+  .keypad-btn:active{background:var(--fairway);color:#fff;}
+  .hole-score-display{width:32px;height:32px;font-family:var(--font-mono);font-size:15px;font-weight:600;background:var(--paper-tan);border:1px solid var(--line);border-radius:4px;cursor:pointer;color:var(--ink);display:flex;align-items:center;justify-content:center;padding:0;}
+  .hole-par-display{width:32px;height:32px;font-family:var(--font-mono);font-size:15px;font-weight:600;background:var(--paper-tan);border:1px solid var(--line);border-radius:4px;cursor:pointer;color:var(--ink);display:flex;align-items:center;justify-content:center;padding:0;}
+  .score-shape{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;line-height:1;box-sizing:border-box;}
+  .score-shape.score-eagle{border-style:double;border-width:3px;border-color:var(--fairway);border-radius:50%;}
+  .score-shape.score-birdie{border:1.5px solid var(--fairway);border-radius:50%;}
+  .score-shape.score-bogey{border:1.5px solid var(--ink);border-radius:0;}
+  .score-shape.score-double-plus{border-style:double;border-width:3px;border-color:var(--ink);border-radius:0;}
+  .score-shape.is-best{color:var(--flag) !important;border-color:var(--flag) !important;}
+  /* ===== END REMOVABLE ===== */
 
   @media (max-width:600px){
     .proj-panel{flex-direction:column;align-items:stretch;}
@@ -355,16 +368,42 @@
     <h3>Add a round</h3>
     <div class="form-grid">
       <div class="full">
-        <div id="newCourseBadge" class="new-course-badge" style="display:none;">New Course!</div>
-        <label>Course name</label>
-        <input id="f-course" type="text" list="courseList" autocomplete="off" placeholder="e.g. Sligo Creek Golf Course"><datalist id="courseList"></datalist>
+        <div class="view-toggle" id="addRoundCourseTabs" style="display:flex;margin-bottom:14px;">
+          <button class="view-toggle-btn active" id="addRoundTabPast" type="button">Past Course</button>
+          <button class="view-toggle-btn" id="addRoundTabNew" type="button">New Course</button>
+        </div>
+        <div id="addRoundPastPanel">
+          <div id="addRoundPastGridView">
+            <p class="idx-note" style="margin:0 0 10px;">Tap a course</p>
+            <div id="addRoundCourseGrid" style="display:flex;flex-wrap:wrap;gap:8px;align-items:flex-start;"></div>
+          </div>
+          <div id="addRoundHolePickView" style="display:none;">
+            <button class="modal-edit" id="addRoundBackFromHolePick" type="button" style="margin-bottom:12px;">‹ Change course</button>
+            <h3 id="addRoundHolePickLabel"></h3>
+            <p class="idx-note" style="margin:0 0 10px;">Which one?</p>
+            <div class="view-toggle" id="addRoundHolePickToggle" style="display:flex;"></div>
+          </div>
+        </div>
+        <div id="addRoundNewPanel" style="display:none;">
+          <div id="newCourseBadge" class="new-course-badge" style="display:none;">New Course!</div>
+          <label>Course name</label>
+          <input id="f-course" type="text" list="courseList" autocomplete="off" placeholder="e.g. Sligo Creek Golf Course"><datalist id="courseList"></datalist>
+        </div>
       </div>
-      <div><label>Date</label><input id="f-date" type="date"></div>
-      <div><label>Holes</label>
-        <select id="f-holes"><option value="18">18</option><option value="9">9</option></select>
+      <div class="full" id="addRoundDateField" style="display:none;"><label>Date</label><input id="f-date" type="date"></div>
+      <div class="full" id="addRoundKnownFields" style="display:none;">
+        <div class="form-grid">
+          <div><label>Holes</label>
+            <div class="view-toggle" style="display:flex;">
+              <button type="button" class="view-toggle-btn holes-toggle-btn" data-target="f-holes" data-holes="9">9</button>
+              <button type="button" class="view-toggle-btn holes-toggle-btn active" data-target="f-holes" data-holes="18">18</button>
+            </div>
+            <input type="hidden" id="f-holes" value="18">
+          </div>
+          <div><label>Course rating</label><input id="f-rating" type="number" inputmode="decimal" step="0.1" placeholder="e.g. 69.8"></div>
+          <div class="full"><label>Slope rating</label><input id="f-slope" type="number" inputmode="numeric" step="1" placeholder="e.g. 116"></div>
+        </div>
       </div>
-      <div><label>Course rating</label><input id="f-rating" type="number" step="0.1" placeholder="e.g. 69.8"></div>
-      <div><label>Slope rating</label><input id="f-slope" type="number" step="1" placeholder="e.g. 116"></div>
       <div class="full" id="parInputsSection" style="display:none;">
         <label>Par per hole <span class="idx-note" style="margin:0;display:inline;">— new course, only needed once</span></label>
         <div class="hole-inputs" id="parInputsRow"></div>
@@ -374,7 +413,7 @@
         <p class="idx-note" id="f-location-preview" style="margin:4px 0 0;"></p>
       </div>
       <div class="full">
-        <label>Score per hole</label>
+        <label id="scorePerHoleLabel">Score per hole</label>
         <div class="hole-inputs" id="scoreInputsRow"></div>
       </div>
       <div class="full" id="scoreStatsRow" style="display:none;">
@@ -425,6 +464,27 @@
     </div>
   </div>
 </div>
+
+<!-- ===== REMOVABLE: Score entry keypad ===== -->
+<div class="overlay" id="scoreKeypadOverlay">
+  <div class="modal" id="scoreKeypadModal" style="max-width:320px;">
+    <button class="modal-close" id="scoreKeypadClose" aria-label="Close">✕</button>
+    <h3 id="scoreKeypadLabel">Hole 1</h3>
+    <p class="idx-note" id="scoreKeypadHint" style="margin:0 0 16px;min-height:14px;"></p>
+    <div id="scoreKeypadGrid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;"></div>
+  </div>
+</div>
+<!-- ===== END REMOVABLE ===== -->
+
+<!-- ===== REMOVABLE: Par entry keypad ===== -->
+<div class="overlay" id="parKeypadOverlay">
+  <div class="modal" id="parKeypadModal" style="max-width:320px;">
+    <button class="modal-close" id="parKeypadClose" aria-label="Close">✕</button>
+    <h3 id="parKeypadLabel">Hole 1 Par</h3>
+    <div id="parKeypadGrid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:16px;"></div>
+  </div>
+</div>
+<!-- ===== END REMOVABLE ===== -->
 
 <!-- ADD FUTURE ROUND MODAL -->
 <div class="overlay" id="addFutureOverlay">
@@ -525,10 +585,14 @@
         <div><label>Hour</label><select id="beta-ff-hour"></select></div>
         <div><label>Minute</label><input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" id="beta-ff-minute" placeholder="00"></div>
         <div><label>Holes</label>
-          <select id="beta-ff-holes"><option value="18">18</option><option value="9">9</option></select>
+          <div class="view-toggle" style="display:flex;">
+            <button type="button" class="view-toggle-btn holes-toggle-btn" data-target="beta-ff-holes" data-holes="9">9</button>
+            <button type="button" class="view-toggle-btn holes-toggle-btn active" data-target="beta-ff-holes" data-holes="18">18</button>
+          </div>
+          <input type="hidden" id="beta-ff-holes" value="18">
         </div>
-        <div><label>Course rating</label><input id="beta-ff-rating" type="number" step="0.1" placeholder="e.g. 69.8"></div>
-        <div class="full"><label>Slope rating</label><input id="beta-ff-slope" type="number" step="1" placeholder="e.g. 116"></div>
+        <div><label>Course rating</label><input id="beta-ff-rating" type="number" inputmode="decimal" step="0.1" placeholder="e.g. 69.8"></div>
+        <div class="full"><label>Slope rating</label><input id="beta-ff-slope" type="number" inputmode="numeric" step="1" placeholder="e.g. 116"></div>
         <div class="full" id="betaFutureParInputsSection" style="display:none;">
           <label>Par per hole <span class="idx-note" style="margin:0;display:inline;">— optional, only needed once</span></label>
           <div class="hole-inputs" id="betaFutureParInputsRow"></div>
@@ -2257,18 +2321,18 @@ function buildParInputs(){
   const parRow = document.getElementById('parInputsRow');
   parRow.innerHTML = '';
   for(let h=1; h<=holes; h++){
-    const opts = [3,4,5,6].map(n => `<option value="${n}" ${n===4?'selected':''}>${n}</option>`).join('');
-    parRow.innerHTML += `<div class="hole-box"><div class="hnum">${h}</div><select class="hole-par-box" data-hole="${h}">${opts}</select></div>`;
+    parRow.innerHTML += `<div class="hole-box"><div class="hnum">${h}</div><button type="button" class="hole-par-display" data-hole="${h}">4</button><input type="hidden" class="hole-par-box" data-hole="${h}" value="4"></div>`;
   }
-  document.querySelectorAll('.hole-par-box').forEach(el=>{
-    el.addEventListener('input', ()=>{
-      updateParTotalReadout('.hole-par-box', 'parTotalReadout');
-      updateExpectedScoreHint();
-      updateGrossScoreHint();
+  document.querySelectorAll('.hole-par-display').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      openParKeypad(parseInt(btn.dataset.hole, 10), holes);
     });
   });
   updateParTotalReadout('.hole-par-box', 'parTotalReadout');
 }
+
+let currentHolePars = [];
+let currentHoleBests = null;
 
 function buildHoleInputs(){
   const holes = parseInt(document.getElementById('f-holes').value, 10);
@@ -2276,7 +2340,6 @@ function buildHoleInputs(){
   const hist = getHistoricalHoleStats(courseTyped, holes);
   const scoreRow = document.getElementById('scoreInputsRow');
   scoreRow.innerHTML = '';
-  const scoreOptions = [2,3,4,5,6,7,8];
 
   const parBoxes = Array.from(document.querySelectorAll('.hole-par-box'));
   const planned = plannedParsFor(courseTyped, holes);
@@ -2284,29 +2347,157 @@ function buildHoleInputs(){
     if(hist) return hist.pars[h];
     if(parBoxes[h]) return parseInt(parBoxes[h].value, 10);
     if(planned) return planned[h];
-    return 4;
+    return null;
   };
   const prefillForHole = (h) => {
     if(hist) return Math.round(hist.medians[h]);
     const par = parForHole(h);
-    return !isNaN(par) ? par + 2 : 6;
+    return par != null && !isNaN(par) ? par + 2 : 6;
   };
 
+  currentHolePars = [];
+  currentHoleBests = hist ? hist.bests : null;
   for(let h=1; h<=holes; h++){
-    const prefill = Math.max(2, Math.min(8, prefillForHole(h-1)));
-    const hintHtml = hist ? `<div class="hole-hint">Par ${hist.pars[h-1]}<br>Best ${hist.bests[h-1]}</div>` : '';
-    const opts = scoreOptions.map(n => `<option value="${n}" ${n===prefill?'selected':''}>${n}</option>`).join('');
-    scoreRow.innerHTML += `<div class="hole-box"><div class="hnum">${h}</div><select class="hole-score-box" data-hole="${h}">${opts}</select>${hintHtml}</div>`;
+    currentHolePars.push(parForHole(h-1));
   }
-  document.querySelectorAll('.hole-score-box').forEach(el=>{
-    el.addEventListener('input', ()=>{
-      updateGrossScoreHint();
-      updateHoleBestHighlights();
+
+  for(let h=1; h<=holes; h++){
+    const prefill = Math.max(1, Math.min(9, prefillForHole(h-1)));
+    const hintHtml = hist ? `<div class="hole-hint">Par ${hist.pars[h-1]}<br>Best ${hist.bests[h-1]}</div>` : '';
+    scoreRow.innerHTML += `<div class="hole-box"><div class="hnum">${h}</div><button type="button" class="hole-score-display" data-hole="${h}"><span class="score-shape">${prefill}</span></button><input type="hidden" class="hole-score-box" data-hole="${h}" value="${prefill}">${hintHtml}</div>`;
+  }
+  document.querySelectorAll('.hole-score-display').forEach(btn=>{
+    const h = parseInt(btn.dataset.hole, 10);
+    const shape = btn.querySelector('.score-shape');
+    const score = parseInt(shape.textContent, 10);
+    const best = currentHoleBests ? currentHoleBests[h-1] : null;
+    const isBest = best != null && !isNaN(score) && score < best;
+    applyScoreStyling(shape, score, currentHolePars[h-1], isBest);
+    btn.addEventListener('click', ()=>{
+      openScoreKeypad(h, holes);
     });
   });
   updateGrossScoreHint();
   updateHoleBestHighlights();
 }
+
+// ===== REMOVABLE: Score entry keypad =====
+// Reuses the SAME .hole-score-box hidden inputs every other function already reads --
+// this only adds a visible button + keypad layer that drives those inputs' values, so
+// updateGrossScoreHint(), updateHoleBestHighlights(), and the save handler all keep
+// working completely unchanged.
+function openScoreKeypad(holeNum, totalHoles){
+  const par = currentHolePars[holeNum-1];
+  document.getElementById('scoreKeypadLabel').textContent = par != null ? `Hole ${holeNum} — Par ${par}` : `Hole ${holeNum}`;
+  const hintEl = document.getElementById('scoreKeypadHint');
+  hintEl.textContent = (currentHoleBests && currentHoleBests[holeNum-1] != null) ? `Best: ${currentHoleBests[holeNum-1]}` : '';
+
+  const grid = document.getElementById('scoreKeypadGrid');
+  grid.innerHTML = '';
+  const best = currentHoleBests ? currentHoleBests[holeNum-1] : null;
+  for(let n=1; n<=9; n++){
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'keypad-btn';
+    const shape = document.createElement('span');
+    shape.className = 'score-shape';
+    const isBest = best != null && n < best;
+    applyScoreStyling(shape, n, par, isBest);
+    btn.appendChild(shape);
+    btn.addEventListener('click', ()=> selectKeypadScore(holeNum, n, totalHoles));
+    grid.appendChild(btn);
+  }
+
+  document.getElementById('scoreKeypadOverlay').classList.add('open');
+}
+
+// Applies the classic scorecard convention: a circle for under par (double circle for
+// eagle or better), a square for over par (double square for double bogey or worse),
+// nothing for an exact par. Only styles when par is actually known for this hole.
+// Applies the classic scorecard convention on a small inner shape (never the outer
+// button, which always stays a plain square): a circle for under par (double circle for
+// eagle or better), a square for over par (double square for double bogey or worse),
+// nothing for an exact par. Red is reserved for tying or beating the historical best on
+// this specific hole at this course -- NOT for score severity; a red-bordered bogey means
+// "you've never done better here," not "this was bad."
+function applyScoreStyling(shapeEl, score, par, isBest){
+  shapeEl.classList.remove('score-eagle','score-birdie','score-par','score-bogey','score-double-plus','is-best');
+  shapeEl.textContent = isNaN(score) ? '' : score;
+  if(par != null && !isNaN(score)){
+    const diff = score - par;
+    if(diff <= -2) shapeEl.classList.add('score-eagle');
+    else if(diff === -1) shapeEl.classList.add('score-birdie');
+    else if(diff === 0) shapeEl.classList.add('score-par');
+    else if(diff === 1) shapeEl.classList.add('score-bogey');
+    else shapeEl.classList.add('score-double-plus');
+  }
+  if(isBest) shapeEl.classList.add('is-best');
+}
+
+function selectKeypadScore(holeNum, score, totalHoles){
+  const hidden = document.querySelector(`.hole-score-box[data-hole="${holeNum}"]`);
+  const display = document.querySelector(`.hole-score-display[data-hole="${holeNum}"]`);
+  const shape = display.querySelector('.score-shape');
+  hidden.value = score;
+  const best = currentHoleBests ? currentHoleBests[holeNum-1] : null;
+  const isBest = best != null && score < best;
+  applyScoreStyling(shape, score, currentHolePars[holeNum-1], isBest);
+  updateGrossScoreHint();
+  updateHoleBestHighlights();
+
+  document.getElementById('scoreKeypadOverlay').classList.remove('open');
+  if(holeNum < totalHoles){
+    openScoreKeypad(holeNum + 1, totalHoles);
+  }
+}
+
+document.getElementById('scoreKeypadClose').addEventListener('click', ()=>{
+  document.getElementById('scoreKeypadOverlay').classList.remove('open');
+});
+document.getElementById('scoreKeypadOverlay').addEventListener('click', e=>{
+  if(e.target.id === 'scoreKeypadOverlay') document.getElementById('scoreKeypadOverlay').classList.remove('open');
+});
+// ===== END REMOVABLE =====
+
+// ===== REMOVABLE: Par entry keypad =====
+function openParKeypad(holeNum, totalHoles){
+  document.getElementById('parKeypadLabel').textContent = `Hole ${holeNum} Par`;
+  const grid = document.getElementById('parKeypadGrid');
+  grid.innerHTML = '';
+  for(let n=1; n<=9; n++){
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'keypad-btn';
+    btn.textContent = n;
+    btn.addEventListener('click', ()=> selectParKeypadValue(holeNum, n, totalHoles));
+    grid.appendChild(btn);
+  }
+  document.getElementById('parKeypadOverlay').classList.add('open');
+}
+
+function selectParKeypadValue(holeNum, value, totalHoles){
+  const hidden = document.querySelector(`.hole-par-box[data-hole="${holeNum}"]`);
+  const display = document.querySelector(`.hole-par-display[data-hole="${holeNum}"]`);
+  hidden.value = value;
+  display.textContent = value;
+  updateParTotalReadout('.hole-par-box', 'parTotalReadout');
+  updateExpectedScoreHint();
+  updateGrossScoreHint();
+
+  document.getElementById('parKeypadOverlay').classList.remove('open');
+  if(holeNum < totalHoles){
+    openParKeypad(holeNum + 1, totalHoles);
+  }
+}
+
+document.getElementById('parKeypadClose').addEventListener('click', ()=>{
+  document.getElementById('parKeypadOverlay').classList.remove('open');
+});
+document.getElementById('parKeypadOverlay').addEventListener('click', e=>{
+  if(e.target.id === 'parKeypadOverlay') document.getElementById('parKeypadOverlay').classList.remove('open');
+});
+// ===== END REMOVABLE =====
+
 
 // Parses a pasted "code string" of the form:
 //   Course Name|par1,par2,...|rating|slope|City, State
@@ -2407,7 +2598,7 @@ document.getElementById('f-course').addEventListener('input', (e)=>{
   const parsed = tryParseCourseCodeString(typed);
   if(parsed){
     document.getElementById('f-course').value = parsed.name;
-    document.getElementById('f-holes').value = parsed.pars.length;
+    setHolesValue('f-holes', parsed.pars.length);
     document.getElementById('f-rating').value = parsed.rating;
     document.getElementById('f-slope').value = parsed.slope;
     document.getElementById('newCourseBadge').style.display = 'block';
@@ -2417,7 +2608,13 @@ document.getElementById('f-course').addEventListener('input', (e)=>{
     // than whatever was there before), unlike an incidental name edit afterward.
     buildParInputs();
     const parBoxes = Array.from(document.querySelectorAll('.hole-par-box'));
-    parBoxes.forEach((box, i) => { if(parsed.pars[i] != null) box.value = parsed.pars[i]; });
+    const parDisplays = Array.from(document.querySelectorAll('.hole-par-display'));
+    parBoxes.forEach((box, i) => {
+      if(parsed.pars[i] != null){
+        box.value = parsed.pars[i];
+        if(parDisplays[i]) parDisplays[i].textContent = parsed.pars[i];
+      }
+    });
     updateParTotalReadout('.hole-par-box', 'parTotalReadout');
     buildHoleInputs();
     updateExpectedScoreHint();
@@ -2430,7 +2627,7 @@ document.getElementById('f-course').addEventListener('input', (e)=>{
   if(match){
     document.getElementById('f-rating').value = match.rating;
     document.getElementById('f-slope').value = match.slope;
-    document.getElementById('f-holes').value = match.holes;
+    setHolesValue('f-holes', match.holes);
   }
   updateNewCourseUI();
   buildHoleInputs();
@@ -2477,12 +2674,35 @@ function updateExpectedScoreHint(){
 }
 document.getElementById('f-rating').addEventListener('input', ()=>{ updateExpectedScoreHint(); updateGrossScoreHint(); });
 document.getElementById('f-slope').addEventListener('input', ()=>{ updateExpectedScoreHint(); updateGrossScoreHint(); });
-document.getElementById('f-holes').addEventListener('change', ()=>{
-  if(document.getElementById('parInputsSection').style.display !== 'none'){
-    buildParInputs();
-  }
-  buildHoleInputs();
-  updateExpectedScoreHint();
+// Sets a holes hidden-input's value AND keeps its visible 9|18 toggle in sync -- used
+// anywhere the value is set programmatically (course selection, Delim paste, known-course
+// match), not just from the toggle's own click.
+function setHolesValue(targetId, value){
+  document.getElementById(targetId).value = value;
+  document.querySelectorAll(`.holes-toggle-btn[data-target="${targetId}"]`).forEach(b=>{
+    b.classList.toggle('active', b.dataset.holes === String(value));
+  });
+}
+
+document.querySelectorAll('.holes-toggle-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    const targetId = btn.dataset.target;
+    document.querySelectorAll(`.holes-toggle-btn[data-target="${targetId}"]`).forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById(targetId).value = btn.dataset.holes;
+
+    if(targetId === 'f-holes'){
+      if(document.getElementById('parInputsSection').style.display !== 'none'){
+        buildParInputs();
+      }
+      buildHoleInputs();
+      updateExpectedScoreHint();
+    } else if(targetId === 'beta-ff-holes'){
+      if(document.getElementById('betaFutureParInputsSection').style.display !== 'none'){
+        buildBetaFutureParInputs();
+      }
+    }
+  });
 });
 
 function todayISO(){
@@ -2495,18 +2715,103 @@ function openAddModal(){
   document.getElementById('formError').style.display = 'none';
   document.getElementById('f-course').value = '';
   document.getElementById('f-date').value = todayISO();
-  document.getElementById('f-holes').value = 18;
+  setHolesValue('f-holes', 18);
   document.getElementById('f-rating').value = '';
   document.getElementById('f-slope').value = '';
   document.getElementById('expScoreHint').style.display = 'none';
   document.getElementById('newCourseBadge').style.display = 'none';
   document.getElementById('parInputsSection').style.display = 'none';
   document.getElementById('newCourseBestMsg').style.display = 'none';
+  document.getElementById('scorePerHoleLabel').textContent = 'Score per hole (Median score shown by default)';
   mainLocationInput.reset();
   buildHoleInputs();
+  buildAddRoundCourseGrid();
+  document.getElementById('addRoundTabPast').classList.add('active');
+  document.getElementById('addRoundTabNew').classList.remove('active');
+  document.getElementById('addRoundPastPanel').style.display = 'block';
+  document.getElementById('addRoundNewPanel').style.display = 'none';
+  document.getElementById('addRoundKnownFields').style.display = 'none';
+  document.getElementById('addRoundPastGridView').style.display = 'block';
+  document.getElementById('addRoundHolePickView').style.display = 'none';
   addOverlay.classList.add('open');
 }
 document.getElementById('addRoundBtn').addEventListener('click', openAddModal);
+
+// ===== REMOVABLE: Add Round Past Course / New Course tabs =====
+document.getElementById('addRoundTabPast').addEventListener('click', ()=>{
+  document.getElementById('addRoundTabPast').classList.add('active');
+  document.getElementById('addRoundTabNew').classList.remove('active');
+  document.getElementById('addRoundPastPanel').style.display = 'block';
+  document.getElementById('addRoundNewPanel').style.display = 'none';
+  document.getElementById('addRoundKnownFields').style.display = 'none';
+  document.getElementById('scorePerHoleLabel').textContent = 'Score per hole (Median score shown by default)';
+});
+document.getElementById('addRoundTabNew').addEventListener('click', ()=>{
+  document.getElementById('addRoundTabNew').classList.add('active');
+  document.getElementById('addRoundTabPast').classList.remove('active');
+  document.getElementById('addRoundNewPanel').style.display = 'block';
+  document.getElementById('addRoundPastPanel').style.display = 'none';
+  document.getElementById('addRoundKnownFields').style.display = 'block';
+  document.getElementById('scorePerHoleLabel').textContent = 'Score per hole';
+});
+
+function applyAddRoundCourseSelection(info){
+  document.getElementById('f-course').value = info.name;
+  document.getElementById('f-rating').value = info.rating;
+  document.getElementById('f-slope').value = info.slope;
+  setHolesValue('f-holes', info.holes);
+  updateNewCourseUI();
+  buildHoleInputs();
+  updateExpectedScoreHint();
+}
+
+let addRoundHolePickGroup = null;
+function showAddRoundHolePick(g){
+  addRoundHolePickGroup = g;
+  document.getElementById('addRoundHolePickLabel').textContent = g.display;
+  const toggle = document.getElementById('addRoundHolePickToggle');
+  const suffixes = Object.keys(g.variants);
+  toggle.innerHTML = suffixes.map((s) =>
+    `<button type="button" class="view-toggle-btn" data-suffix="${s.replace(/"/g,'&quot;')}">${s}</button>`
+  ).join('');
+  toggle.querySelectorAll('button').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      applyAddRoundCourseSelection(g.variants[btn.dataset.suffix]);
+      document.getElementById('addRoundHolePickView').style.display = 'none';
+      document.getElementById('addRoundPastGridView').style.display = 'block';
+    });
+  });
+  document.getElementById('addRoundPastGridView').style.display = 'none';
+  document.getElementById('addRoundHolePickView').style.display = 'block';
+}
+document.getElementById('addRoundBackFromHolePick').addEventListener('click', ()=>{
+  document.getElementById('addRoundHolePickView').style.display = 'none';
+  document.getElementById('addRoundPastGridView').style.display = 'block';
+});
+
+function buildAddRoundCourseGrid(){
+  const grid = document.getElementById('addRoundCourseGrid');
+  const known = Object.values(courseLookup);
+  const grouped = groupCoursesForPicker(known);
+  grid.innerHTML = grouped.map(g =>
+    `<button type="button" class="beta-course-btn" data-key="${g.key.replace(/"/g,'&quot;')}"
+      style="flex:1 1 auto;min-width:0;max-width:calc(33.333% - 6px);background:var(--paper-tan);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:10px 6px;cursor:pointer;text-align:center;">
+      <span class="beta-course-name" style="display:block;font-family:var(--font-mono);line-height:1.3;">${g.display}</span>
+    </button>`
+  ).join('');
+  grid.querySelectorAll('.beta-course-btn').forEach(btn=>{
+    const g = grouped.find(x => x.key === btn.dataset.key);
+    btn.addEventListener('click', ()=>{
+      if(g.variants.solo){
+        applyAddRoundCourseSelection(g.variants.solo);
+      } else {
+        showAddRoundHolePick(g);
+      }
+    });
+  });
+  fitCourseButtonText(grid);
+}
+// ===== END REMOVABLE =====
 
 document.getElementById('addSave').addEventListener('click', ()=>{
   const course = document.getElementById('f-course').value.trim();
@@ -2896,9 +3201,15 @@ document.getElementById('addFutureSave').addEventListener('click', ()=>{
 function enterScoreForFuture(f){
   detailOverlay.classList.remove('open');
   openAddModal();
+  document.getElementById('addRoundTabNew').classList.add('active');
+  document.getElementById('addRoundTabPast').classList.remove('active');
+  document.getElementById('addRoundNewPanel').style.display = 'block';
+  document.getElementById('addRoundPastPanel').style.display = 'none';
+  document.getElementById('addRoundKnownFields').style.display = 'block';
+  document.getElementById('scorePerHoleLabel').textContent = 'Score per hole';
   document.getElementById('f-course').value = f.course;
   document.getElementById('f-date').value = f.date;
-  document.getElementById('f-holes').value = f.holes;
+  setHolesValue('f-holes', f.holes);
   document.getElementById('f-rating').value = f.rating;
   document.getElementById('f-slope').value = f.slope;
   updateNewCourseUI();
@@ -2918,7 +3229,8 @@ function openFutureRoundDetail(id){
   document.getElementById('detailTitle').innerHTML = `${f.course}<span class="crr-rs title-subline">${futureRsLocLine}</span>`;
   document.getElementById('detailTitle').style.marginTop = navStack.length > 0 ? '20px' : '0';
 
-  let body = `<p class="note" style="margin:2px 0 12px;">${dateFmt}${f.hour != null ? ' · ' + formatTimeLabel(f.hour, f.minute || 0) : ''} · ${f.holes} holes · Exp. Score ${exp !== null ? exp : '—'}</p>`;
+  let body = `<p class="note" style="margin:2px 0 2px;">${dateFmt}${f.hour != null ? ' · ' + formatTimeLabel(f.hour, f.minute || 0) : ''}</p>`;
+  body += `<p class="note" style="margin:0 0 12px;">${f.holes} holes · Exp. Score ${exp !== null ? exp : '—'}${exp !== null ? toParTextFor(exp, parForFutureRound(f)) : ''}</p>`;
 
   const atCourse = rounds.filter(r => r.course.trim().toLowerCase() === f.course.trim().toLowerCase());
   let scorecardHtml = '';
@@ -3104,6 +3416,7 @@ function openBetaFutureModal(){
   document.getElementById('beta-ff-course').value = '';
   document.getElementById('beta-ff-rating').value = '';
   document.getElementById('beta-ff-slope').value = '';
+  setHolesValue('beta-ff-holes', 18);
   document.getElementById('betaNewCourseBadge').style.display = 'none';
   document.getElementById('betaFutureParInputsSection').style.display = 'none';
   document.getElementById('betaFutureFormError').style.display = 'none';
@@ -3420,7 +3733,7 @@ document.getElementById('beta-ff-course').addEventListener('input', (e)=>{
   const parsed = tryParseCourseCodeString(typed);
   if(parsed){
     document.getElementById('beta-ff-course').value = parsed.name;
-    document.getElementById('beta-ff-holes').value = parsed.pars.length;
+    setHolesValue('beta-ff-holes', parsed.pars.length);
     document.getElementById('beta-ff-rating').value = parsed.rating;
     document.getElementById('beta-ff-slope').value = parsed.slope;
     document.getElementById('betaNewCourseBadge').style.display = 'block';
@@ -3438,16 +3751,10 @@ document.getElementById('beta-ff-course').addEventListener('input', (e)=>{
   if(match){
     document.getElementById('beta-ff-rating').value = match.rating;
     document.getElementById('beta-ff-slope').value = match.slope;
-    document.getElementById('beta-ff-holes').value = match.holes;
+    setHolesValue('beta-ff-holes', match.holes);
   }
   updateBetaNewCourseUI();
 });
-document.getElementById('beta-ff-holes').addEventListener('change', ()=>{
-  if(document.getElementById('betaFutureParInputsSection').style.display !== 'none'){
-    buildBetaFutureParInputs();
-  }
-});
-
 document.getElementById('betaNewSave').addEventListener('click', ()=>{
   const course = document.getElementById('beta-ff-course').value.trim();
   const date = document.getElementById('beta-ff-date').value;
