@@ -823,24 +823,30 @@ function computeRoundBadges(r){
       return xLoc && xLoc.label && xLoc.label.split(',').pop().trim() === state;
     });
     if(firstInState && roundKey(firstInState) === roundKey(r)){
-      badges.push({icon: '🗺️', label: `First round in ${state}`});
+      badges.push({icon: '🗺️', label: `Location Unlocked: First round in ${state}`});
     }
   }
 
   if(r.holeDetail){
-    const birdieCount = r.holeDetail.scores.filter((s,i) => s - r.holeDetail.pars[i] <= -1).length;
+    // Birdie and eagle are independent -- a round can earn both at once, unlike the
+    // 8-count pair below which escalates instead of stacking.
+    const birdieCount = r.holeDetail.scores.filter((s,i) => s - r.holeDetail.pars[i] === -1).length;
     if(birdieCount > 0){
-      badges.push({icon: '🐦', label: `${birdieCount} birdie${birdieCount>1?'s':''} or better`, count: birdieCount});
+      badges.push({icon: '🐦', label: `Bird Up!: Make a birdie`, count: birdieCount});
+    }
+    const eagleCount = r.holeDetail.scores.filter((s,i) => s - r.holeDetail.pars[i] <= -2).length;
+    if(eagleCount > 0){
+      badges.push({icon: '🦅', label: `On Eagles Wings: Eagle!`, count: eagleCount});
     }
     const hasDoublePlus = r.holeDetail.scores.some((s,i) => s - r.holeDetail.pars[i] >= 2);
     if(!hasDoublePlus){
-      badges.push({icon: '🛡️', label: 'No double bogeys or worse'});
+      badges.push({icon: '🛡️', label: 'D-Fence!: No holes worse than bogey'});
     }
     const parCount = r.holeDetail.scores.filter((s,i) => s - r.holeDetail.pars[i] === 0).length;
     const requiredPars = 2 * (r.holes / 9);
     const parUnits = Math.floor(parCount / requiredPars);
     if(parUnits >= 1){
-      badges.push({icon: '🅿️', label: `${parCount} pars`, count: parUnits});
+      badges.push({icon: '🅿️', label: `Par-Par Links: 2+ pars per 9 holes played`, count: parUnits});
     }
   }
 
@@ -858,7 +864,7 @@ function computeRoundBadges(r){
     if(priorAtCourse.length > 0){
       const bestScoreBefore = Math.min(...priorAtCourse.map(scoreOf));
       if(scoreOf(r) <= bestScoreBefore){
-        badges.push({icon: '🏆', label: 'Course record at the time'});
+        badges.push({icon: '🏆', label: 'Broke Course Record'});
       }
     }
   }
@@ -870,9 +876,9 @@ function computeRoundBadges(r){
     const actualScore = scoreOf(r);
     const strokeDiff = actualScore - expAtTime;
     if(strokeDiff >= threshold){
-      badges.push({icon: '🫠', label: `${strokeDiff} strokes worse than expected at the time`});
+      badges.push({icon: '🫠', label: `Meltdown: 2+ worse per 9 than expected`});
     } else if(-strokeDiff >= threshold){
-      badges.push({icon: '🔥', label: `${-strokeDiff} strokes better than expected at the time`});
+      badges.push({icon: '🔥', label: `On Fire!: 2+ better per 9 than expected`});
     }
   }
 
@@ -882,7 +888,15 @@ function computeRoundBadges(r){
     const frontToPar = r.holeDetail.scores.slice(0,9).reduce((s,v,i)=>s+v-r.holeDetail.pars[i], 0);
     const backToPar = r.holeDetail.scores.slice(9).reduce((s,v,i)=>s+v-r.holeDetail.pars[i+9], 0);
     if(Math.abs(frontToPar - backToPar) <= 2){
-      badges.push({icon: '🧮', label: 'Balanced round -- front and back 9 within 2 strokes of each other'});
+      badges.push({icon: '🧮', label: 'Find Your Balance: Front and back within 2 strokes'});
+    }
+
+    // Finishing stretch (holes 16-18), also 18-hole only
+    const finishToPar = r.holeDetail.scores.slice(15,18).reduce((s,v,i)=>s+v-r.holeDetail.pars[i+15], 0);
+    if(finishToPar >= 7){
+      badges.push({icon: '🥱', label: 'Siesta: Finish holes 16-18 at +7 or worse'});
+    } else if(finishToPar <= 3){
+      badges.push({icon: '🏃‍♂️', label: 'Trackstar: Finish holes 16-18 at +3 or better'});
     }
   }
 
@@ -893,8 +907,19 @@ function computeRoundBadges(r){
     if(hasAll3Types){
       const madeParOrBetter = (parType) => r.holeDetail.scores.some((s,i) => r.holeDetail.pars[i] === parType && s <= parType);
       if([3,4,5].every(madeParOrBetter)){
-        badges.push({icon: '🌈', label: 'Par or better on a par-3, par-4, and par-5'});
+        badges.push({icon: '🌈', label: 'Triple Rainbow: Par or better on all 3 types of pars'});
       }
+    }
+  }
+
+  // Scored an 8 on a hole. 2+ eights escalates to the snowman instead -- never both at
+  // once, since 2+ eights already implies at least one.
+  if(r.holeDetail){
+    const eightCount = r.holeDetail.scores.filter(s => s === 8).length;
+    if(eightCount >= 2){
+      badges.push({icon: '☃️', label: `Let It Snow!: Score 2+ 8s`, count: eightCount});
+    } else if(eightCount === 1){
+      badges.push({icon: '⛄️', label: 'Snowman: Score an 8'});
     }
   }
 
@@ -913,7 +938,7 @@ function computeRoundBadges(r){
       return xNum < roundNumberOf[roundKey(earliest)] ? x : earliest;
     }, null);
     if(firstAtCourse && roundKey(firstAtCourse) === roundKey(r) && expAtTime !== null && scoreOf(r) < expAtTime){
-      badges.push({icon: '🐣', label: 'Debut round at a new course, beat the expected score'});
+      badges.push({icon: '🐣', label: 'Hatched: Debut new course under expected score'});
     }
   }
 
