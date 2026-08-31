@@ -848,29 +848,32 @@ function computeRoundBadges(r){
     }
     const parCount = r.holeDetail.scores.filter((s,i) => s - r.holeDetail.pars[i] === 0).length;
     const requiredPars = 2 * (r.holes / 9);
-    if(parCount >= requiredPars){
-      badges.push({icon: '🅿️', label: `${parCount} pars`, count: parCount});
+    const parUnits = Math.floor(parCount / requiredPars);
+    if(parUnits >= 1){
+      badges.push({icon: '🅿️', label: `${parCount} pars`, count: parUnits});
     }
   }
 
   // Course record at the time -- was this the best score EVER at this course, as of when
-  // it was played (using chronological round order, not raw dates, to stay unambiguous).
+  // it was played, comparing only against PRIOR rounds at this course. A debut round has
+  // nothing to beat yet, so it never qualifies for this badge -- that's intentional, not
+  // an oversight: you can't set a record on your first attempt.
   const thisRoundNum = roundNumberOf[roundKey(r)];
   if(thisRoundNum){
-    const priorAndSelfAtCourse = rounds.filter(x =>
+    const priorAtCourse = rounds.filter(x =>
       x.course.trim().toLowerCase() === r.course.trim().toLowerCase() &&
       roundNumberOf[roundKey(x)] != null &&
-      roundNumberOf[roundKey(x)] <= thisRoundNum
+      roundNumberOf[roundKey(x)] < thisRoundNum
     );
-    if(priorAndSelfAtCourse.length > 0){
-      const bestScoreSoFar = Math.min(...priorAndSelfAtCourse.map(scoreOf));
-      if(scoreOf(r) <= bestScoreSoFar){
+    if(priorAtCourse.length > 0){
+      const bestScoreBefore = Math.min(...priorAtCourse.map(scoreOf));
+      if(scoreOf(r) <= bestScoreBefore){
         badges.push({icon: '🏆', label: 'Course record at the time'});
       }
     }
   }
 
-  // 3+ strokes better/worse than expected AT THE TIME, scaled per 9 holes played
+  // 2+ strokes better/worse than expected AT THE TIME, scaled per 9 holes played
   const expAtTime = expScoreAtTimeOf(r);
   if(expAtTime !== null){
     const threshold = 2 * (r.holes / 9);
@@ -883,15 +886,57 @@ function computeRoundBadges(r){
     }
   }
 
+  // Balanced round -- front 9 and back 9 score-to-par within 2 strokes of each other.
+  // 18-hole rounds only, since a 9-hole round has no front/back split to compare.
+  if(r.holes === 18 && r.holeDetail){
+    const frontToPar = r.holeDetail.scores.slice(0,9).reduce((s,v,i)=>s+v-r.holeDetail.pars[i], 0);
+    const backToPar = r.holeDetail.scores.slice(9).reduce((s,v,i)=>s+v-r.holeDetail.pars[i+9], 0);
+    if(Math.abs(frontToPar - backToPar) <= 2){
+      badges.push({icon: '🧮', label: 'Balanced round -- front and back 9 within 2 strokes of each other'});
+    }
+  }
+
+  // Every par type -- made par or better on at least one par-3, one par-4, and one par-5,
+  // only possible on courses that actually have all three par types.
+  if(r.holeDetail){
+    const hasAll3Types = [3,4,5].every(p => r.holeDetail.pars.includes(p));
+    if(hasAll3Types){
+      const madeParOrBetter = (parType) => r.holeDetail.scores.some((s,i) => r.holeDetail.pars[i] === parType && s <= parType);
+      if([3,4,5].every(madeParOrBetter)){
+        badges.push({icon: '🌈', label: 'Par or better on a par-3, par-4, and par-5'});
+      }
+    }
+  }
+
+  // Milestone rounds -- exact chronological round count, ever
+  if(roundNum != null && [10,25,50,100].includes(roundNum)){
+    badges.push({icon: '🔟', label: `Round #${roundNum} logged`});
+  }
+
+  // Debut win -- first-ever round at this course, and it beat the expected score
+  if(roundNum != null){
+    const roundsAtCourse = rounds.filter(x => x.course.trim().toLowerCase() === r.course.trim().toLowerCase());
+    const firstAtCourse = roundsAtCourse.reduce((earliest, x) => {
+      const xNum = roundNumberOf[roundKey(x)];
+      if(xNum == null) return earliest;
+      if(!earliest) return x;
+      return xNum < roundNumberOf[roundKey(earliest)] ? x : earliest;
+    }, null);
+    if(firstAtCourse && roundKey(firstAtCourse) === roundKey(r) && expAtTime !== null && scoreOf(r) < expAtTime){
+      badges.push({icon: '🐣', label: 'Debut round at a new course, beat the expected score'});
+    }
+  }
+
   return badges;
 }
 
 function renderRoundBadgesHtml(r){
   const badges = computeRoundBadges(r);
   if(badges.length === 0) return '';
-  return `<span style="font-size:17px;">${badges.map(b =>
-    `<span title="${b.label.replace(/"/g,'&quot;')}">${b.count ? `${b.icon}×${b.count}` : b.icon}</span>`
-  ).join(' ')}</span>`;
+  const iconsHtml = badges.map(b =>
+    `<button type="button" class="round-badge-btn" data-label="${b.label.replace(/"/g,'&quot;')}" style="font-size:17px;background:none;border:none;padding:2px;cursor:pointer;">${b.count && b.count > 1 ? `${b.icon}×${b.count}` : b.icon}</button>`
+  ).join('');
+  return `<span>${iconsHtml}</span>`;
 }
 // ===== END REMOVABLE =====
 
@@ -2005,6 +2050,7 @@ function openDetail(idx){
     <button class="modal-edit" id="roundCourseRecordBtn" type="button" style="margin:0;">Course Record</button>
     ${renderRoundBadgesHtml(r)}
   </div>`;
+  body += `<p class="idx-note" id="roundBadgeExplain" style="display:none;margin:6px 0 0;text-align:right;"></p>`;
 
   body += buildSingleRoundScorecardHtml(r);
 
@@ -2013,6 +2059,19 @@ function openDetail(idx){
   document.getElementById('detailBody').innerHTML = body;
   detailOverlay.classList.add('open');
   updateBackButton();
+
+  document.querySelectorAll('.round-badge-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const explainEl = document.getElementById('roundBadgeExplain');
+      const label = btn.dataset.label;
+      if(explainEl.textContent === label && explainEl.style.display !== 'none'){
+        explainEl.style.display = 'none';
+      } else {
+        explainEl.textContent = label;
+        explainEl.style.display = 'block';
+      }
+    });
+  });
 
   document.getElementById('roundCourseRecordBtn').addEventListener('click', ()=>{
     navStack.push(()=>openDetail(idx));
