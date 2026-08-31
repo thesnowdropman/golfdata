@@ -813,16 +813,6 @@ function computeRoundBadges(r){
   const badges = [];
   const roundNum = roundNumberOf[roundKey(r)]; // 1-indexed chronological position
 
-  // Beat the expected differential AT THE TIME -- compares against trend[roundNum-2],
-  // which is the trend as of the PREVIOUS round, not this one (trend[roundNum-1] already
-  // includes this round's own differential in its "best 8" average).
-  if(roundNum > 1){
-    const priorTrend = trend[roundNum - 2];
-    if(priorTrend && r.diff < priorTrend.index){
-      badges.push({icon: '📈', label: 'Beat expected differential'});
-    }
-  }
-
   // First round chronologically in this state
   const loc = COURSE_LOCATIONS[r.course];
   if(loc && loc.label){
