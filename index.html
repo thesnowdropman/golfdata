@@ -822,7 +822,7 @@ function computeRoundBadges(r){
       return xLoc && xLoc.label && xLoc.label.split(',').pop().trim() === state;
     });
     if(firstInState && roundKey(firstInState) === roundKey(r)){
-      badges.push({icon: '🗺️', label: `Location Unlocked: First round in ${state}`});
+      badges.push({icon: '🗺️', label: `Location Unlocked: First round played in ${state}`});
     }
   }
 
@@ -831,11 +831,11 @@ function computeRoundBadges(r){
     // 8-count pair below which escalates instead of stacking.
     const birdieCount = r.holeDetail.scores.filter((s,i) => s - r.holeDetail.pars[i] === -1).length;
     if(birdieCount > 0){
-      badges.push({icon: '🐦', label: `Bird Up!: Make a birdie`, count: birdieCount});
+      badges.push({icon: '🐦', label: `Put A Bird On It: Score a birdie`, count: birdieCount});
     }
     const eagleCount = r.holeDetail.scores.filter((s,i) => s - r.holeDetail.pars[i] <= -2).length;
     if(eagleCount > 0){
-      badges.push({icon: '🦅', label: `On Eagles Wings: Eagle!`, count: eagleCount});
+      badges.push({icon: '🦅', label: `On Eagle's Wings: Eagle!`, count: eagleCount});
     }
     const hasDoublePlus = r.holeDetail.scores.some((s,i) => s - r.holeDetail.pars[i] >= 2);
     if(!hasDoublePlus){
@@ -946,11 +946,11 @@ function computeRoundBadges(r){
 
 function renderRoundBadgesHtml(r){
   const badges = computeRoundBadges(r);
-  if(badges.length === 0) return 'No badges earned this round.';
+  if(badges.length === 0) return '';
   const iconsHtml = badges.map(b =>
-    `<button type="button" class="round-badge-btn" title="${b.label.replace(/"/g,'&quot;')}" data-label="${b.label.replace(/"/g,'&quot;')}" style="font-size:17px;background:none;border:none;padding:2px;cursor:pointer;">${b.count && b.count > 1 ? `${b.icon}×${b.count}` : b.icon}</button>`
+    `<button type="button" class="round-badge-btn" title="${b.label.replace(/"/g,'&quot;')}" data-label="${b.label.replace(/"/g,'&quot;')}" style="display:inline-flex;align-items:center;font-size:17px;line-height:1;background:none;border:none;padding:2px;cursor:pointer;">${b.count && b.count > 1 ? `${b.icon}×${b.count}` : b.icon}</button>`
   ).join('');
-  return `<span>${iconsHtml}</span>`;
+  return `<span style="display:inline-flex;align-items:center;">${iconsHtml}</span>`;
 }
 
 // Plain, non-interactive version for contexts already inside a clickable row (like a
@@ -970,6 +970,111 @@ function renderRoundBadgesIconsOnly(r){
   return badges.map(b =>
     `<span title="${b.label.replace(/"/g,'&quot;')}">${b.count && b.count > 1 ? `${b.icon}×${b.count}` : b.icon}</span>`
   ).join(' ');
+}
+
+// Counts how many times this same badge icon has been earned chronologically, up to and
+// including this round -- i.e. this occurrence's all-time sequence number for that badge.
+function computeBadgeAllTimeRank(r, icon){
+  const thisRoundNum = roundNumberOf[roundKey(r)];
+  if(thisRoundNum == null) return null;
+  const priorAndSelf = rounds
+    .filter(x => roundNumberOf[roundKey(x)] != null && roundNumberOf[roundKey(x)] <= thisRoundNum)
+    .sort((a,b) => roundNumberOf[roundKey(a)] - roundNumberOf[roundKey(b)]);
+  let rank = 0;
+  priorAndSelf.forEach(x => {
+    if(computeRoundBadges(x).some(b => b.icon === icon)) rank++;
+  });
+  return rank;
+}
+
+// Same header form/format as the Round History detail card, followed by one line per
+// badge earned this round, each showing its all-time sequence number for that badge type.
+function openRoundBadgesDetail(idx){
+  const r = rounds[idx];
+  const dateFmt = new Date(r.date+'T00:00:00').toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
+  const loc = COURSE_LOCATIONS[r.course];
+  const parenMatch = r.course.match(/^(.*)\s\(([^)]+)\)$/);
+  const displayTitle = parenMatch ? parenMatch[1].trim() : r.course;
+  const parenContent = parenMatch ? parenMatch[2].trim() : null;
+  const isHoleCountSuffix = parenContent === '9' || parenContent === '18';
+  const parenSuffix = (parenContent && !isHoleCountSuffix) ? ` · ${parenContent}` : '';
+  const rsLocLine = `${r.rating.toFixed(1)}/${r.slope}${loc && loc.label ? ` · ${loc.label}` : ''}${parenSuffix}`;
+  document.getElementById('detailTitle').innerHTML = `${displayTitle}<span class="crr-rs title-subline">${rsLocLine}</span>`;
+  document.getElementById('detailTitle').style.marginTop = navStack.length > 0 ? '28px' : '0';
+
+  const expAtTime = expScoreAtTimeOf(r);
+  let body = `<p class="note" style="margin:2px 0 0;">${dateFmt} · ${r.holes}-hole round · Differential ${r.diff.toFixed(1)}${expAtTime !== null ? ` · Exp. Score ${expAtTime}` : ''}</p>`;
+
+  const badges = computeRoundBadges(r);
+  if(badges.length === 0){
+    body += `<p class="note" style="margin:16px 0 0;">No badges earned this round.</p>`;
+  } else {
+    body += badges.map(b => {
+      const rank = computeBadgeAllTimeRank(r, b.icon);
+      return `<p class="note" style="margin:16px 0 0;">${b.icon} - ${formatBadgeLabelHtml(b.label)}${rank != null ? ` (#${rank} all-time)` : ''}</p>`;
+    }).join('');
+  }
+
+  document.getElementById('detailMiiRow').innerHTML = '';
+  document.getElementById('detailMiiRow').style.display = 'none';
+  body += `<div style="text-align:center;margin-top:16px;"><button class="btn" id="viewAllBadgesBtn" type="button">View All Badges</button></div>`;
+  document.getElementById('detailBody').innerHTML = body;
+  detailOverlay.classList.add('open');
+  updateBackButton();
+  document.getElementById('viewAllBadgesBtn').addEventListener('click', ()=>{
+    navStack.push(()=>openRoundBadgesDetail(idx));
+    openAllBadgesDetail();
+  });
+}
+
+// Static catalog of every badge type with a generic (hole-count-independent) description,
+// used for the all-time summary page -- this is where "On Fire!"'s two label variants
+// (-2 for 9 holes, -4 for 18) get combined into a single entry, since they're the same
+// badge type earned under different scaling, not two different badges.
+const BADGE_CATALOG = [
+  {icon: '🗺️', name: 'Location Unlocked', desc: 'First round played in a new state'},
+  {icon: '🐦', name: 'Put A Bird On It', desc: 'Score a birdie'},
+  {icon: '🦅', name: "On Eagle's Wings", desc: 'Eagle!'},
+  {icon: '🛡️', name: 'D-Fence!', desc: 'No holes worse than bogey'},
+  {icon: '🅿️', name: 'Par-Par Links', desc: '2+ pars per 9 holes played'},
+  {icon: '🏆', name: 'Broke Course Record', desc: 'Best score ever at that course, as of when it was played'},
+  {icon: '🫠', name: 'Meltdown', desc: '2+ strokes worse per 9 than expected'},
+  {icon: '🔥', name: 'On Fire!', desc: '2+ strokes better per 9 than expected'},
+  {icon: '🧮', name: 'Find Your Balance', desc: 'Front and back 9 within 2 strokes of each other'},
+  {icon: '🌈', name: 'Triple Rainbow', desc: 'Par or better on a par-3, par-4, and par-5 in the same round'},
+  {icon: '☃️', name: 'Let It Snow!', desc: 'Score 2+ 8s in a round'},
+  {icon: '⛄️', name: 'Snowman', desc: 'Score exactly one 8 in a round'},
+  {icon: '🔟', name: 'Milestone', desc: 'Round #10, #25, #50, or #100 logged, ever'},
+  {icon: '🐣', name: 'Hatched', desc: 'Debut round at a new course that beat the expected score'},
+  {icon: '🥱', name: 'Siesta', desc: 'Finish holes 16-18 at +7 or worse'},
+  {icon: '🏃‍♂️', name: 'Trackstar', desc: 'Finish holes 16-18 at +3 or better'},
+];
+
+function computeAllBadgeCounts(){
+  const counts = {};
+  rounds.forEach(r => {
+    const seenIcons = new Set(computeRoundBadges(r).map(b => b.icon));
+    seenIcons.forEach(icon => { counts[icon] = (counts[icon] || 0) + 1; });
+  });
+  return counts;
+}
+
+function openAllBadgesDetail(){
+  document.getElementById('detailTitle').innerHTML = 'All Badges';
+  document.getElementById('detailTitle').style.marginTop = navStack.length > 0 ? '28px' : '0';
+
+  const counts = computeAllBadgeCounts();
+  const sortedCatalog = [...BADGE_CATALOG].sort((a,b) => (counts[b.icon] || 0) - (counts[a.icon] || 0));
+  const body = sortedCatalog.map(b => {
+    const count = counts[b.icon] || 0;
+    return `<p class="note" style="margin:16px 0 0;">${b.icon} - <strong>${b.name}</strong>: ${b.desc} — earned ${count} time${count === 1 ? '' : 's'}</p>`;
+  }).join('');
+
+  document.getElementById('detailMiiRow').innerHTML = '';
+  document.getElementById('detailMiiRow').style.display = 'none';
+  document.getElementById('detailBody').innerHTML = body;
+  detailOverlay.classList.add('open');
+  updateBackButton();
 }
 // ===== END REMOVABLE =====
 
@@ -2100,15 +2205,20 @@ function openDetail(idx){
   const expAtTimeForCard = expScoreAtTimeOf(r);
   let body = `<p class="note" style="margin:2px 0 0;">${dateFmt} · ${r.holes}-hole round · Differential ${r.diff.toFixed(1)}${expAtTimeForCard !== null ? ` · Exp. Score ${expAtTimeForCard}` : ''}</p>`;
 
-  body += `<div style="display:flex;justify-content:space-between;align-items:center;margin:10px 0 0;">
-    <button class="modal-edit" id="roundCourseRecordBtn" type="button" style="margin:0;">Course Record</button>
-    <span class="idx-note" style="text-align:right;">Round Badges: ${renderRoundBadgesHtml(r)}</span>
+  const badgesForCard = computeRoundBadges(r);
+  const ovalLabel = badgesForCard.length === 0 ? 'Round Badges: No badges earned this round.' : 'Round Badges:';
+  body += `<div style="margin:10px 0 0;display:flex;align-items:center;flex-wrap:wrap;gap:8px;">
+    <button type="button" id="roundBadgesOvalBtn" style="display:inline-flex;align-items:center;font-size:12px;font-weight:700;color:var(--fairway);background:none;border:1.5px solid var(--fairway);border-radius:20px;padding:4px 10px;cursor:pointer;">${ovalLabel}</button>
+    ${renderRoundBadgesHtml(r)}
   </div>`;
-  body += `<p class="idx-note" id="roundBadgeExplain" style="display:none;margin:0;text-align:right;"></p>`;
+  body += `<p class="idx-note" id="roundBadgeExplain" style="display:none;margin:8px 0 0;font-size:12px;"></p>`;
 
   body += buildSingleRoundScorecardHtml(r);
 
-  body += `<div style="text-align:center;margin-top:14px;"><button class="btn danger" id="deleteRoundBtn" type="button">Delete this round</button></div>`;
+  body += `<div style="text-align:center;margin-top:14px;display:flex;gap:10px;justify-content:center;">
+    <button class="btn" id="roundCourseRecordBtn" type="button">Course Record</button>
+    <button class="btn danger" id="deleteRoundBtn" type="button">Delete this round</button>
+  </div>`;
 
   document.getElementById('detailBody').innerHTML = body;
   detailOverlay.classList.add('open');
@@ -2130,6 +2240,10 @@ function openDetail(idx){
   document.getElementById('roundCourseRecordBtn').addEventListener('click', ()=>{
     navStack.push(()=>openDetail(idx));
     openCourseDetail(r.course);
+  });
+  document.getElementById('roundBadgesOvalBtn').addEventListener('click', ()=>{
+    navStack.push(()=>openDetail(idx));
+    openRoundBadgesDetail(idx);
   });
   document.querySelectorAll('.hole-num-clickable, .hole-stat-clickable').forEach(el=>{
     el.addEventListener('click', (e)=>{
@@ -2334,7 +2448,7 @@ function buildSingleRoundScorecardHtml(r){
   if(bestMarks.some(Boolean) || isBestRoundAtCourse) legendParts.push('<span class="new-best-num">Red</span>: New best score at time of the round');
 
   return `
-    <p class="note" style="margin:16px 0 6px;"><span style="color:var(--fairway);font-weight:700;">Scorecard</span>${legendParts.length ? `<br><span style="font-style:italic;">${legendParts.join(' · ')}</span>` : ''}</p>
+    <p class="note" style="margin:10px 0 6px;"><span style="color:var(--fairway);font-weight:700;">Scorecard</span>${legendParts.length ? `<br><span style="font-style:italic;">${legendParts.join(' · ')}</span>` : ''}</p>
     ${renderScorecardChunks(numHoles, pars, rows)}`;
 }
 
