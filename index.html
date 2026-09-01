@@ -3941,7 +3941,13 @@ function groupCoursesForPicker(entries){
   });
   entries.forEach(e => {
     if(!consolidatedNames.has(e.name)){
-      grouped.push({display: e.name, variants: {solo: e}, key: e.name});
+      // Solo (non-grouped) courses still had their raw name, parens and all -- strip any
+      // trailing parenthetical from the display text here too, same as everywhere else
+      // this pattern applies. The underlying e.name (used for actual selection) stays
+      // untouched.
+      const soloMatch = e.name.match(/^(.*)\s\(([^)]+)\)$/);
+      const soloDisplay = soloMatch ? soloMatch[1].trim() : e.name;
+      grouped.push({display: soloDisplay, variants: {solo: e}, key: e.name});
     }
   });
   return grouped.sort((a,b)=>a.display.localeCompare(b.display));
