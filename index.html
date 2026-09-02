@@ -1953,13 +1953,10 @@ function renderFutureRounds(){
       : '';
     const fParenMatch = f.course.match(/^(.*)\s\(([^)]+)\)$/);
     const fDisplayCourse = fParenMatch ? fParenMatch[1].trim() : f.course;
-    const fParenContent = fParenMatch ? fParenMatch[2].trim() : null;
-    const fIsHoleCountSuffix = fParenContent === '9' || fParenContent === '18';
-    const fDateLine = (fParenContent && !fIsHoleCountSuffix) ? `${formatFutureDateTime(f)} · ${fParenContent}` : formatFutureDateTime(f);
 
     return `
       <tr class="future-round-row" data-id="${f.id}" style="cursor:pointer;">
-        <td class="course-name"><span class="badge ${f.holes===18?'b18':'b9'}">${f.holes===18?'18':'9'}</span>${fDisplayCourse}<br><span class="date-cell">${fDateLine}</span>${weatherPlaceholder}</td>
+        <td class="course-name"><span class="badge ${f.holes===18?'b18':'b9'}">${f.holes===18?'18':'9'}</span>${fDisplayCourse}<br><span class="date-cell">${formatFutureDateTime(f)}</span>${weatherPlaceholder}</td>
         <td class="diff-cell">${exp !== null ? exp + toParTextFor(exp, par) : '—'}${probLineHtml}</td>
       </tr>`;
   }).join('');
