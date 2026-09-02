@@ -1133,17 +1133,35 @@ function applyCourseRenames(){
 // whether it came from baseRounds (hardcoded in the source, can't self-persist an edit)
 // or addedRounds -- this is the actual persistence mechanism editing a course's
 // rating/slope relies on, run fresh on every load the same way renames are.
+// Retroactively applies a corrected rating/slope to every round at a course. For 18-hole
+// rounds this is a pure function of (score, rating, slope) -- safe to just recompute
+// directly. For 9-hole rounds, the differential includes a "synthetic other 9"
+// contribution based on the player's handicap AT THE TIME that round was played -- a
+// historical fact that a course data correction has no business changing. Rather than
+// look that up from trend[] (which is either stale, at this point in the load order, or
+// circular, since this course's own old differentials had already fed into it), this
+// backs the contribution out directly from the round's own existing old rating/slope/diff
+// and reapplies it on top of the new raw calculation -- never touching trend[] at all.
 function applyRatingSlopeOverrides(){
   if(Object.keys(ratingSlopeOverrides).length === 0) return;
   [...baseRounds, ...addedRounds].forEach(r=>{
     const override = ratingSlopeOverrides[r.course.trim().toLowerCase()];
     if(override && !isNaN(override.rating) && !isNaN(override.slope)){
+      const score = scoreOf(r);
+      if(r.holes === 9){
+        const oldRaw = (score - r.rating) * 113 / r.slope;
+        const trendContribution = r.diff - oldRaw;
+        const newRaw = (score - override.rating) * 113 / override.slope;
+        r.diff = Math.round((newRaw + trendContribution) * 10) / 10;
+      } else {
+        r.diff = computeDiff(score, override.rating, override.slope, r.holes);
+      }
       r.rating = override.rating;
       r.slope = override.slope;
-      r.diff = computeDiff(scoreOf(r), override.rating, override.slope, r.holes);
     }
   });
 }
+
 function persistRatingSlopeOverrides(){
   if(!hasStorage) return;
   try{ window.localStorage.setItem('anges-golf-rating-slope-overrides', JSON.stringify(ratingSlopeOverrides)); }catch(e){}
