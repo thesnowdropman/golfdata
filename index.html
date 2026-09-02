@@ -3446,6 +3446,23 @@ document.getElementById('editCourseSave').addEventListener('click', ()=>{
   if(!isNaN(rating) && !isNaN(slope)){
     const holesAtCourse = rounds.find(r => r.course === activeCourseName);
     saveCourseInfoToRegistry(activeCourseName, rating, slope, holesAtCourse ? holesAtCourse.holes : 18);
+
+    // The registry alone only pre-fills FUTURE entry -- it never touched already-logged
+    // rounds' own stored rating/slope/differential, which is why editing here previously
+    // appeared to do nothing to existing history. `rounds` shares object references with
+    // both baseRounds and addedRounds (rebuildRoundsArray does a shallow spread, not a
+    // clone), so mutating in place here reaches the real underlying objects in both.
+    let anyAddedRoundChanged = false;
+    rounds.forEach(r => {
+      if(r.course === activeCourseName){
+        r.rating = rating;
+        r.slope = slope;
+        r.diff = computeDiff(scoreOf(r), rating, slope, r.holes);
+        if(addedRounds.includes(r)) anyAddedRoundChanged = true;
+      }
+    });
+    if(anyAddedRoundChanged) persistAdded();
+    recompute();
   }
   const resolvedLoc = editCourseLocationInput.getResolved();
   if(resolvedLoc){
