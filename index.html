@@ -779,6 +779,7 @@ const hasStorage = typeof window !== 'undefined' && !!window.localStorage;
 let addedRounds = [];   // user-added rounds, persisted
 let deletedKeys = [];   // keys of baseRounds the user deleted, persisted
 let courseRenames = {}; // old course name -> new course name, persisted
+let ratingSlopeOverrides = {}; // lowercased course name -> {rating, slope}, persisted -- retroactive edits made via the Edit Course modal, applied to every round at that course on every load
 let rounds = [...baseRounds];
 
 function roundKey(r){ return `${r.date}|${r.course}|${r.score}`; }
@@ -845,7 +846,7 @@ function computeRoundBadges(r){
     const requiredPars = 2 * (r.holes / 9);
     const parUnits = Math.floor(parCount / requiredPars);
     if(parUnits >= 1){
-      badges.push({icon: '🅿️', label: `Par-Par Links: ${requiredPars}+ pars`, count: parUnits});
+      badges.push({icon: '🅿️', label: `Party Hard: ${requiredPars}+ pars`, count: parUnits});
     }
   }
 
@@ -1036,7 +1037,7 @@ const BADGE_CATALOG = [
   {icon: '🐦', name: 'Put A Bird On It', desc: 'Score a birdie'},
   {icon: '🦅', name: "On Eagle's Wings", desc: 'Eagle!'},
   {icon: '🛡️', name: 'D-Fence!', desc: 'No holes worse than bogey'},
-  {icon: '🅿️', name: 'Par-Par Links', desc: '2+ pars per 9 holes played'},
+  {icon: '🅿️', name: 'Party Hard', desc: '2+ pars per 9 holes played'},
   {icon: '🏆', name: 'Broke Course Record', desc: 'Best score ever at that course, as of when it was played'},
   {icon: '🫠', name: 'Meltdown', desc: '2+ strokes worse per 9 than expected'},
   {icon: '🔥', name: 'On Fire!', desc: '2+ strokes better per 9 than expected'},
@@ -1128,6 +1129,34 @@ function applyCourseRenames(){
   });
 }
 
+// Applies persisted rating/slope corrections to every round at a course, regardless of
+// whether it came from baseRounds (hardcoded in the source, can't self-persist an edit)
+// or addedRounds -- this is the actual persistence mechanism editing a course's
+// rating/slope relies on, run fresh on every load the same way renames are.
+function applyRatingSlopeOverrides(){
+  if(Object.keys(ratingSlopeOverrides).length === 0) return;
+  [...baseRounds, ...addedRounds].forEach(r=>{
+    const override = ratingSlopeOverrides[r.course.trim().toLowerCase()];
+    if(override && !isNaN(override.rating) && !isNaN(override.slope)){
+      r.rating = override.rating;
+      r.slope = override.slope;
+      r.diff = computeDiff(scoreOf(r), override.rating, override.slope, r.holes);
+    }
+  });
+}
+function persistRatingSlopeOverrides(){
+  if(!hasStorage) return;
+  try{ window.localStorage.setItem('anges-golf-rating-slope-overrides', JSON.stringify(ratingSlopeOverrides)); }catch(e){}
+  scheduleFirebaseSync();
+}
+function loadPersistedRatingSlopeOverrides(){
+  if(!hasStorage) return;
+  try{
+    const raw = window.localStorage.getItem('anges-golf-rating-slope-overrides');
+    if(raw) ratingSlopeOverrides = JSON.parse(raw);
+  }catch(e){}
+}
+
 // ================= FIREBASE SYNC =================
 // Debounced so rapid edits (e.g. filling out a whole scorecard) collapse into one write
 // instead of firing on every keystroke. `applyingRemoteState` guards against a write we
@@ -1137,7 +1166,7 @@ let applyingRemoteState = false;
 
 function gatherSyncableState(){
   return {
-    addedRounds, deletedKeys, courseRenames,
+    addedRounds, deletedKeys, courseRenames, ratingSlopeOverrides,
     addedFutureRounds, deletedFutureRoundIds,
     courseRegistry, customPars: PAR_BY_COURSE, customLocations: COURSE_LOCATIONS, savedNewCourses, deletedSavedCourseKeys,
     updatedAt: Date.now()
@@ -1162,6 +1191,7 @@ function applyRemoteState(data){
   // a real timing window). Renames are additive by nature: once made, a name mapping
   // should never disappear just because an older snapshot catches up.
   if(data.courseRenames) courseRenames = Object.assign({}, courseRenames, data.courseRenames);
+  if(data.ratingSlopeOverrides) ratingSlopeOverrides = Object.assign({}, ratingSlopeOverrides, data.ratingSlopeOverrides);
   if(data.addedFutureRounds) addedFutureRounds = data.addedFutureRounds;
   if(data.deletedFutureRoundIds) deletedFutureRoundIds = data.deletedFutureRoundIds;
   if(data.courseRegistry) courseRegistry = Object.assign({}, COURSE_REGISTRY_DEFAULTS, data.courseRegistry);
@@ -1179,6 +1209,7 @@ function applyRemoteState(data){
       window.localStorage.setItem('anges-golf-rounds-added', JSON.stringify(addedRounds));
       window.localStorage.setItem('anges-golf-rounds-deleted', JSON.stringify(deletedKeys));
       window.localStorage.setItem('anges-golf-course-renames', JSON.stringify(courseRenames));
+      window.localStorage.setItem('anges-golf-rating-slope-overrides', JSON.stringify(ratingSlopeOverrides));
       window.localStorage.setItem('anges-golf-future-rounds', JSON.stringify(addedFutureRounds));
       window.localStorage.setItem('anges-golf-future-rounds-deleted', JSON.stringify(deletedFutureRoundIds));
       window.localStorage.setItem('anges-golf-course-registry', JSON.stringify(courseRegistry));
@@ -1190,6 +1221,7 @@ function applyRemoteState(data){
   }
 
   applyCourseRenames();
+  applyRatingSlopeOverrides();
   rebuildRoundsArray();
   rebuildFutureRoundsArray();
   recompute();
@@ -1294,7 +1326,9 @@ function loadPersisted(){
   loadPersistedPars();
   loadPersistedLocations();
   loadPersistedSavedNewCourses();
+  loadPersistedRatingSlopeOverrides();
   applyCourseRenames();
+  applyRatingSlopeOverrides();
   rebuildRoundsArray();
   recompute();
 
@@ -3284,6 +3318,7 @@ document.getElementById('addSave').addEventListener('click', ()=>{
       courseRenames[baseName] = newName9;
       persistRenames();
       applyCourseRenames();
+      applyRatingSlopeOverrides();
       rebuildRoundsArray();
     }
     // The (18) course itself is the same physical place as its plain-name version --
@@ -3447,21 +3482,16 @@ document.getElementById('editCourseSave').addEventListener('click', ()=>{
     const holesAtCourse = rounds.find(r => r.course === activeCourseName);
     saveCourseInfoToRegistry(activeCourseName, rating, slope, holesAtCourse ? holesAtCourse.holes : 18);
 
-    // The registry alone only pre-fills FUTURE entry -- it never touched already-logged
+    // The registry alone only pre-fills FUTURE entry -- it never touches already-logged
     // rounds' own stored rating/slope/differential, which is why editing here previously
-    // appeared to do nothing to existing history. `rounds` shares object references with
-    // both baseRounds and addedRounds (rebuildRoundsArray does a shallow spread, not a
-    // clone), so mutating in place here reaches the real underlying objects in both.
-    let anyAddedRoundChanged = false;
-    rounds.forEach(r => {
-      if(r.course === activeCourseName){
-        r.rating = rating;
-        r.slope = slope;
-        r.diff = computeDiff(scoreOf(r), rating, slope, r.holes);
-        if(addedRounds.includes(r)) anyAddedRoundChanged = true;
-      }
-    });
-    if(anyAddedRoundChanged) persistAdded();
+    // appeared to do nothing. Storing this as a persisted override (same pattern as
+    // renames/pars/locations) rather than mutating rounds directly is what actually makes
+    // it survive a reload -- most rounds live in baseRounds, hardcoded in the page source,
+    // which no in-memory mutation can rewrite; the override gets re-applied fresh on
+    // every load instead, regardless of where the round originally came from.
+    ratingSlopeOverrides[activeCourseName.trim().toLowerCase()] = {rating, slope};
+    persistRatingSlopeOverrides();
+    applyRatingSlopeOverrides();
     recompute();
   }
   const resolvedLoc = editCourseLocationInput.getResolved();
