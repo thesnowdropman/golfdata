@@ -2606,21 +2606,33 @@ function openFutureScoringCurve(futureId){
   document.getElementById('detailTitle').innerHTML = `${displayTitle} <span class="crr-rs">Scoring Curve</span>`;
   document.getElementById('detailTitle').style.marginTop = navStack.length > 0 ? '20px' : '0';
 
+  // Dropdown listing every score in range with its own likelihood and cumulative
+  // likelihood, so the full curve is readable as a table, not just one bar at a time.
+  // Rounding only ever happens here, at display time -- the underlying probability data
+  // itself stays full-precision throughout (used for the chart bars below).
+  const optionsHtml = likelihoods.map((l, i) => {
+    const likelihoodPct = Math.round(l.probability * 100);
+    const cumulativePct = breakScoreProbability(f, l.score);
+    return `<option value="${i}"${l.score === exp ? ' selected' : ''}>${l.score} (${likelihoodPct}%, ${cumulativePct}% total)</option>`;
+  }).join('');
+
   document.getElementById('detailBody').innerHTML = `
     <p class="note" style="margin:2px 0 12px;">Likelihood of each score, centered on your Expected Score of ${exp}</p>
     <div class="chart-box" style="height:220px;"><canvas id="futureScoringCurveChart"></canvas></div>
     <p class="note" id="scoreLikelihoodDetail" style="margin:12px 0 0;text-align:center;"></p>
+    <label style="display:block;font-size:11px;text-transform:uppercase;letter-spacing:0.05em;color:#8a8368;margin:16px 0 4px;">Score (Likelihood, Cumulative)</label>
+    <select id="scoringCurveTable">${optionsHtml}</select>
   `;
   detailOverlay.classList.add('open');
   updateBackButton();
 
-  // Tapping/clicking a bar shows that score's own likelihood plus the CUMULATIVE
-  // likelihood of shooting that score or better -- i.e. summing every probability from
-  // the lowest score in range up through the selected one, since a lower golf score is
-  // always the better outcome.
+  // Tapping/clicking a bar (or picking from the dropdown) shows that score's own
+  // likelihood plus the CUMULATIVE likelihood of shooting that score or better -- i.e.
+  // summing every probability from the lowest score in range up through the selected
+  // one, since a lower golf score is always the better outcome. Rounds only for display.
   const showScoreDetail = (idx) => {
     const selected = likelihoods[idx];
-    const likelihoodPct = Math.round(selected.probability * 1000) / 10;
+    const likelihoodPct = Math.round(selected.probability * 100);
     // Reuses breakScoreProbability directly, rather than summing this chart's own
     // discrete bins, so this can never drift from the "chance to break X" figure shown
     // elsewhere in the app for the same round -- they're answering the exact same
@@ -2630,6 +2642,8 @@ function openFutureScoringCurve(futureId){
     const cumulativePct = breakScoreProbability(f, selected.score);
     document.getElementById('scoreLikelihoodDetail').innerHTML =
       `Score ${selected.score}: <strong>${likelihoodPct}%</strong> likelihood · <strong>${cumulativePct}%</strong> cumulative (this or better)`;
+    const dropdown = document.getElementById('scoringCurveTable');
+    if(dropdown) dropdown.value = String(idx);
   };
 
   if(futureScoringCurveChart) futureScoringCurveChart.destroy();
@@ -2640,7 +2654,10 @@ function openFutureScoringCurve(futureId){
       labels: likelihoods.map(l => String(l.score)),
       datasets:[{
         label: 'Likelihood',
-        data: likelihoods.map(l => Math.round(l.probability * 1000) / 10),
+        // Full-precision bar heights, NOT rounded -- rounding these would snap most bars
+        // exactly onto whole-percent gridlines, making the curve look artificially
+        // stepped/blocky instead of a smooth, natural bell shape.
+        data: likelihoods.map(l => l.probability * 100),
         backgroundColor: likelihoods.map(l => l.score === exp ? c.regLine : c.c9)
       }]
     },
@@ -2656,6 +2673,10 @@ function openFutureScoringCurve(futureId){
         showScoreDetail(elements[0].index);
       }
     }
+  });
+
+  document.getElementById('scoringCurveTable').addEventListener('change', (e)=>{
+    showScoreDetail(parseInt(e.target.value, 10));
   });
 
   const expIdx = likelihoods.findIndex(l => l.score === exp);
