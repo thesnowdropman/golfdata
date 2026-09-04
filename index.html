@@ -1527,6 +1527,31 @@ function toParStr(score, course){
   return ` (${diff > 0 ? '+' : ''}${diff})`;
 }
 
+// Combined "score to par / score vs expected" text for Round History, e.g. " (+11 / E)".
+// Omits the whole parenthetical (rather than showing a partial/broken one) if either
+// value isn't available -- par unknown, or this is the very first round ever (no prior
+// trend to compute an expected score against).
+function toParAndExpStr(r){
+  const score = scoreOf(r);
+  const par = PAR_BY_COURSE[r.course];
+  if(par == null) return '';
+
+  const parDiff = Math.round((score - par) * 10) / 10;
+  const parText = parDiff === 0 ? 'E' : (parDiff > 0 ? `+${parDiff}` : `${parDiff}`);
+
+  // Falls back to "E" for this slot specifically when there's no prior trend to compare
+  // against (e.g. the very first round ever) -- still shows the against-par half, which
+  // is always computable, rather than omitting the whole thing.
+  const expAtTime = expScoreAtTimeOf(r);
+  let expText = 'E';
+  if(expAtTime != null){
+    const expDiff = score - expAtTime;
+    expText = expDiff === 0 ? 'E' : (expDiff > 0 ? `+${expDiff}` : `${expDiff}`);
+  }
+
+  return ` (${parText}/${expText})`;
+}
+
 // ================= CORE RECOMPUTE =================
 function recompute(){
   const chrono = [...rounds].sort((a,b)=> new Date(a.date) - new Date(b.date));
@@ -1622,7 +1647,7 @@ function recompute(){
     const dateLine = (parenContent && !isHoleCountSuffix) ? `${dateFmt} · ${parenContent}` : dateFmt;
     tr.innerHTML = `
       <td class="course-name"><span class="badge ${r.holes===18?'b18':'b9'}">${r.holes===18?'18':'9'}</span>${displayCourse}${isLowest ? `<img class="lowdiff-face wii-only" src="data:image/png;base64,${lowDiffFaceB64}" alt="Best round">` : ''}<br><span class="date-cell">${dateLine}</span></td>
-      <td style="text-align:right"><span class="score-tag">${r.score.replace(/(A|Ni)$/,'')}<span class="topar">${toParStr(scoreOf(r), r.course)}</span><br><span class="topar">[Diff: ${r.diff.toFixed(1)}]</span></span></td>
+      <td style="text-align:right"><span class="score-tag">${r.score.replace(/(A|Ni)$/,'')}<span class="topar">${toParAndExpStr(r)}</span><br><span class="topar">[Diff: ${r.diff.toFixed(1)}]</span></span></td>
     `;
     tr.addEventListener('click', ()=>{ navStack = []; openDetail(idx); });
     return tr;
