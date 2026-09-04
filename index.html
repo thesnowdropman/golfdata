@@ -2561,6 +2561,107 @@ function openHoleDetail(courseName, holeIndex){
   });
 }
 
+// "Curve of scoring" for a future/planned round -- reuses the same score-frequency
+// histogram pattern as openHoleDetail's per-hole chart, but for whole-round gross scores
+// across every past round at this course instead of one specific hole.
+let futureScoringCurveChart = null;
+// Computes a discrete probability for each nearby possible score, using the exact same
+// normal-distribution model as breakScoreProbability (differential ~ Normal(currentIndex,
+// diffResidualSD)) -- not a histogram of past results, a genuine likelihood curve for
+// THIS specific upcoming round, centered on its Expected Score. Each score's probability
+// is the model's mass between that score's own -0.5/+0.5 differential boundaries, since
+// scores are discrete but the underlying differential model is continuous.
+function computeScoreLikelihoods(f){
+  if(!trend || !trend.length || diffResidualSD == null) return null;
+  if(isNaN(f.rating) || isNaN(f.slope)) return null;
+  const currentIndex = trend[trend.length-1].index;
+  const exp = computeExpScoreFor(f.rating, f.slope, f.holes);
+  if(exp == null) return null;
+
+  const diffAt = (score) => {
+    const raw = (score - f.rating) * 113 / f.slope;
+    return f.holes === 9 ? (raw + currentIndex/2) : raw;
+  };
+
+  const results = [];
+  for(let s = exp - 12; s <= exp + 12; s++){
+    const lower = normalCDF(diffAt(s - 0.5), currentIndex, diffResidualSD);
+    const upper = normalCDF(diffAt(s + 0.5), currentIndex, diffResidualSD);
+    results.push({ score: s, probability: Math.max(0, upper - lower) });
+  }
+  return results;
+}
+
+function openFutureScoringCurve(futureId){
+  const f = futureRounds.find(x => x.id === futureId);
+  if(!f) return;
+  const exp = computeExpScoreFor(f.rating, f.slope, f.holes);
+  const likelihoods = computeScoreLikelihoods(f);
+  if(!likelihoods) return;
+
+  const parenMatch = f.course.match(/^(.*)\s\(([^)]+)\)$/);
+  const displayTitle = parenMatch ? parenMatch[1].trim() : f.course;
+
+  document.getElementById('detailMiiRow').innerHTML = '';
+  document.getElementById('detailTitle').innerHTML = `${displayTitle} <span class="crr-rs">Scoring Curve</span>`;
+  document.getElementById('detailTitle').style.marginTop = navStack.length > 0 ? '20px' : '0';
+
+  document.getElementById('detailBody').innerHTML = `
+    <p class="note" style="margin:2px 0 12px;">Likelihood of each score, centered on your Expected Score of ${exp}</p>
+    <div class="chart-box" style="height:220px;"><canvas id="futureScoringCurveChart"></canvas></div>
+    <p class="note" id="scoreLikelihoodDetail" style="margin:12px 0 0;text-align:center;"></p>
+  `;
+  detailOverlay.classList.add('open');
+  updateBackButton();
+
+  // Tapping/clicking a bar shows that score's own likelihood plus the CUMULATIVE
+  // likelihood of shooting that score or better -- i.e. summing every probability from
+  // the lowest score in range up through the selected one, since a lower golf score is
+  // always the better outcome.
+  const showScoreDetail = (idx) => {
+    const selected = likelihoods[idx];
+    const likelihoodPct = Math.round(selected.probability * 1000) / 10;
+    // Reuses breakScoreProbability directly, rather than summing this chart's own
+    // discrete bins, so this can never drift from the "chance to break X" figure shown
+    // elsewhere in the app for the same round -- they're answering the exact same
+    // question and need to always agree. (Summing bins up through a score's own upper
+    // half-boundary was effectively answering "score+0.5 or better," a systematically
+    // more generous number than what breakScoreProbability reports for that same score.)
+    const cumulativePct = breakScoreProbability(f, selected.score);
+    document.getElementById('scoreLikelihoodDetail').innerHTML =
+      `Score ${selected.score}: <strong>${likelihoodPct}%</strong> likelihood · <strong>${cumulativePct}%</strong> cumulative (this or better)`;
+  };
+
+  if(futureScoringCurveChart) futureScoringCurveChart.destroy();
+  const c = colorsFor(currentTheme);
+  futureScoringCurveChart = new Chart(document.getElementById('futureScoringCurveChart'), {
+    type:'bar',
+    data:{
+      labels: likelihoods.map(l => String(l.score)),
+      datasets:[{
+        label: 'Likelihood',
+        data: likelihoods.map(l => Math.round(l.probability * 1000) / 10),
+        backgroundColor: likelihoods.map(l => l.score === exp ? c.regLine : c.c9)
+      }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false} },
+      scales:{
+        x:{ title:{display:true,text:'Score',color:c.ink,font:{family:c.font,size:12}}, ticks:{color:c.ink,font:{family:c.font,size:12}}, grid:{display:false} },
+        y:{ title:{display:true,text:'Likelihood (%)',color:c.ink,font:{family:c.font,size:12}}, beginAtZero:true, ticks:{color:c.ink,font:{family:c.font,size:12}}, grid:{color:c.grid} }
+      },
+      onClick: (evt, elements) => {
+        if(!elements.length) return;
+        showScoreDetail(elements[0].index);
+      }
+    }
+  });
+
+  const expIdx = likelihoods.findIndex(l => l.score === exp);
+  showScoreDetail(expIdx >= 0 ? expIdx : Math.floor(likelihoods.length / 2));
+}
+
 function openCourseDetail(courseName){
   const atCourse = rounds
     .map((r, idx) => ({...r, idx}))
@@ -3769,7 +3870,11 @@ function openFutureRoundDetail(id){
     `;
   }
   scorecardHtml = scoreSelectorHtml + scorecardHtml;
-  scorecardHtml = `<button class="modal-edit" id="futureCourseRecordBtn" type="button" style="margin-bottom:10px;">Course Record</button>` + scorecardHtml;
+  const canShowScoringCurve = trend && trend.length > 0 && diffResidualSD != null && !isNaN(f.rating) && !isNaN(f.slope);
+  scorecardHtml = `<div style="display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin:16px 0 10px;">
+    <button class="modal-edit" id="futureCourseRecordBtn" type="button" style="margin:0;">Course Record</button>
+    ${canShowScoringCurve ? `<button class="modal-edit" id="futureScoringCurveBtn" type="button" style="margin:0;">Scoring Curve</button>` : ''}
+  </div>` + scorecardHtml;
 
   body += `<div class="view-toggle" style="display:flex;margin-top:12px;">
     <button class="view-toggle-btn active" id="futureViewWeatherBtn" type="button">Weather</button>
@@ -3801,9 +3906,22 @@ function openFutureRoundDetail(id){
   }
 
   document.getElementById('futureCourseRecordBtn').addEventListener('click', ()=>{
-    navStack.push(()=>openFutureRoundDetail(id));
+    navStack.push(()=>{
+      openFutureRoundDetail(id);
+      document.getElementById('futureViewScorecardBtn').click();
+    });
     openCourseDetail(f.course);
   });
+  const scoringCurveBtn = document.getElementById('futureScoringCurveBtn');
+  if(scoringCurveBtn){
+    scoringCurveBtn.addEventListener('click', ()=>{
+      navStack.push(()=>{
+        openFutureRoundDetail(id);
+        document.getElementById('futureViewScorecardBtn').click();
+      });
+      openFutureScoringCurve(id);
+    });
+  }
 
   document.getElementById('futureViewWeatherBtn').addEventListener('click', ()=>{
     document.getElementById('futureViewWeatherBtn').classList.add('active');
