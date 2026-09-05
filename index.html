@@ -140,9 +140,10 @@
   .topar{font-size:10px;font-weight:400;color:#8a8368;}
   html[data-theme="wii"] .topar{color:#7C97A8;}
   .course-round-list{display:flex;flex-direction:column;gap:2px;}
-  .hole-scorecard{width:auto;table-layout:fixed;border-collapse:collapse;font-size:12.5px;}
-  .hole-scorecard th,.hole-scorecard td{width:44px;padding:6px 2px;text-align:center;white-space:nowrap;border-bottom:1px solid var(--line);overflow:hidden;text-overflow:ellipsis;}
-  .hole-scorecard th:first-child,.hole-scorecard td:first-child{width:46px;}
+  .hole-scorecard{width:auto;table-layout:fixed;border-collapse:collapse;font-size:11px;}
+  .hole-scorecard th,.hole-scorecard td{width:27px;padding:5px 1px;text-align:center;white-space:nowrap;border-bottom:1px solid var(--line);overflow:hidden;text-overflow:ellipsis;}
+  .hole-scorecard th:first-child,.hole-scorecard td:first-child{width:32px;}
+  .hole-scorecard .out-col{width:36px;white-space:normal;line-height:1.3;}
   .hole-scorecard thead th{font-family:var(--font-mono);font-size:10px;letter-spacing:0.04em;text-transform:uppercase;color:#8a8368;border-bottom:2px solid var(--fairway);}
   html[data-theme="wii"] .hole-scorecard thead th{color:#5C86A0;}
   .hole-scorecard tbody td:first-child{font-family:var(--font-mono);font-weight:600;text-align:left;color:var(--fairway);}
@@ -151,8 +152,15 @@
   .score-mark{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;box-sizing:border-box;}
   .score-mark.birdie{border-radius:50%;border:1.5px solid currentColor;}
   .score-mark.bogey{border:1.5px solid currentColor;}
-  .score-mark.double{border:1.5px solid currentColor;box-shadow:0 0 0 2px var(--paper), 0 0 0 3.5px currentColor;}
+  .score-mark.double{border-style:double;border-width:4px;border-color:currentColor;}
   .new-best-num{color:var(--flag);font-weight:700;}
+  /* ===== REMOVABLE: Pocket Scorecard styling ===== */
+  .pocket-scorecard-wrap{background:#FFFFFF;border-radius:10px;box-shadow:0 4px 14px rgba(0,0,0,0.18);padding:16px 14px;position:relative;margin:10px 0 6px;}
+  html[data-theme="wii"] .pocket-scorecard-wrap{background:#FFFFFF;}
+  .pocket-scorecard-wrap::before{content:'';position:absolute;top:10px;bottom:10px;left:50%;border-left:1.5px dashed #C4BC9F;}
+  .pocket-scorecard-title{display:block;text-align:center;font-family:'Snell Roundhand','Segoe Script','Brush Script MT',cursive;font-style:normal;font-size:24px;font-weight:400;color:var(--fairway);margin:0 0 8px;}
+  .pocket-scorecard-legend{text-align:center;font-size:11px;font-style:italic;color:#8a8368;margin:0 0 10px;}
+  /* ===== END REMOVABLE ===== */
   .new-course-badge{color:var(--flag);font-weight:700;font-size:12px;margin-bottom:3px;}
   .hole-num-clickable,.hole-stat-clickable{cursor:pointer;}
   .hole-num-clickable:hover,.hole-stat-clickable:hover{background:var(--paper-tan);}
@@ -195,6 +203,7 @@
   .modal-back{position:absolute;top:12px;left:14px;background:none;border:none;font-size:14px;font-weight:600;cursor:pointer;color:var(--fairway);padding:4px 2px;}
   .modal-edit{display:inline-block;margin:0 0 10px;background:none;border:1.5px solid var(--fairway);border-radius:6px;font-family:var(--font-mono);font-size:11px;font-weight:600;cursor:pointer;color:var(--fairway);padding:3px 8px;}
   .modal h3{font-family:var(--font-display);color:var(--fairway);margin:0 0 4px;font-size:20px;line-height:1.25;}
+  #detailTitle{font-family:'Snell Roundhand','Segoe Script','Brush Script MT',cursive;font-style:normal;font-size:28px;}
   html[data-theme="wii"] .modal h3{color:var(--ink);font-weight:700;}
   .modal .mii-row{display:flex;align-items:center;gap:12px;margin-bottom:10px;margin-top:24px;}
 
@@ -2265,7 +2274,7 @@ function openDetail(idx){
   const isHoleCountSuffix = parenContent === '9' || parenContent === '18';
   const parenSuffix = (parenContent && !isHoleCountSuffix) ? ` · ${parenContent}` : '';
   const rsLocLine = `${r.rating.toFixed(1)}/${r.slope}${loc && loc.label ? ` · ${loc.label}` : ''}${parenSuffix}`;
-  const newCourseLine = isFirstRoundAtCourse ? `<span class="new-best-num title-subline" style="font-style:italic;font-size:13px;font-weight:700;">New Course!</span>` : '';
+  const newCourseLine = isFirstRoundAtCourse ? `<span class="new-best-num title-subline" style="font-size:13px;font-weight:700;">New Course!</span>` : '';
   document.getElementById('detailTitle').innerHTML = `${displayTitle}<span class="crr-rs title-subline">${rsLocLine}</span>${newCourseLine}`;
   const dateFmt = new Date(r.date+'T00:00:00').toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
 
@@ -2360,25 +2369,23 @@ function toParFrag(val, par){
 function getChunkPlan(numHoles){
   if(numHoles === 9){
     return [
-      {range:[0,5], totalUpTo:null},
-      {range:[5,9], totalUpTo:9, totalLabel:'Out'},
+      {range:[0,9], totalUpTo:9, totalLabel:'Out'},
     ];
   }
   if(numHoles === 18){
     return [
-      {range:[0,5], totalUpTo:null},
-      {range:[5,9], totalUpTo:9, totalLabel:'Out'},
-      {range:[9,14], totalUpTo:null},
-      {range:[14,18], totalUpTo:18, totalLabel:'Total'},
+      {range:[0,9], totalUpTo:9, totalLabel:'Out'},
+      {range:[9,18], totalUpTo:18, totalLabel:'Total'},
     ];
   }
-  // fallback for unusual hole counts: chunks of 5, grand total only at the very end
+  // fallback for unusual hole counts: one line per 9 (or fewer, for the last partial
+  // group), grand total only at the very end
   const sizes = [];
   let remaining = numHoles;
   while(remaining > 0){
-    if(remaining <= 5){ sizes.push(remaining); remaining = 0; }
-    else if(remaining - 5 === 1){ sizes.push(4); remaining -= 4; }
-    else { sizes.push(5); remaining -= 5; }
+    const size = Math.min(9, remaining);
+    sizes.push(size);
+    remaining -= size;
   }
   let start = 0;
   return sizes.map((size, i) => {
@@ -2428,16 +2435,16 @@ function renderScorecardChunks(numHoles, pars, rows){
           cells += `<td class="out-col">${sum}</td>`;
         } else {
           const totalIsNewBest = row.totalMarkFn && row.totalMarkFn();
-          cells += `<td class="out-col ${totalIsNewBest ? 'new-best-num' : ''}">${Math.round(sum)}${toParFrag(sum, parSum)}</td>`;
+          cells += `<td class="out-col ${totalIsNewBest ? 'new-best-num' : ''}">${Math.round(sum)}<br>${toParFrag(sum, parSum).trim()}</td>`;
         }
       }
       return `<tr><td>${row.label}</td>${cells}</tr>`;
     }).join('');
 
-    html += `<table class="hole-scorecard" style="margin-bottom:8px;">
+    html += `<div class="pocket-scorecard-wrap"><table class="hole-scorecard" style="margin-bottom:0;">
       <thead><tr><th>Hole</th>${headerCells}</tr></thead>
       <tbody>${bodyRows}</tbody>
-    </table>`;
+    </table></div>`;
   });
   return html;
 }
@@ -2522,7 +2529,7 @@ function buildSingleRoundScorecardHtml(r){
   if(bestMarks.some(Boolean) || isBestRoundAtCourse) legendParts.push('<span class="new-best-num">Red</span>: New best score at time of the round');
 
   return `
-    <p class="note" style="margin:10px 0 6px;"><span style="color:var(--fairway);font-weight:700;">Scorecard</span>${legendParts.length ? `<br><span style="font-style:italic;">${legendParts.join(' · ')}</span>` : ''}</p>
+    <p class="note" style="margin:10px 0 2px;"><span class="pocket-scorecard-title" style="display:inline;font-size:20px;">Scorecard</span>${legendParts.length ? `<br><span style="font-style:italic;font-size:12px;color:#8a8368;">${legendParts.join(' · ')}</span>` : ''}</p>
     ${renderScorecardChunks(numHoles, pars, rows)}`;
 }
 
