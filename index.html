@@ -2274,7 +2274,7 @@ function openDetail(idx){
   const isHoleCountSuffix = parenContent === '9' || parenContent === '18';
   const parenSuffix = (parenContent && !isHoleCountSuffix) ? ` · ${parenContent}` : '';
   const rsLocLine = `${r.rating.toFixed(1)}/${r.slope}${loc && loc.label ? ` · ${loc.label}` : ''}${parenSuffix}`;
-  const newCourseLine = isFirstRoundAtCourse ? `<span class="new-best-num title-subline" style="font-size:13px;font-weight:700;">New Course!</span>` : '';
+  const newCourseLine = isFirstRoundAtCourse ? `<span class="new-best-num title-subline" style="font-family:var(--font-mono);font-size:13px;font-weight:700;">New Course!</span>` : '';
   document.getElementById('detailTitle').innerHTML = `${displayTitle}<span class="crr-rs title-subline">${rsLocLine}</span>${newCourseLine}`;
   const dateFmt = new Date(r.date+'T00:00:00').toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
 
