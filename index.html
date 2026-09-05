@@ -158,7 +158,7 @@
   .pocket-scorecard-wrap{background:#FFFFFF;border-radius:10px;box-shadow:0 4px 14px rgba(0,0,0,0.18);padding:16px 14px;position:relative;margin:10px 0 6px;}
   html[data-theme="wii"] .pocket-scorecard-wrap{background:#FFFFFF;}
   .pocket-scorecard-wrap::before{content:'';position:absolute;top:10px;bottom:10px;left:50%;border-left:1.5px dashed #C4BC9F;}
-  .pocket-scorecard-title{display:block;text-align:center;font-family:'Snell Roundhand','Segoe Script','Brush Script MT',cursive;font-style:normal;font-size:24px;font-weight:400;color:var(--fairway);margin:0 0 8px;}
+  .pocket-scorecard-title{display:block;text-align:center;font-family:'Snell Roundhand','Segoe Script','Brush Script MT',cursive;font-style:normal;font-size:24px;font-weight:700;color:var(--fairway);margin:0 0 8px;}
   .pocket-scorecard-legend{text-align:center;font-size:11px;font-style:italic;color:#8a8368;margin:0 0 10px;}
   /* ===== END REMOVABLE ===== */
   .new-course-badge{color:var(--flag);font-weight:700;font-size:12px;margin-bottom:3px;}
@@ -203,7 +203,7 @@
   .modal-back{position:absolute;top:12px;left:14px;background:none;border:none;font-size:14px;font-weight:600;cursor:pointer;color:var(--fairway);padding:4px 2px;}
   .modal-edit{display:inline-block;margin:0 0 10px;background:none;border:1.5px solid var(--fairway);border-radius:6px;font-family:var(--font-mono);font-size:11px;font-weight:600;cursor:pointer;color:var(--fairway);padding:3px 8px;}
   .modal h3{font-family:var(--font-display);color:var(--fairway);margin:0 0 4px;font-size:20px;line-height:1.25;}
-  #detailTitle{font-family:'Snell Roundhand','Segoe Script','Brush Script MT',cursive;font-style:normal;font-size:28px;}
+  #detailTitle{font-family:'Snell Roundhand','Segoe Script','Brush Script MT',cursive;font-style:normal;font-size:28px;line-height:1.05;margin-bottom:2px;}
   html[data-theme="wii"] .modal h3{color:var(--ink);font-weight:700;}
   .modal .mii-row{display:flex;align-items:center;gap:12px;margin-bottom:10px;margin-top:24px;}
 
@@ -849,7 +849,7 @@ function computeRoundBadges(r){
     }
     const hasDoublePlus = r.holeDetail.scores.some((s,i) => s - r.holeDetail.pars[i] >= 2);
     if(!hasDoublePlus){
-      badges.push({icon: '🛡️', label: 'D-Fence!: No holes worse than bogey'});
+      badges.push({icon: '🧤', label: 'Clean Sheet: No holes worse than bogey'});
     }
     const parCount = r.holeDetail.scores.filter((s,i) => s - r.holeDetail.pars[i] === 0).length;
     const requiredPars = 2 * (r.holes / 9);
@@ -891,13 +891,13 @@ function computeRoundBadges(r){
     }
   }
 
-  // Balanced round -- front 9 and back 9 score-to-par within 2 strokes of each other.
+  // Balanced round -- front 9 and back 9 score-to-par within 1 stroke of each other.
   // 18-hole rounds only, since a 9-hole round has no front/back split to compare.
   if(r.holes === 18 && r.holeDetail){
     const frontToPar = r.holeDetail.scores.slice(0,9).reduce((s,v,i)=>s+v-r.holeDetail.pars[i], 0);
     const backToPar = r.holeDetail.scores.slice(9).reduce((s,v,i)=>s+v-r.holeDetail.pars[i+9], 0);
-    if(Math.abs(frontToPar - backToPar) <= 2){
-      badges.push({icon: '🧮', label: 'Find Your Balance: Front and back within 2 strokes'});
+    if(Math.abs(frontToPar - backToPar) <= 1){
+      badges.push({icon: '🪞', label: 'Mirror Image: Front and back within 1 stroke'});
     }
 
     // Finishing stretch (holes 16-18), also 18-hole only
@@ -906,6 +906,63 @@ function computeRoundBadges(r){
       badges.push({icon: '🥱', label: 'Siesta: Finish holes 16-18 at +7 or worse'});
     } else if(finishToPar <= 3){
       badges.push({icon: '🏃‍♂️', label: 'Trackstar: Finish holes 16-18 at +3 or better'});
+    }
+
+    // Amen Corner -- holes 10-12 (indices 9-11) played at even par or better, cumulative
+    // across the three holes rather than requiring each one individually.
+    const amenCorner = r.holeDetail.scores.slice(9,12).reduce((s,v,i)=>s+v-r.holeDetail.pars[i+9], 0);
+    if(amenCorner <= 0){
+      badges.push({icon: '🙏🏻', label: 'Amen Corner: Holes 10-12 at even par or better'});
+    }
+  }
+
+  // 3 Goggles -- every par-3 on the course, taken together, played at par or better
+  // cumulatively (not requiring each individual par-3 to be par-or-better on its own).
+  // Only possible on courses that actually have at least one par-3.
+  if(r.holeDetail){
+    const par3Indices = r.holeDetail.pars.reduce((acc,p,i)=>{ if(p===3) acc.push(i); return acc; }, []);
+    if(par3Indices.length > 0){
+      const par3CumScore = par3Indices.reduce((s,i)=>s+r.holeDetail.scores[i], 0);
+      const par3CumPar = par3Indices.length * 3;
+      if(par3CumScore <= par3CumPar){
+        badges.push({icon: '👌', label: '3 Goggles: Every par-3 at par or better, combined'});
+      }
+    }
+  }
+
+  // 99 Club -- broke 100 over a genuinely full-length 18-hole course (par 65+), so this
+  // doesn't trivially trigger on a short executive course.
+  if(r.holes === 18){
+    const courseParTotal = PAR_BY_COURSE[r.course];
+    if(courseParTotal != null && courseParTotal >= 65 && scoreOf(r) < 100){
+      badges.push({icon: '💯', label: 'Break 100 over 18 holes'});
+    }
+  }
+
+  // Nemesis System -- beat your own best-ever score on a specific hole by 2+ strokes.
+  // Only eligible from the 3rd round at this course onward, since with just one prior
+  // round any hole could trivially look "2 better" by chance alone -- a real "best prior"
+  // baseline needs at least two rounds behind it.
+  if(r.holeDetail && thisRoundNum){
+    const priorAtCourseWithHoles = rounds.filter(x =>
+      x.course.trim().toLowerCase() === r.course.trim().toLowerCase() &&
+      x.holeDetail &&
+      roundNumberOf[roundKey(x)] != null &&
+      roundNumberOf[roundKey(x)] < thisRoundNum
+    );
+    if(priorAtCourseWithHoles.length >= 2){
+      let nemesisCount = 0;
+      r.holeDetail.scores.forEach((s, i) => {
+        const priorScoresAtHole = priorAtCourseWithHoles
+          .filter(x => x.holeDetail.scores[i] != null)
+          .map(x => x.holeDetail.scores[i]);
+        if(priorScoresAtHole.length === 0) return;
+        const bestPriorAtHole = Math.min(...priorScoresAtHole);
+        if(s <= bestPriorAtHole - 2) nemesisCount++;
+      });
+      if(nemesisCount > 0){
+        badges.push({icon: '😈', label: 'Nemesis System: Beat your best-ever score on a hole by 2+ strokes (min. 3 plays)', count: nemesisCount});
+      }
     }
   }
 
@@ -1013,7 +1070,10 @@ function openRoundBadgesDetail(idx){
   document.getElementById('detailTitle').style.marginTop = navStack.length > 0 ? '28px' : '0';
 
   const expAtTime = expScoreAtTimeOf(r);
-  let body = `<p class="note" style="margin:2px 0 0;">${dateFmt} · ${r.holes}-hole round · Differential ${r.diff.toFixed(1)}${expAtTime !== null ? ` · Exp. Score ${expAtTime}` : ''}</p>`;
+  const actualScoreForBadges = scoreOf(r);
+  const scoreVsExpDiffForBadges = expAtTime !== null ? actualScoreForBadges - expAtTime : null;
+  const scoreVsExpTextForBadges = scoreVsExpDiffForBadges === null ? '' : (scoreVsExpDiffForBadges === 0 ? ' (E)' : ` (${scoreVsExpDiffForBadges > 0 ? '+' : ''}${scoreVsExpDiffForBadges})`);
+  let body = `<p class="note" style="margin:2px 0 0;">${dateFmt} · ${r.holes}-hole round · Differential ${r.diff.toFixed(1)}${expAtTime !== null ? ` · Expected Score ${expAtTime} · Actual Score ${actualScoreForBadges}${scoreVsExpTextForBadges}` : ''}</p>`;
 
   const badges = computeRoundBadges(r);
   if(badges.length === 0){
@@ -1021,7 +1081,8 @@ function openRoundBadgesDetail(idx){
   } else {
     body += badges.map(b => {
       const rank = computeBadgeAllTimeRank(r, b.icon);
-      return `<p class="note" style="margin:16px 0 0;">${b.icon} - ${formatBadgeLabelHtml(b.label)}${rank != null ? ` (#${rank} all-time)` : ''}</p>`;
+      const rankText = rank != null ? ` (<span class="badge-rank-link" data-icon="${b.icon}" style="cursor:pointer;text-decoration:underline;">#${rank} all-time</span>)` : '';
+      return `<p class="note" style="margin:16px 0 0;">${b.icon} - ${formatBadgeLabelHtml(b.label)}${rankText}</p>`;
     }).join('');
   }
 
@@ -1035,6 +1096,13 @@ function openRoundBadgesDetail(idx){
     navStack.push(()=>openRoundBadgesDetail(idx));
     openAllBadgesDetail();
   });
+  document.querySelectorAll('.badge-rank-link').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      const icon = el.dataset.icon;
+      navStack.push(()=>openRoundBadgesDetail(idx));
+      openBadgeRoundsList(icon);
+    });
+  });
 }
 
 // Static catalog of every badge type with a generic (hole-count-independent) description,
@@ -1045,12 +1113,16 @@ const BADGE_CATALOG = [
   {icon: '🗺️', name: 'Location Unlocked', desc: 'First round played in a new state'},
   {icon: '🐦', name: 'Put A Bird On It', desc: 'Score a birdie'},
   {icon: '🦅', name: "On Eagle's Wings", desc: 'Eagle!'},
-  {icon: '🛡️', name: 'D-Fence!', desc: 'No holes worse than bogey'},
+  {icon: '🧤', name: 'Clean Sheet', desc: 'No holes worse than bogey'},
   {icon: '🅿️', name: 'Party Hard', desc: '2+ pars per 9 holes played'},
   {icon: '🏆', name: 'Broke Course Record', desc: 'Best score ever at that course, as of when it was played'},
   {icon: '🫠', name: 'Meltdown', desc: '2+ strokes worse per 9 than expected'},
   {icon: '🔥', name: 'On Fire!', desc: '2+ strokes better per 9 than expected'},
-  {icon: '🧮', name: 'Find Your Balance', desc: 'Front and back 9 within 2 strokes of each other'},
+  {icon: '🪞', name: 'Mirror Image', desc: 'Front and back 9 within 1 stroke of each other'},
+  {icon: '🙏🏻', name: 'Amen Corner', desc: 'Holes 10-12 at even par or better, combined'},
+  {icon: '👌', name: '3 Goggles', desc: 'Every par-3 at par or better, combined'},
+  {icon: '💯', name: '99 Club', desc: 'Break 100 over 18 holes'},
+  {icon: '😈', name: 'Nemesis System', desc: 'Beat your best-ever score on a hole by 2+ strokes (min. 3 plays)'},
   {icon: '🌈', name: 'Triple Rainbow', desc: 'Par or better on a par-3, par-4, and par-5 in the same round'},
   {icon: '☃️', name: 'Let It Snow!', desc: 'Score 2+ 8s in a round'},
   {icon: '⛄️', name: 'Snowman', desc: 'Score exactly one 8 in a round'},
@@ -1069,6 +1141,47 @@ function computeAllBadgeCounts(){
   return counts;
 }
 
+// Lists every round where a specific badge icon was earned, each clickable through to
+// that round's own detail page. Reached from either "earned N times" on the All Badges
+// page or "#N all-time" on a single round's Round Badges page.
+function openBadgeRoundsList(icon){
+  const catalogEntry = BADGE_CATALOG.find(b => b.icon === icon);
+  const chrono = [...rounds].sort((a,b)=> new Date(a.date) - new Date(b.date));
+  const matchingRounds = chrono.filter(r => computeRoundBadges(r).some(b => b.icon === icon));
+
+  document.getElementById('detailTitle').innerHTML = `${icon} ${catalogEntry ? catalogEntry.name : ''}`;
+  document.getElementById('detailTitle').style.marginTop = navStack.length > 0 ? '28px' : '0';
+
+  let body;
+  if(matchingRounds.length === 0){
+    body = `<p class="note" style="margin:16px 0 0;">No rounds yet.</p>`;
+  } else {
+    body = matchingRounds.map(r => {
+      const dateFmt = new Date(r.date+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+      const parenMatch = r.course.match(/^(.*)\s\(([^)]+)\)$/);
+      const displayCourse = parenMatch ? parenMatch[1].trim() : r.course;
+      return `<p class="note badge-round-link" data-key="${roundKey(r)}" style="margin:12px 0 0;cursor:pointer;">${dateFmt} — ${displayCourse} — ${scoreOf(r)}</p>`;
+    }).join('');
+  }
+
+  document.getElementById('detailMiiRow').innerHTML = '';
+  document.getElementById('detailMiiRow').style.display = 'none';
+  document.getElementById('detailBody').innerHTML = body;
+  detailOverlay.classList.add('open');
+  updateBackButton();
+
+  document.querySelectorAll('.badge-round-link').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      const key = el.dataset.key;
+      const idx = rounds.findIndex(r => roundKey(r) === key);
+      if(idx >= 0){
+        navStack.push(()=>openBadgeRoundsList(icon));
+        openDetail(idx);
+      }
+    });
+  });
+}
+
 function openAllBadgesDetail(){
   document.getElementById('detailTitle').innerHTML = 'All Badges';
   document.getElementById('detailTitle').style.marginTop = navStack.length > 0 ? '28px' : '0';
@@ -1077,7 +1190,10 @@ function openAllBadgesDetail(){
   const sortedCatalog = [...BADGE_CATALOG].sort((a,b) => (counts[b.icon] || 0) - (counts[a.icon] || 0));
   const body = sortedCatalog.map(b => {
     const count = counts[b.icon] || 0;
-    return `<p class="note" style="margin:16px 0 0;">${b.icon} - <strong>${b.name}</strong>: ${b.desc} — earned ${count} time${count === 1 ? '' : 's'}</p>`;
+    const countText = count > 0
+      ? `<span class="badge-count-link" data-icon="${b.icon}" style="cursor:pointer;text-decoration:underline;">earned ${count} time${count === 1 ? '' : 's'}</span>`
+      : `earned ${count} times`;
+    return `<p class="note" style="margin:16px 0 0;">${b.icon} - <strong>${b.name}</strong>: ${b.desc} — ${countText}</p>`;
   }).join('');
 
   document.getElementById('detailMiiRow').innerHTML = '';
@@ -1085,6 +1201,14 @@ function openAllBadgesDetail(){
   document.getElementById('detailBody').innerHTML = body;
   detailOverlay.classList.add('open');
   updateBackButton();
+
+  document.querySelectorAll('.badge-count-link').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      const icon = el.dataset.icon;
+      navStack.push(()=>openAllBadgesDetail());
+      openBadgeRoundsList(icon);
+    });
+  });
 }
 // ===== END REMOVABLE =====
 
@@ -2274,7 +2398,7 @@ function openDetail(idx){
   const isHoleCountSuffix = parenContent === '9' || parenContent === '18';
   const parenSuffix = (parenContent && !isHoleCountSuffix) ? ` · ${parenContent}` : '';
   const rsLocLine = `${r.rating.toFixed(1)}/${r.slope}${loc && loc.label ? ` · ${loc.label}` : ''}${parenSuffix}`;
-  const newCourseLine = isFirstRoundAtCourse ? `<span class="new-best-num title-subline" style="font-family:var(--font-mono);font-size:13px;font-weight:700;">New Course!</span>` : '';
+  const newCourseLine = isFirstRoundAtCourse ? `<span class="new-best-num title-subline" style="font-family:'ITC Bookman','Bookman Old Style',Bookman,serif;font-style:italic;font-size:14px;font-weight:700;margin-top:4px;">New Course!</span>` : '';
   document.getElementById('detailTitle').innerHTML = `${displayTitle}<span class="crr-rs title-subline">${rsLocLine}</span>${newCourseLine}`;
   const dateFmt = new Date(r.date+'T00:00:00').toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
 
@@ -2286,7 +2410,10 @@ function openDetail(idx){
   document.getElementById('detailTitle').style.marginTop = navStack.length > 0 ? '28px' : '0';
 
   const expAtTimeForCard = expScoreAtTimeOf(r);
-  let body = `<p class="note" style="margin:2px 0 0;">${dateFmt} · ${r.holes}-hole round · Differential ${r.diff.toFixed(1)}${expAtTimeForCard !== null ? ` · Exp. Score ${expAtTimeForCard}` : ''}</p>`;
+  const actualScoreForCard = scoreOf(r);
+  const scoreVsExpDiffForCard = expAtTimeForCard !== null ? actualScoreForCard - expAtTimeForCard : null;
+  const scoreVsExpTextForCard = scoreVsExpDiffForCard === null ? '' : (scoreVsExpDiffForCard === 0 ? ' (E)' : ` (${scoreVsExpDiffForCard > 0 ? '+' : ''}${scoreVsExpDiffForCard})`);
+  let body = `<p class="note" style="margin:2px 0 0;">${dateFmt} · ${r.holes}-hole round · Differential ${r.diff.toFixed(1)}${expAtTimeForCard !== null ? ` · Expected Score ${expAtTimeForCard} · Actual Score ${actualScoreForCard}${scoreVsExpTextForCard}` : ''}</p>`;
 
   const badgesForCard = computeRoundBadges(r);
   const ovalLabel = badgesForCard.length === 0 ? 'Round Badges: No badges earned this round.' : 'Round Badges:';
