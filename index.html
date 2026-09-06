@@ -878,10 +878,11 @@ function computeRoundBadges(r){
     }
   }
 
-  // 2+ strokes better/worse than expected AT THE TIME, scaled per 9 holes played
+  // 3+/5+ strokes better/worse than expected AT THE TIME (9-hole / 18-hole respectively --
+  // not a simple per-9 scalar since 5 isn't double 3)
   const expAtTime = expScoreAtTimeOf(r);
   if(expAtTime !== null){
-    const threshold = 2 * (r.holes / 9);
+    const threshold = r.holes === 9 ? 3 : 5;
     const actualScore = scoreOf(r);
     const strokeDiff = actualScore - expAtTime;
     if(strokeDiff >= threshold){
@@ -908,25 +909,21 @@ function computeRoundBadges(r){
       badges.push({icon: '🏃‍♂️', label: 'Trackstar: Finish holes 16-18 at +3 or better'});
     }
 
-    // Amen Corner -- holes 10-12 (indices 9-11) played at even par or better, cumulative
-    // across the three holes rather than requiring each one individually.
-    const amenCorner = r.holeDetail.scores.slice(9,12).reduce((s,v,i)=>s+v-r.holeDetail.pars[i+9], 0);
-    if(amenCorner <= 0){
-      badges.push({icon: '🙏🏻', label: 'Amen Corner: Holes 10-12 at even par or better'});
+    // Amen Corner -- holes 10-12 (indices 9-11) EACH individually at bogey or better,
+    // not a cumulative/combined total across the three.
+    const amenCornerAllBogeyOrBetter = [9,10,11].every(i => r.holeDetail.scores[i] - r.holeDetail.pars[i] <= 1);
+    if(amenCornerAllBogeyOrBetter){
+      badges.push({icon: '🙏🏻', label: 'Amen Corner: Holes 10-12 each at bogey or better'});
     }
   }
 
-  // 3 Goggles -- every par-3 on the course, taken together, played at par or better
-  // cumulatively (not requiring each individual par-3 to be par-or-better on its own).
-  // Only possible on courses that actually have at least one par-3.
+  // 3 Goggles -- at least 3 individual par-3 holes each scored at par (3) or better.
+  // Naturally requires the course to have 3+ par-3s in the first place.
   if(r.holeDetail){
     const par3Indices = r.holeDetail.pars.reduce((acc,p,i)=>{ if(p===3) acc.push(i); return acc; }, []);
-    if(par3Indices.length > 0){
-      const par3CumScore = par3Indices.reduce((s,i)=>s+r.holeDetail.scores[i], 0);
-      const par3CumPar = par3Indices.length * 3;
-      if(par3CumScore <= par3CumPar){
-        badges.push({icon: '👌', label: '3 Goggles: Every par-3 at par or better, combined'});
-      }
+    const qualifyingPar3Count = par3Indices.filter(i => r.holeDetail.scores[i] <= 3).length;
+    if(qualifyingPar3Count >= 3){
+      badges.push({icon: '👌', label: '3 Goggles: 3+ par-3s at 3 or better'});
     }
   }
 
@@ -1116,11 +1113,11 @@ const BADGE_CATALOG = [
   {icon: '🧤', name: 'Clean Sheet', desc: 'No holes worse than bogey'},
   {icon: '🅿️', name: 'Party Hard', desc: '2+ pars per 9 holes played'},
   {icon: '🏆', name: 'Broke Course Record', desc: 'Best score ever at that course, as of when it was played'},
-  {icon: '🫠', name: 'Meltdown', desc: '2+ strokes worse per 9 than expected'},
-  {icon: '🔥', name: 'On Fire!', desc: '2+ strokes better per 9 than expected'},
+  {icon: '🫠', name: 'Meltdown', desc: '3+ (9-hole) or 5+ (18-hole) strokes worse than expected'},
+  {icon: '🔥', name: 'On Fire!', desc: '3+ (9-hole) or 5+ (18-hole) strokes better than expected'},
   {icon: '🪞', name: 'Mirror Image', desc: 'Front and back 9 within 1 stroke of each other'},
-  {icon: '🙏🏻', name: 'Amen Corner', desc: 'Holes 10-12 at even par or better, combined'},
-  {icon: '👌', name: '3 Goggles', desc: 'Every par-3 at par or better, combined'},
+  {icon: '🙏🏻', name: 'Amen Corner', desc: 'Holes 10-12 each at bogey or better'},
+  {icon: '👌', name: '3 Goggles', desc: '3+ par-3s at 3 or better'},
   {icon: '💯', name: '99 Club', desc: 'Break 100 over 18 holes'},
   {icon: '😈', name: 'Nemesis System', desc: 'Beat your best-ever score on a hole by 2+ strokes (min. 3 plays)'},
   {icon: '🌈', name: 'Triple Rainbow', desc: 'Par or better on a par-3, par-4, and par-5 in the same round'},
