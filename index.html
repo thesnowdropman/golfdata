@@ -2580,7 +2580,21 @@ function buildHoleStatsHtml(atCourse){
   const numHoles = withHoles[0].holeDetail.scores.length;
   const pars = withHoles[0].holeDetail.pars;
 
-  if(withHoles.length === 1){
+  // Also pull in the matching (9)/(18) variant's rounds for the per-hole median/best
+  // figures specifically -- same principle as getHistoricalHoleStats and the single-round
+  // scorecard's own best-highlighting: a hole played during a 9-hole round is the same
+  // physical hole as during an 18-hole round there. numHoles/pars still come from THIS
+  // exact course/page, since those are tied to its own specific layout.
+  const stripHoleSuffixForStats = (name) => {
+    const m = name.trim().match(/^(.*)\s\((9|18)\)$/);
+    return (m ? m[1] : name).trim().toLowerCase();
+  };
+  const baseCourseName = stripHoleSuffixForStats(withHoles[0].course);
+  const expandedMatches = rounds.filter(r =>
+    stripHoleSuffixForStats(r.course) === baseCourseName && r.holeDetail
+  );
+
+  if(expandedMatches.length === 1){
     const scores = withHoles[0].holeDetail.scores;
     const rows = [
       {label:'Par', rawFn:(h)=>pars[h], isPar:true},
@@ -2593,7 +2607,9 @@ function buildHoleStatsHtml(atCourse){
 
   const perHole = [];
   for(let h=0; h<numHoles; h++){
-    const scoresAtHole = withHoles.map(r => r.holeDetail.scores[h]);
+    const scoresAtHole = expandedMatches
+      .filter(r => r.holeDetail.scores.length > h)
+      .map(r => r.holeDetail.scores[h]);
     const med = median(scoresAtHole);
     const best = Math.min(...scoresAtHole);
     perHole.push({hole:h+1, par:pars[h], median:med, best});
@@ -2606,7 +2622,7 @@ function buildHoleStatsHtml(atCourse){
   ];
 
   return `
-    <p class="note" style="margin:16px 0 6px;">Hole-by-hole (from ${withHoles.length} scorecards on file)</p>
+    <p class="note" style="margin:16px 0 6px;">Hole-by-hole (from ${expandedMatches.length} scorecards on file)</p>
     ${renderScorecardChunks(numHoles, pars, rows)}`;
 }
 
@@ -2667,7 +2683,14 @@ function buildSingleRoundScorecardHtml(r){
 let holeDistChart = null;
 
 function openHoleDetail(courseName, holeIndex){
-  const atCourse = rounds.filter(r => r.course === courseName && r.holeDetail && r.holeDetail.scores.length > holeIndex);
+  // Also pulls in the matching (9)/(18) variant's rounds for this same physical hole --
+  // same principle applied everywhere else this pattern now lives.
+  const stripHoleSuffixForHoleDetail = (name) => {
+    const m = name.trim().match(/^(.*)\s\((9|18)\)$/);
+    return (m ? m[1] : name).trim().toLowerCase();
+  };
+  const baseCourseNameForHoleDetail = stripHoleSuffixForHoleDetail(courseName);
+  const atCourse = rounds.filter(r => stripHoleSuffixForHoleDetail(r.course) === baseCourseNameForHoleDetail && r.holeDetail && r.holeDetail.scores.length > holeIndex);
   const chronoAtCourse = [...atCourse].sort((a,b)=> new Date(a.date) - new Date(b.date));
   if(chronoAtCourse.length === 0) return;
 
