@@ -985,6 +985,12 @@ function computeRoundBadges(r){
     } else if(eightCount === 1){
       badges.push({icon: '⛄️', label: 'Snowman: Score an 8'});
     }
+
+    // Jackpot! -- exactly three 7s, slot-machine style.
+    const sevenCount = r.holeDetail.scores.filter(s => s === 7).length;
+    if(sevenCount === 3){
+      badges.push({icon: '🎰', label: 'Jackpot!: Score exactly 3 7s'});
+    }
   }
 
   // Milestone rounds -- exact chronological round count, ever
@@ -1003,6 +1009,36 @@ function computeRoundBadges(r){
     }, null);
     if(firstAtCourse && roundKey(firstAtCourse) === roundKey(r) && expAtTime !== null && scoreOf(r) < expAtTime){
       badges.push({icon: '🐣', label: 'Hatched: Debut new course under expected score'});
+    }
+  }
+
+  // Explorer -- this round is the first-ever at its PHYSICAL course (combining (9)/(18)
+  // variants as one course, same principle as the per-hole best/median tracking
+  // elsewhere), AND that makes it the 5th, 10th, 15th... distinct course played overall.
+  // Explorer specifically groups by ANY trailing parenthetical, not just (9)/(18) -- e.g.
+  // Blue/White tee variants count as one course here, unlike the (9)/(18)-only scope used
+  // for Best/Median score and per-hole tracking elsewhere, which those don't affect.
+  if(roundNum != null){
+    const stripHoleSuffixForExplorer = (name) => {
+      const m = name.trim().match(/^(.*)\s\([^)]*\)$/);
+      return (m ? m[1] : name).trim().toLowerCase();
+    };
+    const thisBaseCourseForExplorer = stripHoleSuffixForExplorer(r.course);
+    const roundsAtThisBaseCourse = rounds.filter(x =>
+      stripHoleSuffixForExplorer(x.course) === thisBaseCourseForExplorer &&
+      roundNumberOf[roundKey(x)] != null
+    );
+    const firstAtBaseCourse = roundsAtThisBaseCourse.reduce((earliest, x) => {
+      const xNum = roundNumberOf[roundKey(x)];
+      if(!earliest) return x;
+      return xNum < roundNumberOf[roundKey(earliest)] ? x : earliest;
+    }, null);
+    if(firstAtBaseCourse && roundKey(firstAtBaseCourse) === roundKey(r)){
+      const roundsUpToNow = rounds.filter(x => roundNumberOf[roundKey(x)] != null && roundNumberOf[roundKey(x)] <= roundNum);
+      const distinctCourseCount = new Set(roundsUpToNow.map(x => stripHoleSuffixForExplorer(x.course))).size;
+      if(distinctCourseCount % 5 === 0){
+        badges.push({icon: '🧭', label: `Explorer: ${distinctCourseCount}th distinct course played`});
+      }
     }
   }
 
@@ -1124,8 +1160,10 @@ const BADGE_CATALOG = [
   {icon: '🌈', name: 'Triple Rainbow', desc: 'Par or better on a par-3, par-4, and par-5 in the same round'},
   {icon: '☃️', name: 'Let It Snow!', desc: 'Score 2+ 8s in a round'},
   {icon: '⛄️', name: 'Snowman', desc: 'Score exactly one 8 in a round'},
+  {icon: '🎰', name: 'Jackpot!', desc: 'Score exactly 3 7s in a round'},
   {icon: '🔟', name: 'Milestone', desc: 'Round #10, #25, #50, or #100 logged, ever'},
   {icon: '🐣', name: 'Hatched', desc: 'Debut round at a new course that beat the expected score'},
+  {icon: '🧭', name: 'Explorer', desc: 'Your 5th, 10th, 15th... distinct course played'},
   {icon: '🥱', name: 'Siesta', desc: 'Finish holes 16-18 at +7 or worse'},
   {icon: '🏃‍♂️', name: 'Trackstar', desc: 'Finish holes 16-18 at +3 or better'},
 ];
