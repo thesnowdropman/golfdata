@@ -2619,8 +2619,15 @@ function buildSingleRoundScorecardHtml(r){
   // specific hole -- i.e. it beat every prior round's score there (strictly, no ties),
   // as of when it was played. This is a running record, not a comparison against the
   // whole dataset: a later round with an even better score doesn't retroactively remove
-  // an earlier round's star, since it really was the best at the time.
-  const atCourse = rounds.filter(x => x.course === r.course && x.holeDetail);
+  // an earlier round's star, since it really was the best at the time. Draws from every
+  // round at this base course regardless of (9)/(18) suffix -- hole 1 played during a
+  // 9-hole round is the same physical hole as hole 1 during an 18-hole round there.
+  const stripHoleSuffixForBest = (name) => {
+    const m = name.trim().match(/^(.*)\s\((9|18)\)$/);
+    return (m ? m[1] : name).trim().toLowerCase();
+  };
+  const thisBaseCourse = stripHoleSuffixForBest(r.course);
+  const atCourse = rounds.filter(x => stripHoleSuffixForBest(x.course) === thisBaseCourse && x.holeDetail);
 
   const bestMarks = new Array(numHoles).fill(false);
   for(let h=0; h<numHoles; h++){
@@ -2892,12 +2899,28 @@ function openCourseDetail(courseName){
        <p class="note" id="courseRoundsSeeMore" style="font-style:italic;cursor:pointer;margin:6px 0 0;">See more (${rest.length} earlier round${rest.length===1?'':'s'})</p>`
     : '';
 
-  const grossScores = atCourse.map(scoreOf);
-  const bestScore = Math.min(...grossScores);
-  const medianScore = median(grossScores);
+  // When this course's name ends in "(18)", also pull in the matching "(9)" variant's
+  // rounds for the Best/Median SCORE figures specifically -- scoped to just this display,
+  // not the round-by-round list below or Best Diff., which stay tied to this exact course.
+  let scoreEntries = atCourse.map(r => ({score: scoreOf(r), course: r.course}));
+  const eighteenSuffixMatch = courseName.match(/^(.*)\s\(18\)$/);
+  if(eighteenSuffixMatch){
+    const nineVariantName = `${eighteenSuffixMatch[1].trim()} (9)`;
+    const nineVariantEntries = rounds
+      .filter(r => r.course === nineVariantName)
+      .map(r => ({score: scoreOf(r), course: r.course}));
+    scoreEntries = scoreEntries.concat(nineVariantEntries);
+  }
+  const combinedScores = scoreEntries.map(e => e.score);
+  // Best score keeps track of which course it actually came from, so its to-par figure
+  // compares against the RIGHT par (9-hole par if it came from the (9) variant), not
+  // blindly against this (18) page's own par.
+  const bestEntry = scoreEntries.reduce((best, e) => e.score < best.score ? e : best, scoreEntries[0]);
+  const bestScore = bestEntry.score;
+  const medianScore = median(combinedScores);
   const bestDiff = Math.min(...atCourse.map(r=>r.diff));
   const summaryHtml = `
-    <p class="note" style="margin:2px 0 2px;">Best Score: ${bestScore}<span class="topar">${toParStr(bestScore, courseName)}</span></p>
+    <p class="note" style="margin:2px 0 2px;">Best Score: ${bestScore}<span class="topar">${toParStr(bestScore, bestEntry.course)}</span></p>
     <p class="note" style="margin:0 0 2px;">Median Score: ${Math.round(medianScore)}<span class="topar">${toParStr(medianScore, courseName)}</span></p>
     <p class="note" style="margin:0 0 10px;">Best Diff.: ${bestDiff.toFixed(1)}</p>
   `;
@@ -2956,17 +2979,37 @@ addOverlay.addEventListener('click', e=>{ if(e.target===addOverlay) addOverlay.c
 
 function getHistoricalHoleStats(courseName, holes){
   if(!courseName) return null;
-  const matches = rounds.filter(r =>
-    r.course.toLowerCase() === courseName.toLowerCase() &&
+  // Strips any trailing "(9)"/"(18)" suffix so hole-level best/median tracking treats
+  // both variants of the same physical course as one course -- hole 1 played during a
+  // 9-hole round is the same physical hole as hole 1 during an 18-hole round there.
+  const stripHoleSuffix = (name) => {
+    const m = name.trim().match(/^(.*)\s\((9|18)\)$/);
+    return (m ? m[1] : name).trim().toLowerCase();
+  };
+  const baseCourseName = stripHoleSuffix(courseName);
+
+  // Par is tied to a specific hole layout, so it still needs an exact hole-count match --
+  // this also gates whether hist applies at all, same as before.
+  const sameCountMatches = rounds.filter(r =>
+    stripHoleSuffix(r.course) === baseCourseName &&
     r.holeDetail &&
     r.holeDetail.scores.length === holes
   );
-  if(matches.length === 0) return null;
-  const pars = matches[0].holeDetail.pars;
+  if(sameCountMatches.length === 0) return null;
+  const pars = sameCountMatches[0].holeDetail.pars;
+
+  // Bests/medians per hole pull from EVERY round at this base course, any hole count,
+  // as long as that specific round actually played this hole index.
+  const allMatches = rounds.filter(r =>
+    stripHoleSuffix(r.course) === baseCourseName &&
+    r.holeDetail
+  );
   const bests = [];
   const medians = [];
   for(let h=0; h<holes; h++){
-    const scoresAtHole = matches.map(r => r.holeDetail.scores[h]);
+    const scoresAtHole = allMatches
+      .filter(r => r.holeDetail.scores.length > h)
+      .map(r => r.holeDetail.scores[h]);
     bests.push(Math.min(...scoresAtHole));
     medians.push(median(scoresAtHole));
   }
