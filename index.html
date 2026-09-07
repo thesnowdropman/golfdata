@@ -948,17 +948,18 @@ function computeRoundBadges(r){
       roundNumberOf[roundKey(x)] < thisRoundNum
     );
     if(priorAtCourseWithHoles.length >= 2){
-      let nemesisCount = 0;
+      const nemesisHoles = [];
       r.holeDetail.scores.forEach((s, i) => {
         const priorScoresAtHole = priorAtCourseWithHoles
           .filter(x => x.holeDetail.scores[i] != null)
           .map(x => x.holeDetail.scores[i]);
         if(priorScoresAtHole.length === 0) return;
         const bestPriorAtHole = Math.min(...priorScoresAtHole);
-        if(s <= bestPriorAtHole - 2) nemesisCount++;
+        if(s <= bestPriorAtHole - 2) nemesisHoles.push(i + 1);
       });
-      if(nemesisCount > 0){
-        badges.push({icon: '😈', label: 'Nemesis System: Beat your best-ever score on a hole by 2+ strokes (min. 3 plays)', count: nemesisCount});
+      if(nemesisHoles.length > 0){
+        const holeWord = nemesisHoles.length === 1 ? 'Hole' : 'Holes';
+        badges.push({icon: '😈', label: `Nemesis System: Beat your best-ever score on a hole by 2+ strokes (min. 3 plays) (${holeWord} ${nemesisHoles.join(', ')})`, count: nemesisHoles.length});
       }
     }
   }
