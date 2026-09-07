@@ -2922,28 +2922,18 @@ function openCourseDetail(courseName){
        <p class="note" id="courseRoundsSeeMore" style="font-style:italic;cursor:pointer;margin:6px 0 0;">See more (${rest.length} earlier round${rest.length===1?'':'s'})</p>`
     : '';
 
-  // When this course's name ends in "(18)", also pull in the matching "(9)" variant's
-  // rounds for the Best/Median SCORE figures specifically -- scoped to just this display,
-  // not the round-by-round list below or Best Diff., which stay tied to this exact course.
-  let scoreEntries = atCourse.map(r => ({score: scoreOf(r), course: r.course}));
-  const eighteenSuffixMatch = courseName.match(/^(.*)\s\(18\)$/);
-  if(eighteenSuffixMatch){
-    const nineVariantName = `${eighteenSuffixMatch[1].trim()} (9)`;
-    const nineVariantEntries = rounds
-      .filter(r => r.course === nineVariantName)
-      .map(r => ({score: scoreOf(r), course: r.course}));
-    scoreEntries = scoreEntries.concat(nineVariantEntries);
-  }
-  const combinedScores = scoreEntries.map(e => e.score);
-  // Best score keeps track of which course it actually came from, so its to-par figure
-  // compares against the RIGHT par (9-hole par if it came from the (9) variant), not
-  // blindly against this (18) page's own par.
-  const bestEntry = scoreEntries.reduce((best, e) => e.score < best.score ? e : best, scoreEntries[0]);
-  const bestScore = bestEntry.score;
-  const medianScore = median(combinedScores);
+  // Best/Median SCORE stay scoped strictly to THIS exact course (no (9)/(18) combining
+  // here) -- a 9-hole total isn't a meaningful comparison against an 18-hole "best round"
+  // figure the way a single shared hole's score is. (Per-hole best/median tracking
+  // elsewhere -- getHistoricalHoleStats, buildHoleStatsHtml, openHoleDetail, the
+  // single-round scorecard's own best-highlighting -- correctly DOES still combine
+  // variants, since a specific hole is the same physical hole regardless of round length.)
+  const grossScores = atCourse.map(scoreOf);
+  const bestScore = Math.min(...grossScores);
+  const medianScore = median(grossScores);
   const bestDiff = Math.min(...atCourse.map(r=>r.diff));
   const summaryHtml = `
-    <p class="note" style="margin:2px 0 2px;">Best Score: ${bestScore}<span class="topar">${toParStr(bestScore, bestEntry.course)}</span></p>
+    <p class="note" style="margin:2px 0 2px;">Best Score: ${bestScore}<span class="topar">${toParStr(bestScore, courseName)}</span></p>
     <p class="note" style="margin:0 0 2px;">Median Score: ${Math.round(medianScore)}<span class="topar">${toParStr(medianScore, courseName)}</span></p>
     <p class="note" style="margin:0 0 10px;">Best Diff.: ${bestDiff.toFixed(1)}</p>
   `;
