@@ -567,6 +567,12 @@
       <div id="betaSavedConfirmView" style="display:none;">
         <button class="modal-edit" id="betaBackFromSavedConfirm" type="button" style="margin-bottom:12px;">‹ Back</button>
         <h3 id="betaSavedConfirmLabel"></h3>
+        <div id="betaSavedConfirmExpLine"></div>
+        <div class="form-grid" id="betaSavedConfirmFormGrid">
+          <div class="full"><label>Date</label><input type="date" id="beta-saved-confirm-date"></div>
+          <div><label>Hour</label><select id="beta-saved-confirm-hour"></select></div>
+          <div><label>Minute</label><input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" id="beta-saved-confirm-minute" placeholder="00"></div>
+        </div>
         <div class="form-actions" style="margin-top:18px;">
           <button class="btn danger" id="betaSavedConfirmDelete" type="button">Delete this course</button>
           <button class="btn" id="betaSavedConfirmSchedule" type="button">Schedule this round</button>
@@ -4569,8 +4575,25 @@ function showBetaSavedConfirm(g){
   const rep = g.variants.solo || Object.values(g.variants)[0];
   const loc = COURSE_LOCATIONS[rep.name];
   const rsLocLine = `${rep.rating.toFixed(1)}/${rep.slope}${loc && loc.label ? ` · ${loc.label}` : ''}`;
+  const exp = computeExpScoreFor(rep.rating, rep.slope, rep.holes);
+  const expStrip = `<div style="display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;margin:14px 0;">
+    <div style="flex:1;text-align:center;padding:12px 6px;"><div style="font-size:20px;font-weight:700;color:var(--fairway);">${rep.holes}</div><div style="font-size:10px;color:#8a8368;margin-top:2px;">Holes</div></div>
+    <div style="flex:1;text-align:center;padding:12px 6px;border-left:1px solid var(--line);"><div style="font-size:20px;font-weight:700;color:var(--fairway);">${rep.slope}</div><div style="font-size:10px;color:#8a8368;margin-top:2px;">Slope</div></div>
+    <div style="flex:1;text-align:center;padding:12px 6px;border-left:1px solid var(--line);"><div style="font-size:20px;font-weight:700;color:var(--fairway);">${exp !== null ? exp : '—'}</div><div style="font-size:10px;color:#8a8368;margin-top:2px;">Exp. Score</div></div>
+  </div>`;
   document.getElementById('betaSavedConfirmLabel').innerHTML =
     `${g.display}<span class="crr-rs title-subline">${rsLocLine}</span>`;
+  document.getElementById('betaSavedConfirmExpLine').innerHTML = expStrip;
+  // Only the solo (single, unambiguous variant) case can collect date/hour/minute here
+  // and schedule directly -- a multi-variant group still needs its own step first to
+  // determine which (9)/(18) variant applies, since that decides holes/rating/slope.
+  const showInlineSchedule = !!g.variants.solo;
+  document.getElementById('betaSavedConfirmFormGrid').style.display = showInlineSchedule ? 'grid' : 'none';
+  if(showInlineSchedule){
+    populateHourMinuteSelects('beta-saved-confirm-hour', 'beta-saved-confirm-minute');
+    document.getElementById('beta-saved-confirm-date').value = todayISO();
+    document.getElementById('beta-saved-confirm-minute').value = '';
+  }
   document.getElementById('betaSavedCoursesView').style.display = 'none';
   document.getElementById('betaSavedConfirmView').style.display = 'block';
 }
@@ -4580,12 +4603,26 @@ document.getElementById('betaBackFromSavedConfirm').addEventListener('click', ()
 });
 document.getElementById('betaSavedConfirmSchedule').addEventListener('click', ()=>{
   const g = betaSavedConfirmGroup;
-  document.getElementById('betaSavedConfirmView').style.display = 'none';
-  betaCameFromSaved = true;
   if(g.variants.solo){
-    betaCameFromHolePick = false;
-    showBetaDatePrompt(g.variants.solo.name, g.variants.solo);
+    // Solo variant: we already know holes/rating/slope, and date/hour/minute are right
+    // here on this same screen now -- schedule directly rather than navigating to a
+    // separate date-picking screen for what's already fully specified.
+    const info = g.variants.solo;
+    const date = document.getElementById('beta-saved-confirm-date').value;
+    const hour = parseInt(document.getElementById('beta-saved-confirm-hour').value, 10);
+    let minute = parseInt(document.getElementById('beta-saved-confirm-minute').value, 10);
+    if(isNaN(minute)) minute = 0;
+    if(!date) return;
+    createBetaFutureRound({
+      course: info.name, date, hour, minute,
+      holes: info.holes, rating: info.rating, slope: info.slope,
+      pars: null, resolvedLoc: null
+    });
+    document.getElementById('betaSavedConfirmView').style.display = 'none';
+    document.getElementById('betaFutureOverlay').classList.remove('open');
   } else {
+    document.getElementById('betaSavedConfirmView').style.display = 'none';
+    betaCameFromSaved = true;
     showBetaHolePick(g);
   }
 });
