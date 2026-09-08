@@ -818,9 +818,54 @@ function expScoreAtTimeOf(r){
     : Math.round(idx * r.slope / 113 + r.rating);
 }
 
+// Computes the CURRENT top-8-lowest-differential rounds -- dynamic, unlike every other
+// badge in this app: this one can be taken away from an older round if a later round
+// beats its way into the top 8, since it reflects live status as of right now, not a
+// historical snapshot as of when each round was played. Simulates the top-8 list's
+// evolution in chronological order so each currently-qualifying round's label can show
+// what differential it displaced, if anything, at the moment it entered.
+function computeHandicapSpotMap(){
+  const chrono = [...rounds]
+    .filter(r => r.diff != null && !isNaN(r.diff))
+    .sort((a,b)=> new Date(a.date) - new Date(b.date));
+
+  let top8 = []; // array of {key, diff}, sorted ascending, max length 8
+  const replacedBy = {}; // roundKey -> the diff value it displaced, if any
+
+  chrono.forEach(r => {
+    const key = roundKey(r);
+    if(top8.length < 8){
+      top8.push({key, diff: r.diff});
+      top8.sort((a,b)=> a.diff - b.diff);
+    } else {
+      const worst = top8[top8.length - 1];
+      if(r.diff < worst.diff){
+        replacedBy[key] = worst.diff;
+        top8[top8.length - 1] = {key, diff: r.diff};
+        top8.sort((a,b)=> a.diff - b.diff);
+      }
+    }
+  });
+
+  return { currentTop8Keys: new Set(top8.map(e => e.key)), replacedBy };
+}
+
 function computeRoundBadges(r){
   const badges = [];
   const roundNum = roundNumberOf[roundKey(r)]; // 1-indexed chronological position
+
+  // Handicap Spot -- dynamic, see computeHandicapSpotMap's own comment. Recomputed fresh
+  // each call rather than cached, since the app's data volume is small enough that this
+  // is cheap regardless.
+  if(r.diff != null && !isNaN(r.diff)){
+    const handicapSpotData = computeHandicapSpotMap();
+    const thisKey = roundKey(r);
+    if(handicapSpotData.currentTop8Keys.has(thisKey)){
+      const replaced = handicapSpotData.replacedBy[thisKey];
+      const replacedText = replaced != null ? ` (${r.diff.toFixed(1)} replacing ${replaced.toFixed(1)})` : '';
+      badges.push({icon: '♿️', label: `Handicap Spot: Round with a top 8 differential${replacedText}`});
+    }
+  }
 
   // First round chronologically in this state
   const loc = COURSE_LOCATIONS[r.course];
@@ -991,6 +1036,39 @@ function computeRoundBadges(r){
     if(sevenCount === 3){
       badges.push({icon: '🎰', label: 'Jackpot!: Score exactly 3 7s'});
     }
+
+    // Eris -- same score on 5+ CONSECUTIVE holes. Only ever awarded once per round even
+    // if a run is longer than 5, or there's more than one qualifying run.
+    let erisRunLength = 1;
+    let erisEarned = false;
+    for(let i = 1; i < r.holeDetail.scores.length; i++){
+      if(r.holeDetail.scores[i] === r.holeDetail.scores[i-1]){
+        erisRunLength++;
+        if(erisRunLength >= 5) erisEarned = true;
+      } else {
+        erisRunLength = 1;
+      }
+    }
+    if(erisEarned){
+      badges.push({icon: '🌖', label: 'Eris: Score the same number on 5 consecutive holes'});
+    }
+
+    // Straight Flush -- 5 consecutive holes score 5 DISTINCT numbers whose range is
+    // exactly 4 -- the only way 5 distinct integers can span a range of 4 is if they ARE
+    // the 5 consecutive integers from the minimum to minimum+4, in any order (not
+    // necessarily ascending/descending on the card itself).
+    let straightFlushEarned = false;
+    for(let i = 0; i + 5 <= r.holeDetail.scores.length; i++){
+      const window = r.holeDetail.scores.slice(i, i+5);
+      const distinct = new Set(window);
+      if(distinct.size === 5 && (Math.max(...window) - Math.min(...window)) === 4){
+        straightFlushEarned = true;
+        break;
+      }
+    }
+    if(straightFlushEarned){
+      badges.push({icon: '🃏', label: 'Straight Flush: 5 consecutive holes score 5 unique, consecutive numbers'});
+    }
   }
 
   // Milestone rounds -- exact chronological round count, ever
@@ -1100,7 +1178,7 @@ function openRoundBadgesDetail(idx){
   const isHoleCountSuffix = parenContent === '9' || parenContent === '18';
   const parenSuffix = (parenContent && !isHoleCountSuffix) ? ` · ${parenContent}` : '';
   const rsLocLine = `${r.rating.toFixed(1)}/${r.slope}${loc && loc.label ? ` · ${loc.label}` : ''}${parenSuffix}`;
-  document.getElementById('detailTitle').innerHTML = `${displayTitle}<span class="crr-rs title-subline">${rsLocLine}</span>`;
+  document.getElementById('detailTitle').innerHTML = `<span id="courseTitleText">${displayTitle}</span><span class="crr-rs title-subline">${rsLocLine}</span>`;
   document.getElementById('detailTitle').style.marginTop = navStack.length > 0 ? '28px' : '0';
 
   const expAtTime = expScoreAtTimeOf(r);
@@ -1125,6 +1203,7 @@ function openRoundBadgesDetail(idx){
   body += `<div style="text-align:center;margin-top:16px;"><button class="btn" id="viewAllBadgesBtn" type="button">View All Badges</button></div>`;
   document.getElementById('detailBody').innerHTML = body;
   detailOverlay.classList.add('open');
+  fitCourseTitle();
   updateBackButton();
   document.getElementById('viewAllBadgesBtn').addEventListener('click', ()=>{
     navStack.push(()=>openRoundBadgesDetail(idx));
@@ -1144,6 +1223,7 @@ function openRoundBadgesDetail(idx){
 // (-2 for 9 holes, -4 for 18) get combined into a single entry, since they're the same
 // badge type earned under different scaling, not two different badges.
 const BADGE_CATALOG = [
+  {icon: '♿️', name: 'Handicap Spot', desc: 'One of your current top 8 lowest differentials (dynamic -- can be lost to a later round)'},
   {icon: '🗺️', name: 'Location Unlocked', desc: 'First round played in a new state'},
   {icon: '🐦', name: 'Put A Bird On It', desc: 'Score a birdie'},
   {icon: '🦅', name: "On Eagle's Wings", desc: 'Eagle!'},
@@ -1161,6 +1241,8 @@ const BADGE_CATALOG = [
   {icon: '☃️', name: 'Let It Snow!', desc: 'Score 2+ 8s in a round'},
   {icon: '⛄️', name: 'Snowman', desc: 'Score exactly one 8 in a round'},
   {icon: '🎰', name: 'Jackpot!', desc: 'Score exactly 3 7s in a round'},
+  {icon: '🌖', name: 'Eris', desc: 'Score the same number on 5 consecutive holes'},
+  {icon: '🃏', name: 'Straight Flush', desc: '5 consecutive holes score 5 unique, consecutive numbers'},
   {icon: '🔟', name: 'Milestone', desc: 'Round #10, #25, #50, or #100 logged, ever'},
   {icon: '🐣', name: 'Hatched', desc: 'Debut round at a new course that beat the expected score'},
   {icon: '🧭', name: 'Explorer', desc: 'Your 5th, 10th, 15th... distinct course played'},
@@ -2421,6 +2503,32 @@ document.getElementById('detailBack').addEventListener('click', ()=>{
 });
 detailOverlay.addEventListener('click', e=>{ if(e.target===detailOverlay) detailOverlay.classList.remove('open'); });
 
+// Shrinks a course-name title's font size, in 1px steps down from the CSS max (28px),
+// until it fits on a single line -- rather than letting a long name wrap awkwardly on a
+// narrow mobile screen. Floors at 16px so a genuinely very long name still stays legible
+// rather than shrinking indefinitely. Re-measures at each step since a smaller font can
+// fit differently per line, not just proportionally less.
+function fitCourseTitle(){
+  const el = document.getElementById('courseTitleText');
+  if(!el) return;
+  const maxSize = 28;
+  const minSize = 16;
+  let size = maxSize;
+  while(size >= minSize){
+    el.style.fontSize = size + 'px';
+    // Measure the TRUE single-line height by temporarily forcing no-wrap, rather than
+    // estimating it from a fixed multiplier -- a fixed estimate is fragile and this
+    // particular script font's tall ascenders/descenders don't match a generic ratio,
+    // which was causing this to over-shrink even after the text already fit on one line.
+    el.style.whiteSpace = 'nowrap';
+    const singleLineHeight = el.offsetHeight;
+    el.style.whiteSpace = '';
+    const actualHeight = el.offsetHeight;
+    if(actualHeight <= singleLineHeight + 2) break;
+    size -= 1;
+  }
+}
+
 function openDetail(idx){
   const r = rounds[idx];
   const isFirstRoundAtCourse = rounds.filter(x => x.course === r.course).length === 1;
@@ -2435,7 +2543,7 @@ function openDetail(idx){
   const parenSuffix = (parenContent && !isHoleCountSuffix) ? ` · ${parenContent}` : '';
   const rsLocLine = `${r.rating.toFixed(1)}/${r.slope}${loc && loc.label ? ` · ${loc.label}` : ''}${parenSuffix}`;
   const newCourseLine = isFirstRoundAtCourse ? `<span class="new-best-num title-subline" style="font-family:'ITC Bookman','Bookman Old Style',Bookman,serif;font-style:italic;font-size:14px;font-weight:700;margin-top:4px;">New Course!</span>` : '';
-  document.getElementById('detailTitle').innerHTML = `${displayTitle}<span class="crr-rs title-subline">${rsLocLine}</span>${newCourseLine}`;
+  document.getElementById('detailTitle').innerHTML = `<span id="courseTitleText">${displayTitle}</span><span class="crr-rs title-subline">${rsLocLine}</span>${newCourseLine}`;
   const dateFmt = new Date(r.date+'T00:00:00').toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
 
   document.getElementById('detailMiiRow').innerHTML = '';
@@ -2468,6 +2576,7 @@ function openDetail(idx){
 
   document.getElementById('detailBody').innerHTML = body;
   detailOverlay.classList.add('open');
+  fitCourseTitle();
   updateBackButton();
 
   document.querySelectorAll('.round-badge-btn').forEach(btn=>{
@@ -2739,7 +2848,7 @@ function openHoleDetail(courseName, holeIndex){
   const med = median(scores);
 
   document.getElementById('detailMiiRow').innerHTML = '';
-  document.getElementById('detailTitle').innerHTML = `${courseName} <span class="crr-rs">Hole ${holeIndex+1} · Par ${par}</span>`;
+  document.getElementById('detailTitle').innerHTML = `<span id="courseTitleText">${courseName}</span> <span class="crr-rs">Hole ${holeIndex+1} · Par ${par}</span>`;
   document.getElementById('detailTitle').style.marginTop = navStack.length > 0 ? '20px' : '0';
 
   const listHtml = [...chronoAtCourse].reverse().map(r => {
@@ -2765,6 +2874,7 @@ function openHoleDetail(courseName, holeIndex){
     <div class="hole-history-list">${listHtml}</div>
   `;
   detailOverlay.classList.add('open');
+  fitCourseTitle();
   updateBackButton();
 
   if(holeDistChart) holeDistChart.destroy();
@@ -2828,7 +2938,7 @@ function openFutureScoringCurve(futureId){
   const displayTitle = parenMatch ? parenMatch[1].trim() : f.course;
 
   document.getElementById('detailMiiRow').innerHTML = '';
-  document.getElementById('detailTitle').innerHTML = `${displayTitle} <span class="crr-rs">Scoring Curve</span>`;
+  document.getElementById('detailTitle').innerHTML = `<span id="courseTitleText">${displayTitle}</span> <span class="crr-rs">Scoring Curve</span>`;
   document.getElementById('detailTitle').style.marginTop = navStack.length > 0 ? '20px' : '0';
 
   // Dropdown listing every score in range with its own likelihood and cumulative
@@ -2849,6 +2959,7 @@ function openFutureScoringCurve(futureId){
     <select id="scoringCurveTable">${optionsHtml}</select>
   `;
   detailOverlay.classList.add('open');
+  fitCourseTitle();
   updateBackButton();
 
   // Tapping/clicking a bar (or picking from the dropdown) shows that score's own
@@ -2927,7 +3038,7 @@ function openCourseDetail(courseName){
   const parenContent = parenMatch ? parenMatch[2].trim() : null;
   const isHoleCountSuffix = parenContent === '9' || parenContent === '18';
   const parenSuffix = (parenContent && !isHoleCountSuffix) ? ` · ${parenContent}` : '';
-  document.getElementById('detailTitle').innerHTML = `${displayTitle}<span class="crr-rs title-subline">${rsLine}${locSuffix}${parenSuffix}</span>`;
+  document.getElementById('detailTitle').innerHTML = `<span id="courseTitleText">${displayTitle}</span><span class="crr-rs title-subline">${rsLine}${locSuffix}${parenSuffix}</span>`;
   // If a Back button will be showing (navStack has something to return to), the Back
   // button's absolute top-left position would otherwise overlap/clip through the Edit
   // button, which normally sits right at the top of this same area.
@@ -2986,6 +3097,7 @@ function openCourseDetail(courseName){
     ${buildHoleStatsHtml(atCourse)}
   `;
   detailOverlay.classList.add('open');
+  fitCourseTitle();
   updateBackButton();
   document.getElementById('courseEditBtn').addEventListener('click', ()=> openEditCourseModal(courseName));
 
@@ -4098,7 +4210,7 @@ function openFutureRoundDetail(id){
   const fIsHoleCountSuffix2 = fParenContent2 === '9' || fParenContent2 === '18';
   const fParenSuffix2 = (fParenContent2 && !fIsHoleCountSuffix2) ? ` · ${fParenContent2}` : '';
   const futureRsLocLine = `${f.rating.toFixed(1)}/${f.slope}${futureLoc && futureLoc.label ? ` · ${futureLoc.label}` : ''}${fParenSuffix2}`;
-  document.getElementById('detailTitle').innerHTML = `${fDisplayTitle}<span class="crr-rs title-subline">${futureRsLocLine}</span>`;
+  document.getElementById('detailTitle').innerHTML = `<span id="courseTitleText">${fDisplayTitle}</span><span class="crr-rs title-subline">${futureRsLocLine}</span>`;
   document.getElementById('detailTitle').style.marginTop = navStack.length > 0 ? '20px' : '0';
 
   let body = `<p class="note" style="margin:2px 0 2px;">${dateFmt}${f.hour != null ? ' · ' + formatTimeLabel(f.hour, f.minute || 0) : ''}</p>`;
@@ -4163,6 +4275,7 @@ function openFutureRoundDetail(id){
 
   document.getElementById('detailBody').innerHTML = body;
   detailOverlay.classList.add('open');
+  fitCourseTitle();
   updateBackButton();
   attachHourlyWeatherDetail(f);
 
