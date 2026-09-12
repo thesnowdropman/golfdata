@@ -354,6 +354,7 @@
       <tbody id="course-record-table"></tbody>
     </table>
     <p class="note" id="courseRecordsSeeMore" style="font-style:italic;cursor:pointer;margin:8px 0 0;display:none;">Show more…</p>
+    <p class="note" id="showAllStatsLink" style="font-weight:700;cursor:pointer;margin:10px 0 0;display:none;">📊 Show All Stats</p>
   </section>
 
 </div>
@@ -831,29 +832,40 @@ function expScoreAtTimeOf(r){
 // evolution in chronological order so each currently-qualifying round's label can show
 // what differential it displaced, if anything, at the moment it entered.
 function computeHandicapSpotMap(){
-  const chrono = [...rounds]
+  const chronoAll = [...rounds]
     .filter(r => r.diff != null && !isNaN(r.diff))
     .sort((a,b)=> new Date(a.date) - new Date(b.date));
 
-  let top8 = []; // array of {key, diff}, sorted ascending, max length 8
-  const replacedBy = {}; // roundKey -> the diff value it displaced, if any
+  // Snapshot: given a chronological index, what's the top-8-by-differential among just
+  // the 20 most recent outings as of that point (inclusive)?
+  function top8AsOfIndex(i){
+    const windowRounds = chronoAll.slice(Math.max(0, i - 19), i + 1);
+    return [...windowRounds].sort((a,b)=> a.diff - b.diff).slice(0, 8).map(r => roundKey(r));
+  }
 
-  chrono.forEach(r => {
-    const key = roundKey(r);
-    if(top8.length < 8){
-      top8.push({key, diff: r.diff});
-      top8.sort((a,b)=> a.diff - b.diff);
-    } else {
-      const worst = top8[top8.length - 1];
-      if(r.diff < worst.diff){
-        replacedBy[key] = worst.diff;
-        top8[top8.length - 1] = {key, diff: r.diff};
-        top8.sort((a,b)=> a.diff - b.diff);
+  // Walk forward through history one outing at a time, comparing each snapshot to the
+  // one before it. A round can enter the top 8 either by beating its way in on merit, OR
+  // because an older top-8 round just aged past the 20-round window -- both cases show up
+  // the same way here: something present in the previous snapshot is now missing. This
+  // also correctly handles the case where the newly-vacated slot goes to a DIFFERENT,
+  // already-existing round in the window rather than the brand-new outing itself.
+  const replacedBy = {};
+  let prevTop8Keys = [];
+  chronoAll.forEach((r, i) => {
+    const currentTop8Keys = top8AsOfIndex(i);
+    const newEntrants = currentTop8Keys.filter(k => !prevTop8Keys.includes(k));
+    const dropped = prevTop8Keys.filter(k => !currentTop8Keys.includes(k));
+    newEntrants.forEach((enteredKey, idx) => {
+      if(dropped[idx] != null){
+        const droppedRound = chronoAll.find(x => roundKey(x) === dropped[idx]);
+        if(droppedRound) replacedBy[enteredKey] = droppedRound.diff;
       }
-    }
+    });
+    prevTop8Keys = currentTop8Keys;
   });
 
-  return { currentTop8Keys: new Set(top8.map(e => e.key)), replacedBy };
+  const finalTop8Keys = chronoAll.length > 0 ? top8AsOfIndex(chronoAll.length - 1) : [];
+  return { currentTop8Keys: new Set(finalTop8Keys), replacedBy };
 }
 
 function computeRoundBadges(r){
@@ -1229,7 +1241,7 @@ function openRoundBadgesDetail(idx){
 // (-2 for 9 holes, -4 for 18) get combined into a single entry, since they're the same
 // badge type earned under different scaling, not two different badges.
 const BADGE_CATALOG = [
-  {icon: '♿️', name: 'Handicap Spot', desc: 'One of your current top 8 lowest differentials (dynamic -- can be lost to a later round)'},
+  {icon: '♿️', name: 'Handicap Spot', desc: 'One of your current top 8 lowest differentials among the last 20 outings (dynamic -- can be lost to a later or newly-eligible round)'},
   {icon: '🗺️', name: 'Location Unlocked', desc: 'First round played in a new state'},
   {icon: '🐦', name: 'Put A Bird On It', desc: 'Score a birdie'},
   {icon: '🦅', name: "On Eagle's Wings", desc: 'Eagle!'},
@@ -2307,6 +2319,8 @@ function renderCourseRecords(){
   shownRows.forEach(row => tbody.appendChild(buildCourseRow(row)));
 
   const seeMoreEl = document.getElementById('courseRecordsSeeMore');
+  const showAllStatsLink = document.getElementById('showAllStatsLink');
+  showAllStatsLink.onclick = () => { navStack.push(()=>{ renderCourseRecords(); }); openAllStatsDetail(); };
   if(restRows.length > 0){
     const restRowEls = restRows.map(buildCourseRow);
     restRowEls.forEach(tr => { tr.style.display = 'none'; tbody.appendChild(tr); });
@@ -2315,6 +2329,7 @@ function renderCourseRecords(){
     let expanded = false;
     seeMoreEl.textContent = moreLabel;
     seeMoreEl.style.display = 'block';
+    showAllStatsLink.style.display = 'none';
     seeMoreEl.onclick = () => {
       expanded = !expanded;
       if(expanded){
@@ -2327,9 +2342,11 @@ function renderCourseRecords(){
         restRowEls.forEach(tr => { tr.style.display = 'none'; tr.classList.remove('shown'); });
       }
       seeMoreEl.textContent = expanded ? 'Show less' : moreLabel;
+      showAllStatsLink.style.display = expanded ? 'block' : 'none';
     };
   } else {
     seeMoreEl.style.display = 'none';
+    showAllStatsLink.style.display = 'block';
   }
 }
 
@@ -2725,6 +2742,125 @@ function renderScorecardChunks(numHoles, pars, rows){
     </table></div>`;
   });
   return html;
+}
+
+// Computes the cross-course "all stats" summary: a hypothetical composite 18-hole round
+// made of your best-ever score at each hole INDEX regardless of which course it came
+// from, plus lifetime totals and a score-to-par distribution across every hole with
+// recorded detail.
+function computeAllStatsSummary(){
+  const allWithHoles = rounds.filter(r => r.holeDetail);
+
+  const bestPars = [];
+  const bestScores = [];
+  for(let h = 0; h < 18; h++){
+    const candidates = allWithHoles.filter(r => r.holeDetail.scores.length > h);
+    if(candidates.length === 0){
+      bestPars.push(null);
+      bestScores.push(null);
+      continue;
+    }
+    let best = candidates[0];
+    candidates.forEach(r => { if(r.holeDetail.scores[h] < best.holeDetail.scores[h]) best = r; });
+    bestScores.push(best.holeDetail.scores[h]);
+    bestPars.push(best.holeDetail.pars[h]);
+  }
+
+  const totalHolesPlayed = rounds.reduce((s,r) => s + r.holes, 0);
+  const totalStrokes = rounds.reduce((s,r) => s + scoreOf(r), 0);
+
+  const dist = {birdie:0, par:0, bogey:0, double:0, triple:0, quad:0, quint:0, other:0};
+  let totalHolesWithDetail = 0;
+  allWithHoles.forEach(r => {
+    r.holeDetail.scores.forEach((s,i) => {
+      const diff = s - r.holeDetail.pars[i];
+      totalHolesWithDetail++;
+      if(diff === -1) dist.birdie++;
+      else if(diff === 0) dist.par++;
+      else if(diff === 1) dist.bogey++;
+      else if(diff === 2) dist.double++;
+      else if(diff === 3) dist.triple++;
+      else if(diff === 4) dist.quad++;
+      else if(diff === 5) dist.quint++;
+      else dist.other++;
+    });
+  });
+
+  // Rather than the raw empirical birdie rate (which is trivially 0% with zero birdies
+  // observed, and tells you nothing useful in that case), fit a normal curve to the
+  // actual distribution of score-to-par values across every recorded hole, then use that
+  // curve's own shape and spread to PROJECT a birdie probability -- given n pars, y
+  // bogeys, x double bogeys and so on, what does the overall curve suggest about the
+  // birdie tail, even where none have actually landed yet.
+  const allDiffs = [];
+  allWithHoles.forEach(r => {
+    r.holeDetail.scores.forEach((sc,i) => { allDiffs.push(sc - r.holeDetail.pars[i]); });
+  });
+  const diffMean = allDiffs.length > 0 ? allDiffs.reduce((s,v)=>s+v,0) / allDiffs.length : 0;
+  const diffVariance = allDiffs.length > 0 ? allDiffs.reduce((s,v)=>s+(v-diffMean)*(v-diffMean),0) / allDiffs.length : 0;
+  const diffSD = Math.sqrt(diffVariance);
+  // Continuity-corrected: probability mass at score-to-par <= -1 (birdie or better) under
+  // the fitted curve, same correction used elsewhere in the app for discretizing a
+  // continuous model against integer strokes.
+  const projectedBirdieRate = totalHolesWithDetail > 0 ? normalCDF(-0.5, diffMean, diffSD) : 0;
+  const expectedBirdiesCareer = projectedBirdieRate * totalHolesWithDetail;
+  const oddsZeroBirdiesCareer = Math.pow(1 - projectedBirdieRate, totalHolesWithDetail);
+
+  return {
+    bestPars, bestScores, totalHolesPlayed, totalStrokes, dist, totalHolesWithDetail,
+    projectedBirdieRate, diffMean, diffSD, expectedBirdiesCareer, oddsZeroBirdiesCareer
+  };
+}
+
+// Formats a probability (0-1) as a percentage, switching to scientific notation when the
+// value is small enough that a fixed-decimal display would misleadingly round to "0.0%"
+// -- with a career-length sample size, this genuinely can happen even with a real,
+// nonzero underlying rate.
+function formatTinyPercent(p){
+  const pct = p * 100;
+  if(pct === 0) return '0%';
+  if(pct >= 0.01) return `${pct.toFixed(2)}%`;
+  return `${pct.toExponential(2)}%`;
+}
+
+function openAllStatsDetail(){
+  const s = computeAllStatsSummary();
+
+  document.getElementById('detailMiiRow').innerHTML = '';
+  document.getElementById('detailMiiRow').style.display = 'none';
+  document.getElementById('detailTitle').innerHTML = `<span id="courseTitleText">All Stats</span>`;
+  document.getElementById('detailTitle').style.marginTop = navStack.length > 0 ? '28px' : '0';
+
+  const rows = [
+    {label:'Par', rawFn:(h)=> s.bestPars[h] != null ? s.bestPars[h] : '—', isPar:true},
+    {label:'Score', rawFn:(h)=> s.bestScores[h] != null ? s.bestScores[h] : '—', isPar:false, clickable:false},
+  ];
+  const scorecardHtml = renderScorecardChunks(18, s.bestPars.map(p => p != null ? p : 0), rows);
+
+  const distList = [
+    ['Birdies', s.dist.birdie], ['Pars', s.dist.par], ['Bogeys', s.dist.bogey],
+    ['Double bogeys', s.dist.double], ['Triple bogeys', s.dist.triple],
+    ['Quadruple bogeys', s.dist.quad], ['Quintuple bogeys', s.dist.quint],
+  ];
+  const distHtml = distList.map(([label,count]) => `<p class="note" style="margin:2px 0;">${label}: <strong>${count}</strong></p>`).join('');
+  const otherLine = s.dist.other > 0 ? `<p class="note" style="margin:2px 0;">Other (eagle or better / worse than quintuple): <strong>${s.dist.other}</strong></p>` : '';
+
+  const body = `
+    <p class="note" style="margin:2px 0 12px;">A hypothetical composite round: your best-ever score at each hole position, regardless of which course it came from.</p>
+    ${scorecardHtml}
+    <p class="note" style="margin:16px 0 2px;"><strong>Total holes played:</strong> ${s.totalHolesPlayed}</p>
+    <p class="note" style="margin:0 0 12px;"><strong>Total strokes taken:</strong> ${s.totalStrokes}</p>
+    <p class="note" style="margin:16px 0 2px;color:var(--fairway);font-weight:700;">Score distribution (${s.totalHolesWithDetail} holes with detail on file)</p>
+    ${distHtml}
+    ${otherLine}
+    <p class="note" style="margin:16px 0 2px;font-style:italic;color:#8a8368;">Projected from a curve fit to your actual score-to-par spread (avg ${s.diffMean.toFixed(2)}, spread ${s.diffSD.toFixed(2)}) -- not just your raw birdie count, which is ${s.dist.birdie}.</p>
+    <p class="note" style="margin:0 0 2px;"><strong>Expected birdies (career, ${s.totalHolesWithDetail} holes):</strong> ${s.expectedBirdiesCareer.toFixed(2)}</p>
+    <p class="note" style="margin:0 0 2px;"><strong>Odds of zero birdies (career, ${s.totalHolesWithDetail} holes):</strong> ${formatTinyPercent(s.oddsZeroBirdiesCareer)}</p>
+  `;
+
+  document.getElementById('detailBody').innerHTML = body;
+  detailOverlay.classList.add('open');
+  updateBackButton();
 }
 
 function buildHoleStatsHtml(atCourse){
