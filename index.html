@@ -178,7 +178,7 @@
   html[data-theme="wii"] .crr-rs{color:#7C97A8;}
   html[data-theme="wii"] .crr-date{color:#7C97A8;}
   .crr-score{font-family:var(--font-mono);font-weight:600;flex:0 0 auto;text-align:right;white-space:nowrap;}
-  .crr-diff{font-family:var(--font-mono);flex:0 0 auto;text-align:right;color:var(--fairway);white-space:nowrap;}
+  .crr-diff{font-family:var(--font-mono);font-size:10px;flex:0 0 auto;text-align:right;color:var(--fairway);white-space:nowrap;}
   .date-cell{font-size:11.5px;color:#7a7461;}
   html[data-theme="wii"] .date-cell{color:#7C97A8;}
   .lowdiff-face{width:20px;height:auto;vertical-align:middle;margin-left:6px;}
@@ -3198,7 +3198,7 @@ function openCourseDetail(courseName){
     return `
       <div class="course-round-row" data-idx="${r.idx}">
         <span class="crr-date">${dateFmt}${badgesHtml ? ` <span style="font-size:13px;">${badgesHtml}</span>` : ''}</span>
-        <span class="crr-score">${gross}<span class="topar">${toParStr(gross, r.course)}</span></span>
+        <span class="crr-score">${gross}<span class="topar">${toParAndExpStr(r)}</span></span>
         <span class="crr-diff">${r.diff.toFixed(1)}</span>
       </div>`;
   };
