@@ -2500,16 +2500,88 @@ function regressionCrossDate(){
   return new Date(projectedMs).toISOString().slice(0,10);
 }
 
+// When the player will have had their 10th outing with a differential under 30 -- more
+// conservative than the regression-line-crossing date above, since the OFFICIAL handicap
+// only uses the best 8 of the last 20: having 10 qualifying rounds gives a 2-round buffer
+// before the index is genuinely, durably pulled below 30, not just the single average
+// outing dipping under it. Counts actual past rounds first; for any still needed, projects
+// forward using the SAME round-number regression as regressionCrossDate, but accounts for
+// natural round-to-round scatter (diffResidualSD) rather than assuming every future round
+// lands exactly on the regression line -- each future outing contributes its own
+// probability of landing under 30, accumulated until the expected count reaches 10.
+function tenthUnder30Date(){
+  if(!rounds || rounds.length === 0) return null;
+  const chrono = [...rounds].sort((a,b)=> new Date(a.date) - new Date(b.date));
+  const totalOutings = chrono.length;
+
+  const actualUnder30Count = chrono.filter(r => r.diff < 30).length;
+  if(actualUnder30Count >= 10){
+    let count = 0;
+    for(const r of chrono){
+      if(r.diff < 30){
+        count++;
+        if(count === 10) return r.date;
+      }
+    }
+  }
+
+  const outingPoints = chrono.map((r, i) => ({ x: i + 1, y: r.diff }));
+  const n = outingPoints.length;
+  const sx = outingPoints.reduce((s,p)=>s+p.x, 0);
+  const sy = outingPoints.reduce((s,p)=>s+p.y, 0);
+  const sxy = outingPoints.reduce((s,p)=>s+p.x*p.y, 0);
+  const sxx = outingPoints.reduce((s,p)=>s+p.x*p.x, 0);
+  const denom = (n*sxx - sx*sx);
+  if(denom === 0) return null;
+  const outingSlope = (n*sxy - sx*sy) / denom;
+  const outingIntercept = (sy - outingSlope*sx) / n;
+
+  if(outingSlope >= 0) return null;
+
+  let expectedCount = actualUnder30Count;
+  let outingNum = totalOutings;
+  const maxIterations = 2000;
+  let iterations = 0;
+  while(expectedCount < 10 && iterations < maxIterations){
+    outingNum++;
+    iterations++;
+    const pointEstimate = outingSlope*outingNum + outingIntercept;
+    const p = diffResidualSD > 0 ? normalCDF(30, pointEstimate, diffResidualSD) : (pointEstimate < 30 ? 1 : 0);
+    expectedCount += p;
+  }
+  if(iterations >= maxIterations) return null;
+
+  const outingsNeeded = outingNum - totalOutings;
+  if(outingsNeeded <= 0) return new Date().toISOString().slice(0,10);
+
+  const today = new Date();
+  const firstRoundDate = new Date(chrono[0].date+'T00:00:00');
+  const daysSinceFirstRound = Math.max(1, Math.round((today - firstRoundDate) / 86400000));
+  const avgOutingsPerDay = totalOutings / daysSinceFirstRound;
+  if(avgOutingsPerDay <= 0) return null;
+
+  const daysNeeded = Math.ceil(outingsNeeded / avgOutingsPerDay);
+  const projectedMs = today.getTime() + daysNeeded * 86400000;
+  return new Date(projectedMs).toISOString().slice(0,10);
+}
+
 function updateProjection(){
   const noteEl = document.getElementById('regressionCrossNote');
   if(!noteEl) return;
   const crossDate = regressionCrossDate();
+  let html;
   if(!crossDate){
-    noteEl.textContent = 'Regression is flat or trending up — not projected to drop below 30.0 at this rate.';
+    html = 'Regression is flat or trending up — not projected to drop below 30.0 at this rate.';
   } else {
     const readable = new Date(crossDate+'T00:00:00').toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
-    noteEl.innerHTML = `Projected to drop below 30.0 on <strong>${readable}</strong>.`;
+    html = `Projected to drop below 30.0 on <strong>${readable}</strong>.`;
   }
+  const tenthDate = tenthUnder30Date();
+  if(tenthDate){
+    const tenthReadable = new Date(tenthDate+'T00:00:00').toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
+    html += `<br>Projected handicap to drop below 30.0 on <strong>${tenthReadable}</strong>.`;
+  }
+  noteEl.innerHTML = html;
 }
 
 // ================= ROUND DETAIL MODAL =================
