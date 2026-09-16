@@ -2921,8 +2921,11 @@ function openAllStatsDetail(){
 
 // For a given hole count, finds every distinct course that has at least one round at that
 // hole count, using the MOST RECENT such round's rating/slope (in case it's been corrected
-// since via Edit Course).
-function computeAllCoursesList(holes){
+// since via Edit Course). When includeSaved is true, also merges in any savedNewCourses
+// entries at that same hole count that haven't actually been played yet -- played courses
+// always take precedence, so a course that's both saved and played only appears once, as
+// played. Saved-but-unplayed entries are flagged so the table can visually distinguish them.
+function computeAllCoursesList(holes, includeSaved){
   const matching = rounds.filter(r => r.holes === holes);
   const byCourse = {};
   matching.forEach(r => {
@@ -2932,19 +2935,37 @@ function computeAllCoursesList(holes){
       byCourse[key] = r;
     }
   });
-  return Object.values(byCourse).map(r => ({
+  const list = Object.values(byCourse).map(r => ({
     course: r.course,
     rating: r.rating,
     slope: r.slope,
-    exp: computeExpScoreFor(r.rating, r.slope, r.holes)
+    exp: computeExpScoreFor(r.rating, r.slope, r.holes),
+    unplayed: false
   }));
+
+  if(includeSaved){
+    Object.entries(savedNewCourses).forEach(([key, saved]) => {
+      if(saved.holes !== holes) return;
+      if(byCourse[key]) return; // already played at this hole count, don't duplicate
+      list.push({
+        course: saved.name,
+        rating: saved.rating,
+        slope: saved.slope,
+        exp: computeExpScoreFor(saved.rating, saved.slope, saved.holes),
+        unplayed: true
+      });
+    });
+  }
+
+  return list;
 }
 
 let allCoursesSortState = {col: 'course', dir: 'asc'};
 let allCoursesHoles = 18;
+let allCoursesShowSaved = false;
 
 function renderAllCoursesTable(){
-  const list = computeAllCoursesList(allCoursesHoles);
+  const list = computeAllCoursesList(allCoursesHoles, allCoursesShowSaved);
   const col = allCoursesSortState.col;
   const dir = allCoursesSortState.dir;
   list.sort((a,b) => {
@@ -2961,10 +2982,10 @@ function renderAllCoursesTable(){
   const arrow = (c) => allCoursesSortState.col === c ? (allCoursesSortState.dir === 'asc' ? ' ▲' : ' ▼') : '';
   const rowsHtml = list.map(item => `
     <tr>
-      <td style="text-align:left;padding:7px 4px;border-bottom:1px solid var(--line);">${item.course}</td>
-      <td style="text-align:center;padding:7px 4px;border-bottom:1px solid var(--line);">${item.rating.toFixed(1)}</td>
-      <td style="text-align:center;padding:7px 4px;border-bottom:1px solid var(--line);">${item.slope}</td>
-      <td style="text-align:center;padding:7px 4px;border-bottom:1px solid var(--line);">${item.exp != null ? item.exp : '—'}</td>
+      <td style="text-align:left;padding:7px 4px;border-bottom:1px solid var(--line);${item.unplayed ? 'font-style:italic;color:#8a8368;' : ''}">${item.course}${item.unplayed ? ' <span style="font-size:10px;">(unplayed)</span>' : ''}</td>
+      <td style="text-align:center;padding:7px 4px;border-bottom:1px solid var(--line);${item.unplayed ? 'font-style:italic;color:#8a8368;' : ''}">${item.rating.toFixed(1)}</td>
+      <td style="text-align:center;padding:7px 4px;border-bottom:1px solid var(--line);${item.unplayed ? 'font-style:italic;color:#8a8368;' : ''}">${item.slope}</td>
+      <td style="text-align:center;padding:7px 4px;border-bottom:1px solid var(--line);${item.unplayed ? 'font-style:italic;color:#8a8368;' : ''}">${item.exp != null ? item.exp : '—'}</td>
     </tr>`).join('');
 
   document.getElementById('allCoursesTableBody').innerHTML = rowsHtml || `<tr><td colspan="4" style="text-align:center;padding:16px;color:#8a8368;">No ${allCoursesHoles}-hole rounds on file yet.</td></tr>`;
@@ -2997,12 +3018,17 @@ function openAllCoursesDetail(){
 
   allCoursesHoles = 18;
   allCoursesSortState = {col: 'course', dir: 'asc'};
+  allCoursesShowSaved = false;
 
   document.getElementById('detailBody').innerHTML = `
-    <div class="view-toggle" style="display:flex;max-width:160px;margin:2px 0 16px;">
+    <div class="view-toggle" style="display:flex;max-width:160px;margin:2px 0 12px;">
       <button type="button" class="view-toggle-btn active" id="allCoursesHoles18Btn">18</button>
       <button type="button" class="view-toggle-btn" id="allCoursesHoles9Btn">9</button>
     </div>
+    <label style="display:flex;align-items:center;gap:7px;font-size:13px;margin:0 0 14px;cursor:pointer;">
+      <input type="checkbox" id="allCoursesShowSavedToggle">
+      Show saved, unplayed courses
+    </label>
     <div style="overflow-x:auto;">
       <table style="width:100%;border-collapse:collapse;font-size:13px;">
         <thead id="allCoursesTableHead"></thead>
@@ -3024,6 +3050,10 @@ function openAllCoursesDetail(){
     allCoursesHoles = 18;
     document.getElementById('allCoursesHoles18Btn').classList.add('active');
     document.getElementById('allCoursesHoles9Btn').classList.remove('active');
+    renderAllCoursesTable();
+  });
+  document.getElementById('allCoursesShowSavedToggle').addEventListener('change', (e)=>{
+    allCoursesShowSaved = e.target.checked;
     renderAllCoursesTable();
   });
 
