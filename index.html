@@ -355,6 +355,7 @@
     </table>
     <p class="note" id="courseRecordsSeeMore" style="font-style:italic;cursor:pointer;margin:8px 0 0;display:none;">Show more…</p>
     <p class="note" id="showAllStatsLink" style="font-weight:700;cursor:pointer;margin:10px 0 0;display:none;">📊 Show All Stats</p>
+    <p class="note" id="showAllCoursesLink" style="font-weight:700;cursor:pointer;margin:10px 0 0;display:none;">⛳ Show All Courses</p>
   </section>
 
 </div>
@@ -2335,7 +2336,9 @@ function renderCourseRecords(){
 
   const seeMoreEl = document.getElementById('courseRecordsSeeMore');
   const showAllStatsLink = document.getElementById('showAllStatsLink');
+  const showAllCoursesLink = document.getElementById('showAllCoursesLink');
   showAllStatsLink.onclick = () => { navStack.push(()=>{ renderCourseRecords(); }); openAllStatsDetail(); };
+  showAllCoursesLink.onclick = () => { navStack.push(()=>{ renderCourseRecords(); }); openAllCoursesDetail(); };
   if(restRows.length > 0){
     const restRowEls = restRows.map(buildCourseRow);
     restRowEls.forEach(tr => { tr.style.display = 'none'; tbody.appendChild(tr); });
@@ -2345,6 +2348,7 @@ function renderCourseRecords(){
     seeMoreEl.textContent = moreLabel;
     seeMoreEl.style.display = 'block';
     showAllStatsLink.style.display = 'none';
+    showAllCoursesLink.style.display = 'none';
     seeMoreEl.onclick = () => {
       expanded = !expanded;
       if(expanded){
@@ -2358,10 +2362,12 @@ function renderCourseRecords(){
       }
       seeMoreEl.textContent = expanded ? 'Show less' : moreLabel;
       showAllStatsLink.style.display = expanded ? 'block' : 'none';
+      showAllCoursesLink.style.display = expanded ? 'block' : 'none';
     };
   } else {
     seeMoreEl.style.display = 'none';
     showAllStatsLink.style.display = 'block';
+    showAllCoursesLink.style.display = 'block';
   }
 }
 
@@ -2520,7 +2526,7 @@ function regressionCrossDate(){
 // pure round-count volume, unrelated to differential value at all. Uses the actual date
 // if 50+ rounds already exist; otherwise projects forward using the same "actual pace
 // measured against today" methodology as regressionCrossDate above. The displayed label
-// stays as "Projected handicap to drop below 30.0" by explicit request -- not renamed to
+// stays as "Handicap projected to drop below 30.0" by explicit request -- not renamed to
 // match what this specific date now represents.
 function fiftiethRoundDate(){
   if(!rounds || rounds.length === 0) return null;
@@ -2557,7 +2563,7 @@ function updateProjection(){
   const fiftiethDate = fiftiethRoundDate();
   if(fiftiethDate){
     const fiftiethReadable = new Date(fiftiethDate+'T00:00:00').toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
-    html += `<br>Projected handicap to drop below 30.0 on <strong>${fiftiethReadable}</strong>.`;
+    html += `<br>Handicap projected to drop below 30.0 on <strong>${fiftiethReadable}</strong>.`;
   }
   noteEl.innerHTML = html;
 }
@@ -2911,6 +2917,117 @@ function openAllStatsDetail(){
   document.getElementById('detailBody').innerHTML = body;
   detailOverlay.classList.add('open');
   updateBackButton();
+}
+
+// For a given hole count, finds every distinct course that has at least one round at that
+// hole count, using the MOST RECENT such round's rating/slope (in case it's been corrected
+// since via Edit Course).
+function computeAllCoursesList(holes){
+  const matching = rounds.filter(r => r.holes === holes);
+  const byCourse = {};
+  matching.forEach(r => {
+    const key = r.course.trim().toLowerCase();
+    const existing = byCourse[key];
+    if(!existing || new Date(r.date) > new Date(existing.date)){
+      byCourse[key] = r;
+    }
+  });
+  return Object.values(byCourse).map(r => ({
+    course: r.course,
+    rating: r.rating,
+    slope: r.slope,
+    exp: computeExpScoreFor(r.rating, r.slope, r.holes)
+  }));
+}
+
+let allCoursesSortState = {col: 'course', dir: 'asc'};
+let allCoursesHoles = 18;
+
+function renderAllCoursesTable(){
+  const list = computeAllCoursesList(allCoursesHoles);
+  const col = allCoursesSortState.col;
+  const dir = allCoursesSortState.dir;
+  list.sort((a,b) => {
+    let av = a[col], bv = b[col];
+    if(av == null) av = dir === 'asc' ? Infinity : -Infinity;
+    if(bv == null) bv = dir === 'asc' ? Infinity : -Infinity;
+    if(typeof av === 'string') av = av.toLowerCase();
+    if(typeof bv === 'string') bv = bv.toLowerCase();
+    if(av < bv) return dir === 'asc' ? -1 : 1;
+    if(av > bv) return dir === 'asc' ? 1 : -1;
+    return 0;
+  });
+
+  const arrow = (c) => allCoursesSortState.col === c ? (allCoursesSortState.dir === 'asc' ? ' ▲' : ' ▼') : '';
+  const rowsHtml = list.map(item => `
+    <tr>
+      <td style="text-align:left;padding:7px 4px;border-bottom:1px solid var(--line);">${item.course}</td>
+      <td style="text-align:center;padding:7px 4px;border-bottom:1px solid var(--line);">${item.rating.toFixed(1)}</td>
+      <td style="text-align:center;padding:7px 4px;border-bottom:1px solid var(--line);">${item.slope}</td>
+      <td style="text-align:center;padding:7px 4px;border-bottom:1px solid var(--line);">${item.exp != null ? item.exp : '—'}</td>
+    </tr>`).join('');
+
+  document.getElementById('allCoursesTableBody').innerHTML = rowsHtml || `<tr><td colspan="4" style="text-align:center;padding:16px;color:#8a8368;">No ${allCoursesHoles}-hole rounds on file yet.</td></tr>`;
+  document.getElementById('allCoursesTableHead').innerHTML = `
+    <tr>
+      <th class="all-courses-sort-th" data-col="course" style="text-align:left;padding:7px 4px;cursor:pointer;border-bottom:2px solid var(--fairway);">Course${arrow('course')}</th>
+      <th class="all-courses-sort-th" data-col="rating" style="text-align:center;padding:7px 4px;cursor:pointer;border-bottom:2px solid var(--fairway);">Rating${arrow('rating')}</th>
+      <th class="all-courses-sort-th" data-col="slope" style="text-align:center;padding:7px 4px;cursor:pointer;border-bottom:2px solid var(--fairway);">Slope${arrow('slope')}</th>
+      <th class="all-courses-sort-th" data-col="exp" style="text-align:center;padding:7px 4px;cursor:pointer;border-bottom:2px solid var(--fairway);">Exp. Score${arrow('exp')}</th>
+    </tr>`;
+  document.querySelectorAll('.all-courses-sort-th').forEach(th => {
+    th.addEventListener('click', () => {
+      const c = th.dataset.col;
+      if(allCoursesSortState.col === c){
+        allCoursesSortState.dir = allCoursesSortState.dir === 'asc' ? 'desc' : 'asc';
+      } else {
+        allCoursesSortState.col = c;
+        allCoursesSortState.dir = 'asc';
+      }
+      renderAllCoursesTable();
+    });
+  });
+}
+
+function openAllCoursesDetail(){
+  document.getElementById('detailMiiRow').innerHTML = '';
+  document.getElementById('detailMiiRow').style.display = 'none';
+  document.getElementById('detailTitle').innerHTML = `<span id="courseTitleText">All Courses</span>`;
+  document.getElementById('detailTitle').style.marginTop = navStack.length > 0 ? '28px' : '0';
+
+  allCoursesHoles = 18;
+  allCoursesSortState = {col: 'course', dir: 'asc'};
+
+  document.getElementById('detailBody').innerHTML = `
+    <div class="view-toggle" style="display:flex;max-width:160px;margin:2px 0 16px;">
+      <button type="button" class="view-toggle-btn active" id="allCoursesHoles18Btn">18</button>
+      <button type="button" class="view-toggle-btn" id="allCoursesHoles9Btn">9</button>
+    </div>
+    <div style="overflow-x:auto;">
+      <table style="width:100%;border-collapse:collapse;font-size:13px;">
+        <thead id="allCoursesTableHead"></thead>
+        <tbody id="allCoursesTableBody"></tbody>
+      </table>
+    </div>
+  `;
+  detailOverlay.classList.add('open');
+  fitCourseTitle();
+  updateBackButton();
+
+  document.getElementById('allCoursesHoles9Btn').addEventListener('click', ()=>{
+    allCoursesHoles = 9;
+    document.getElementById('allCoursesHoles9Btn').classList.add('active');
+    document.getElementById('allCoursesHoles18Btn').classList.remove('active');
+    renderAllCoursesTable();
+  });
+  document.getElementById('allCoursesHoles18Btn').addEventListener('click', ()=>{
+    allCoursesHoles = 18;
+    document.getElementById('allCoursesHoles18Btn').classList.add('active');
+    document.getElementById('allCoursesHoles9Btn').classList.remove('active');
+    renderAllCoursesTable();
+  });
+
+  renderAllCoursesTable();
 }
 
 function buildHoleStatsHtml(atCourse){
