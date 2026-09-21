@@ -2673,7 +2673,7 @@ function openDetail(idx){
   let body = `<p class="note" style="margin:2px 0 0;">${dateFmt} · ${r.holes}-hole round</p>`;
   if(expAtTimeForCard !== null){
     body += `<div class="strip round-detail-strip" style="margin:10px 0 0;">
-      <div class="cell"><div class="icon-row">🎯</div><div class="lbl">Exp. Score</div><div class="num">${expAtTimeForCard}</div></div>
+      <div class="cell"><div class="icon-row">🎯</div><div class="lbl">Expected Score</div><div class="num">${expAtTimeForCard}</div></div>
       <div class="cell flag"><div class="icon-row">🏌️</div><div class="lbl">Actual Score</div><div class="num">${actualScoreForCard}${scoreVsExpTextForCard}</div></div>
       <div class="cell flag"><div class="icon-row">⛳</div><div class="lbl">Differential</div><div class="num">${r.diff.toFixed(1)}</div></div>
     </div>`;
