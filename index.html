@@ -2599,20 +2599,7 @@ function fiftiethRoundDate(){
 function updateProjection(){
   const noteEl = document.getElementById('regressionCrossNote');
   if(!noteEl) return;
-  const crossDate = regressionCrossDate();
-  let html;
-  if(!crossDate){
-    html = 'Regression is flat or trending up — not projected to drop below 30.0 at this rate.';
-  } else {
-    const readable = new Date(crossDate+'T00:00:00').toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
-    html = `Projected to drop below 30.0 on <strong>${readable}</strong>.`;
-  }
-  const fiftiethDate = fiftiethRoundDate();
-  if(fiftiethDate){
-    const fiftiethReadable = new Date(fiftiethDate+'T00:00:00').toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
-    html += `<br>Handicap projected to drop below 30.0 on <strong>${fiftiethReadable}</strong>.`;
-  }
-  noteEl.innerHTML = html;
+  noteEl.innerHTML = '';
 }
 
 // ================= ROUND DETAIL MODAL =================
