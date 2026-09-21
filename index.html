@@ -82,8 +82,13 @@
   .cell .num{font-family:var(--font-mono);font-weight:600;font-size:clamp(17px,4.2vw,24px);color:var(--fairway);}
   html[data-theme="wii"] .cell .num{font-family:var(--font-display);font-weight:700;color:var(--ink);}
   .cell.flag .num{color:var(--flag);}
-  .cell .lbl{font-size:8.5px;letter-spacing:0.03em;text-transform:uppercase;color:#8a8368;margin-top:4px;line-height:1.25;min-height:2.5em;display:flex;align-items:center;}
+  .cell .lbl{font-size:8.5px;letter-spacing:0.03em;text-transform:uppercase;color:#8a8368;margin-bottom:2px;line-height:1.25;min-height:2.5em;display:flex;align-items:center;}
   html[data-theme="wii"] .cell .lbl{color:#7C97A8;font-weight:600;}
+  .strip.round-detail-strip .cell{padding:8px 1px;}
+  .strip.round-detail-strip .cell .lbl{min-height:1.6em;}
+  .strip.round-detail-strip .cell .num{font-size:clamp(14px,3.2vw,18px);color:var(--ink);}
+  .strip.round-detail-strip .cell.flag .num{color:var(--ink);}
+  html[data-theme="wii"] .strip.round-detail-strip .cell .num{color:var(--ink);}
   .trend-arrow{font-size:14px;margin-left:4px;}
   .rounds-footnote{font-size:11px;color:#8a8368;text-align:center;margin:8px 0 0;font-family:var(--font-mono);}
   html[data-theme="wii"] .rounds-footnote{color:#7C97A8;font-weight:500;}
@@ -155,9 +160,8 @@
   .score-mark.double{border-style:double;border-width:4px;border-color:currentColor;}
   .new-best-num{color:var(--flag);font-weight:700;}
   /* ===== REMOVABLE: Pocket Scorecard styling ===== */
-  .pocket-scorecard-wrap{background:#FFFFFF;border-radius:10px;box-shadow:0 4px 14px rgba(0,0,0,0.18);padding:16px 14px;position:relative;margin:10px 0 6px;}
+  .pocket-scorecard-wrap{background:#FFFFFF;border-radius:10px;box-shadow:0 4px 14px rgba(0,0,0,0.18);padding:16px 14px;position:relative;margin:10px auto 6px;width:fit-content;max-width:100%;}
   html[data-theme="wii"] .pocket-scorecard-wrap{background:#FFFFFF;}
-  .pocket-scorecard-wrap::before{content:'';position:absolute;top:10px;bottom:10px;left:50%;border-left:1.5px dashed #C4BC9F;}
   .pocket-scorecard-title{display:block;text-align:center;font-family:'Snell Roundhand','Segoe Script','Brush Script MT',cursive;font-style:normal;font-size:24px;font-weight:700;color:var(--fairway);margin:0 0 8px;}
   .pocket-scorecard-legend{text-align:center;font-size:11px;font-style:italic;color:#8a8368;margin:0 0 10px;}
   /* ===== END REMOVABLE ===== */
@@ -308,9 +312,9 @@
   </header>
 
   <div class="strip">
-    <div class="cell"><div class="icon-row">⛳</div><div class="num" id="stat-index">—</div><div class="lbl">Proj Next Diff.</div></div>
-    <div class="cell flag"><div class="icon-row">📈</div><div class="num" id="stat-trend">—</div><div class="lbl">Last 30 days</div></div>
-    <div class="cell flag"><div class="icon-row">🏆</div><div class="num" id="stat-since-start">—</div><div class="lbl">Since July ’26 start</div></div>
+    <div class="cell"><div class="icon-row">⛳</div><div class="lbl">Proj Next Diff.</div><div class="num" id="stat-index">—</div></div>
+    <div class="cell flag"><div class="icon-row">📈</div><div class="lbl">Last 30 days</div><div class="num" id="stat-trend">—</div></div>
+    <div class="cell flag"><div class="icon-row">🏆</div><div class="lbl">Since July ’26 start</div><div class="num" id="stat-since-start">—</div></div>
   </div>
   <p class="rounds-footnote" id="rounds-footnote"></p>
 
@@ -2679,7 +2683,16 @@ function openDetail(idx){
   const actualScoreForCard = scoreOf(r);
   const scoreVsExpDiffForCard = expAtTimeForCard !== null ? actualScoreForCard - expAtTimeForCard : null;
   const scoreVsExpTextForCard = scoreVsExpDiffForCard === null ? '' : (scoreVsExpDiffForCard === 0 ? ' (E)' : ` (${scoreVsExpDiffForCard > 0 ? '+' : ''}${scoreVsExpDiffForCard})`);
-  let body = `<p class="note" style="margin:2px 0 0;">${dateFmt} · ${r.holes}-hole round · Differential ${r.diff.toFixed(1)}${expAtTimeForCard !== null ? ` · Expected Score ${expAtTimeForCard} · Actual Score ${actualScoreForCard}${scoreVsExpTextForCard}` : ''}</p>`;
+  let body = `<p class="note" style="margin:2px 0 0;">${dateFmt} · ${r.holes}-hole round</p>`;
+  if(expAtTimeForCard !== null){
+    body += `<div class="strip round-detail-strip" style="margin:10px 0 0;">
+      <div class="cell"><div class="icon-row">🎯</div><div class="lbl">Exp. Score</div><div class="num">${expAtTimeForCard}</div></div>
+      <div class="cell flag"><div class="icon-row">🏌️</div><div class="lbl">Actual Score</div><div class="num">${actualScoreForCard}${scoreVsExpTextForCard}</div></div>
+      <div class="cell flag"><div class="icon-row">⛳</div><div class="lbl">Differential</div><div class="num">${r.diff.toFixed(1)}</div></div>
+    </div>`;
+  } else {
+    body += `<p class="note" style="margin:10px 0 0;">Differential ${r.diff.toFixed(1)}</p>`;
+  }
 
   const badgesForCard = computeRoundBadges(r);
   const ovalLabel = badgesForCard.length === 0 ? 'Round Badges: No badges earned this round.' : 'Round Badges:';
