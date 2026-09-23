@@ -2931,19 +2931,28 @@ function computeAllStatsSummary(){
     if(candidates.length === 0){
       bestPars.push(null);
       bestScores.push(null);
+    } else {
+      let best = candidates[0];
+      candidates.forEach(r => { if(r.holeDetail.scores[h] < best.holeDetail.scores[h]) best = r; });
+      bestScores.push(best.holeDetail.scores[h]);
+      bestPars.push(best.holeDetail.pars[h]);
+    }
+
+    // For the average scorecard specifically, holes 1-9 must only be averaged across
+    // 18-hole rounds -- a 9-hole round's "hole 3" is that course's own front (or only)
+    // nine, not comparable to an 18-hole round's hole 3, and pooling them would skew the
+    // front-nine averages with data that doesn't belong in an 18-hole composite. Holes
+    // 10-18 are unaffected since only 18-hole rounds ever have scores there anyway.
+    const avgCandidates = h < 9 ? candidates.filter(r => r.holes === 18) : candidates;
+    if(avgCandidates.length === 0){
       avgPars.push(null);
       avgScores.push(null);
       continue;
     }
-    let best = candidates[0];
-    candidates.forEach(r => { if(r.holeDetail.scores[h] < best.holeDetail.scores[h]) best = r; });
-    bestScores.push(best.holeDetail.scores[h]);
-    bestPars.push(best.holeDetail.pars[h]);
-
-    const scoreSum = candidates.reduce((s,r) => s + r.holeDetail.scores[h], 0);
-    const parSum = candidates.reduce((s,r) => s + r.holeDetail.pars[h], 0);
-    avgScores.push(scoreSum / candidates.length);
-    avgPars.push(Math.round((parSum / candidates.length) * 10) / 10);
+    const scoreSum = avgCandidates.reduce((s,r) => s + r.holeDetail.scores[h], 0);
+    const parSum = avgCandidates.reduce((s,r) => s + r.holeDetail.pars[h], 0);
+    avgScores.push(scoreSum / avgCandidates.length);
+    avgPars.push(Math.round((parSum / avgCandidates.length) * 10) / 10);
   }
 
   const totalHolesPlayed = rounds.reduce((s,r) => s + r.holes, 0);
