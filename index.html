@@ -235,6 +235,7 @@
   .sc-noscore{font-size:13px;color:#cfd3e0;padding:16px 4px;text-align:center;}
 
   .btn.danger{background:#B23A2E;color:#fff;}
+  #deleteRoundBtn{font-size:10px;padding:5px 10px;}
   .reveal-row{opacity:0;transition:opacity 0.25s ease;}
   .reveal-row.shown{opacity:1;}
   .reveal-block{max-height:0;opacity:0;overflow:hidden;transition:max-height 0.3s ease,opacity 0.25s ease;}
@@ -2804,8 +2805,10 @@ function openDetail(idx){
   });
 
   const delBtn = document.getElementById('deleteRoundBtn');
+  delBtn.dataset.armed = '0';
   delBtn.addEventListener('click', function onDeleteClick(){
-    if(delBtn.dataset.armed === '1'){
+    const stage = parseInt(delBtn.dataset.armed, 10);
+    if(stage === 2){
       const key = roundKey(r);
       const addedIdx = addedRounds.findIndex(x => roundKey(x) === key);
       if(addedIdx !== -1){
@@ -2818,6 +2821,9 @@ function openDetail(idx){
       rebuildRoundsArray();
       detailOverlay.classList.remove('open');
       recompute();
+    } else if(stage === 1){
+      delBtn.dataset.armed = '2';
+      delBtn.textContent = 'Tap once more to delete';
     } else {
       delBtn.dataset.armed = '1';
       delBtn.textContent = 'Tap again to confirm delete';
