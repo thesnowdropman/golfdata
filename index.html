@@ -361,6 +361,7 @@
     <p class="note" id="courseRecordsSeeMore" style="font-style:italic;cursor:pointer;margin:8px 0 0;display:none;">Show more…</p>
     <p class="note" id="showAllStatsLink" style="font-weight:700;cursor:pointer;margin:10px 0 0;display:none;">📊 Show All Stats</p>
     <p class="note" id="showAllCoursesLink" style="font-weight:700;cursor:pointer;margin:10px 0 0;display:none;">⛳ Show All Courses</p>
+    <p class="note" id="exportCsvLink" style="font-weight:700;cursor:pointer;margin:10px 0 0;display:none;">⬇️ Export CSV</p>
   </section>
 
 </div>
@@ -1747,6 +1748,39 @@ function scoreOf(r){
   return parseInt(r.score.replace(/(A|Ni)$/,''), 10);
 }
 
+function csvEscape(val){
+  const s = String(val ?? '');
+  return /[",\n]/.test(s) ? `"${s.replace(/"/g,'""')}"` : s;
+}
+
+function exportRoundsCsv(){
+  const header = ['Date','Course','Holes','Score','Rating','Slope','Differential','Expected Score'];
+  const sorted = [...rounds].sort((a,b)=> a.date.localeCompare(b.date));
+  const lines = [header.join(',')];
+  sorted.forEach(r => {
+    const exp = expScoreAtTimeOf(r);
+    lines.push([
+      r.date,
+      csvEscape(r.course),
+      r.holes,
+      scoreOf(r),
+      r.rating,
+      r.slope,
+      r.diff.toFixed(1),
+      exp !== null ? exp : ''
+    ].join(','));
+  });
+  const blob = new Blob([lines.join('\n')], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `ange-golf-rounds-${new Date().toISOString().slice(0,10)}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
 function median(arr){
   const sorted = [...arr].sort((a,b)=>a-b);
   const mid = Math.floor(sorted.length/2);
@@ -2384,6 +2418,8 @@ function renderCourseRecords(){
   const seeMoreEl = document.getElementById('courseRecordsSeeMore');
   const showAllStatsLink = document.getElementById('showAllStatsLink');
   const showAllCoursesLink = document.getElementById('showAllCoursesLink');
+  const exportCsvLink = document.getElementById('exportCsvLink');
+  exportCsvLink.onclick = () => exportRoundsCsv();
   showAllStatsLink.onclick = () => { navStack.push(()=>{ renderCourseRecords(); }); openAllStatsDetail(); };
   showAllCoursesLink.onclick = () => { navStack.push(()=>{ renderCourseRecords(); }); openAllCoursesDetail(); };
   if(restRows.length > 0){
@@ -2396,6 +2432,7 @@ function renderCourseRecords(){
     seeMoreEl.style.display = 'block';
     showAllStatsLink.style.display = 'none';
     showAllCoursesLink.style.display = 'none';
+    exportCsvLink.style.display = 'none';
     seeMoreEl.onclick = () => {
       expanded = !expanded;
       if(expanded){
@@ -2410,11 +2447,13 @@ function renderCourseRecords(){
       seeMoreEl.textContent = expanded ? 'Show less' : moreLabel;
       showAllStatsLink.style.display = expanded ? 'block' : 'none';
       showAllCoursesLink.style.display = expanded ? 'block' : 'none';
+      exportCsvLink.style.display = expanded ? 'block' : 'none';
     };
   } else {
     seeMoreEl.style.display = 'none';
     showAllStatsLink.style.display = 'block';
     showAllCoursesLink.style.display = 'block';
+    exportCsvLink.style.display = 'block';
   }
 }
 
