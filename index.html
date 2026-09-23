@@ -2891,7 +2891,7 @@ function renderScorecardChunks(numHoles, pars, rows){
           const cls = scoreNotationClass(val, pars[h]);
           const isNewBest = row.markFn && row.markFn(h);
           const clickAttrs = row.clickable ? ` class="hole-stat-clickable" data-hole="${h+1}"` : '';
-          cells += `<td${clickAttrs}><span class="score-mark ${cls} ${isNewBest ? 'new-best-num' : ''}">${Math.round(val)}</span></td>`;
+          cells += `<td${clickAttrs}><span class="score-mark ${cls} ${isNewBest ? 'new-best-num' : ''}">${row.decimals ? val.toFixed(row.decimals) : Math.round(val)}</span></td>`;
         }
       }
       if(chunk.totalUpTo){
@@ -2901,7 +2901,7 @@ function renderScorecardChunks(numHoles, pars, rows){
           cells += `<td class="out-col">${sum}</td>`;
         } else {
           const totalIsNewBest = row.totalMarkFn && row.totalMarkFn();
-          cells += `<td class="out-col ${totalIsNewBest ? 'new-best-num' : ''}">${Math.round(sum)}<br>${toParFrag(sum, parSum).trim()}</td>`;
+          cells += `<td class="out-col ${totalIsNewBest ? 'new-best-num' : ''}">${row.decimals ? sum.toFixed(row.decimals) : Math.round(sum)}<br>${toParFrag(sum, parSum).trim()}</td>`;
         }
       }
       return `<tr><td>${row.label}</td>${cells}</tr>`;
@@ -2924,17 +2924,26 @@ function computeAllStatsSummary(){
 
   const bestPars = [];
   const bestScores = [];
+  const avgPars = [];
+  const avgScores = [];
   for(let h = 0; h < 18; h++){
     const candidates = allWithHoles.filter(r => r.holeDetail.scores.length > h);
     if(candidates.length === 0){
       bestPars.push(null);
       bestScores.push(null);
+      avgPars.push(null);
+      avgScores.push(null);
       continue;
     }
     let best = candidates[0];
     candidates.forEach(r => { if(r.holeDetail.scores[h] < best.holeDetail.scores[h]) best = r; });
     bestScores.push(best.holeDetail.scores[h]);
     bestPars.push(best.holeDetail.pars[h]);
+
+    const scoreSum = candidates.reduce((s,r) => s + r.holeDetail.scores[h], 0);
+    const parSum = candidates.reduce((s,r) => s + r.holeDetail.pars[h], 0);
+    avgScores.push(scoreSum / candidates.length);
+    avgPars.push(Math.round((parSum / candidates.length) * 10) / 10);
   }
 
   const totalHolesPlayed = rounds.reduce((s,r) => s + r.holes, 0);
@@ -2978,7 +2987,7 @@ function computeAllStatsSummary(){
   const oddsZeroBirdiesCareer = Math.pow(1 - projectedBirdieRate, totalHolesWithDetail);
 
   return {
-    bestPars, bestScores, totalHolesPlayed, totalStrokes, dist, totalHolesWithDetail,
+    bestPars, bestScores, avgPars, avgScores, totalHolesPlayed, totalStrokes, dist, totalHolesWithDetail,
     projectedBirdieRate, diffMean, diffSD, expectedBirdiesCareer, oddsZeroBirdiesCareer
   };
 }
@@ -3008,6 +3017,13 @@ function openAllStatsDetail(){
   ];
   const scorecardHtml = renderScorecardChunks(18, s.bestPars.map(p => p != null ? p : 0), rows);
 
+  const avgParsRounded = s.avgPars.map(p => p != null ? Math.round(p) : 0);
+  const avgRows = [
+    {label:'Par', rawFn:(h)=> avgParsRounded[h] != null ? avgParsRounded[h] : '—', isPar:true},
+    {label:'Avg Score', rawFn:(h)=> s.avgScores[h] != null ? s.avgScores[h] : 0, isPar:false, clickable:false, decimals:1},
+  ];
+  const avgScorecardHtml = renderScorecardChunks(18, avgParsRounded, avgRows);
+
   const distList = [
     ['Birdies', s.dist.birdie], ['Pars', s.dist.par], ['Bogeys', s.dist.bogey],
     ['Double bogeys', s.dist.double], ['Triple bogeys', s.dist.triple],
@@ -3019,6 +3035,8 @@ function openAllStatsDetail(){
   const body = `
     <p class="note" style="margin:2px 0 12px;">A hypothetical composite round: your best-ever score at each hole position, regardless of which course it came from.</p>
     ${scorecardHtml}
+    <p class="note" style="margin:16px 0 12px;">Your average score at each hole position, across every round with hole detail on file, regardless of course.</p>
+    ${avgScorecardHtml}
     <p class="note" style="margin:16px 0 2px;"><strong>Total holes played:</strong> ${s.totalHolesPlayed}</p>
     <p class="note" style="margin:0 0 12px;"><strong>Total strokes taken:</strong> ${s.totalStrokes}</p>
     <p class="note" style="margin:16px 0 2px;color:var(--fairway);font-weight:700;">Score distribution (${s.totalHolesWithDetail} holes with detail on file)</p>
