@@ -82,10 +82,9 @@
   .cell .num{font-family:var(--font-mono);font-weight:600;font-size:clamp(17px,4.2vw,24px);color:var(--fairway);}
   html[data-theme="wii"] .cell .num{font-family:var(--font-display);font-weight:700;color:var(--ink);}
   .cell.flag .num{color:var(--flag);}
-  .cell .lbl{font-size:8.5px;letter-spacing:0.03em;text-transform:uppercase;color:#8a8368;margin-bottom:2px;line-height:1.25;min-height:2.5em;display:flex;align-items:center;}
+  .cell .lbl{font-size:8.5px;letter-spacing:0.03em;text-transform:uppercase;color:#8a8368;margin-top:4px;line-height:1.25;min-height:2.5em;display:flex;align-items:center;}
   html[data-theme="wii"] .cell .lbl{color:#7C97A8;font-weight:600;}
-  .strip.round-detail-strip .cell{padding:8px 1px;}
-  .strip.round-detail-strip .cell .lbl{min-height:1.6em;}
+  .strip.round-detail-strip .cell{padding:5px 3px;}
   .strip.round-detail-strip .cell .num{font-size:clamp(14px,3.2vw,18px);color:var(--ink);}
   .strip.round-detail-strip .cell.flag .num{color:var(--ink);}
   html[data-theme="wii"] .strip.round-detail-strip .cell .num{color:var(--ink);}
@@ -235,7 +234,6 @@
   .sc-noscore{font-size:13px;color:#cfd3e0;padding:16px 4px;text-align:center;}
 
   .btn.danger{background:#B23A2E;color:#fff;}
-  #deleteRoundBtn{font-size:10px;padding:5px 10px;}
   .reveal-row{opacity:0;transition:opacity 0.25s ease;}
   .reveal-row.shown{opacity:1;}
   .reveal-block{max-height:0;opacity:0;overflow:hidden;transition:max-height 0.3s ease,opacity 0.25s ease;}
@@ -278,6 +276,63 @@
   .score-shape.is-best{color:var(--flag) !important;border-color:var(--flag) !important;}
   /* ===== END REMOVABLE ===== */
 
+  /* ===== BACKYARD OPEN ===== */
+  .tn-setup{display:grid;grid-template-columns:auto 1fr;gap:10px 12px;align-items:center;margin-top:10px;}
+  .tn-setup label{font-family:var(--font-mono);font-size:10.5px;letter-spacing:0.06em;text-transform:uppercase;color:var(--fairway-light);}
+  .tn-setup select{width:100%;min-width:0;font-family:var(--font-body);font-size:14px;padding:7px 9px;border:1px solid var(--line);border-radius:calc(var(--radius)/3 + 4px);background:var(--paper-tan);color:var(--ink);}
+  .tn-opts{display:flex;flex-wrap:wrap;gap:6px;}
+  .tn-opts button{font-family:var(--font-mono);font-size:12px;font-weight:600;padding:7px 10px;background:var(--paper-tan);color:var(--fairway);border:1.5px solid var(--line);border-radius:8px;cursor:pointer;text-align:center;}
+  .tn-opts button[aria-pressed="true"]{background:var(--fairway);color:#fff;border-color:var(--fairway);}
+  .tn-opts button em{display:block;font-style:normal;font-weight:400;font-size:9.5px;opacity:.8;margin-top:2px;}
+  .tn-tiers{display:grid;grid-template-columns:repeat(3,1fr);}
+  .tn-readout{margin-top:16px;padding:12px 14px;background:var(--paper-tan);border:1px solid var(--line);border-radius:var(--radius);}
+  .tn-readout > div{display:flex;align-items:baseline;gap:10px;}
+  .tn-big{font-family:var(--font-display);font-size:34px;font-weight:600;color:var(--flag);line-height:1;}
+  .tn-cap{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#8a8368;}
+  .tn-readout p{margin:6px 0 0;font-size:12.5px;font-family:var(--font-mono);color:var(--ink);}
+  .tn-readout p.tn-warn{font-family:var(--font-body);font-style:italic;color:#8a8368;}
+  .tn-hole{font-family:var(--font-display);color:var(--fairway);font-size:20px;margin:0 0 10px;}
+  .tn-hole small{font-family:var(--font-mono);font-size:12px;color:#8a8368;margin-left:8px;font-weight:400;}
+  .tn-pad{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-bottom:10px;}
+  .tn-pad button{font-family:var(--font-mono);font-size:20px;font-weight:700;background:var(--paper-tan);color:var(--fairway);border:1.5px solid var(--line);border-radius:10px;padding:10px 0 6px;cursor:pointer;}
+  .tn-pad button:active{background:var(--fairway);color:#fff;}
+  .tn-pad button em{display:block;font-style:normal;font-size:9px;font-weight:400;color:#8a8368;}
+  .tn-card{display:flex;gap:3px;overflow-x:auto;margin-bottom:12px;padding-bottom:2px;}
+  .tn-card div{min-width:28px;flex:0 0 auto;text-align:center;font-family:var(--font-mono);font-size:13px;font-weight:600;border:1px solid var(--line);border-radius:4px;padding:2px 0;background:var(--paper-tan);}
+  .tn-card div i{display:block;font-style:normal;font-size:9px;font-weight:400;color:#8a8368;}
+  .tn-card div s{display:block;text-decoration:none;font-size:9px;font-weight:400;color:#8a8368;}
+  .tn-card .cur{border-color:var(--fairway);box-shadow:inset 0 0 0 1px var(--fairway);}
+  .tn-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;}
+  .tn-boardwrap{overflow-x:auto;}
+  .tn-board{font-size:13px;}
+  .tn-board tbody tr{cursor:default;}
+  .tn-board td{padding:6px 6px;white-space:nowrap;}
+  .tn-board th{padding:6px 6px;}
+  .tn-n{text-align:right !important;font-family:var(--font-mono);}
+  .tn-name small{display:block;font-size:10.5px;color:#8a8368;}
+  .tn-grp{display:inline-block;font-family:var(--font-mono);font-size:9.5px;background:var(--paper-tan);border:1px solid var(--line);border-radius:3px;padding:0 4px;margin-left:5px;color:#8a8368;}
+  .tn-you td{background:var(--paper-tan);font-weight:700;}
+  .tn-wait td{color:#8a8368;}
+  .tn-u{color:var(--flag);font-weight:700;} .tn-e{color:var(--fairway);font-weight:700;}
+  .tn-mv{font-size:10px;color:#8a8368;}
+  @media (max-width:420px){.tn-setup{grid-template-columns:1fr;}}
+  .tn-banner{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--paper-tan);border:1.5px solid var(--flag);border-radius:8px;padding:10px 12px;margin:6px 0 12px;}
+  .tn-banner b{display:block;font-family:var(--font-display);color:var(--flag);font-size:16px;}
+  .tn-banner span{font-size:12px;font-family:var(--font-mono);}
+  .tn-lbl{font-family:var(--font-mono);font-size:10.5px;letter-spacing:0.06em;text-transform:uppercase;color:var(--fairway-light);display:block;margin-bottom:6px;}
+  .tn-start{width:100%;background:var(--flag);}
+  .tn-event{display:flex;flex-direction:column;gap:3px;padding:10px 12px;border:1.5px solid var(--fairway);border-radius:8px;}
+  .tn-event b{font-family:var(--font-display);color:var(--fairway);font-size:17px;}
+  .tn-event span{font-size:12px;font-family:var(--font-mono);}
+  .tn-edit{display:flex;flex-direction:column;gap:8px;margin:10px 0 12px;padding:12px;border:1px solid var(--line);border-radius:8px;background:var(--paper-tan);}
+  .tn-edit input[type=date],.tn-edit select{font-family:var(--font-body);font-size:14px;padding:7px 9px;border:1px solid var(--line);border-radius:6px;background:var(--paper);color:var(--ink);}
+  .tn-edit-holes{display:grid;grid-template-columns:repeat(9,minmax(0,1fr));gap:4px;}
+  .tn-edit-holes label{display:flex;flex-direction:column;align-items:center;font-family:var(--font-mono);}
+  .tn-edit-holes i{font-style:normal;font-size:10px;color:#8a8368;}
+  .tn-edit-holes small{font-size:8px;color:#8a8368;}
+  .tn-edit-holes input{width:100%;min-width:0;text-align:center;font-family:var(--font-mono);font-size:14px;padding:5px 0;border:1px solid var(--line);border-radius:4px;background:var(--paper);color:var(--ink);}
+  .tn-err{color:var(--flag) !important;font-weight:600;}
+  /* ===== END BACKYARD OPEN ===== */
   @media (max-width:600px){
     .proj-panel{flex-direction:column;align-items:stretch;}
     .proj-result{text-align:left;}
@@ -313,9 +368,9 @@
   </header>
 
   <div class="strip">
-    <div class="cell"><div class="icon-row">⛳</div><div class="lbl">Proj Next Diff.</div><div class="num" id="stat-index">—</div></div>
-    <div class="cell flag"><div class="icon-row">📈</div><div class="lbl">Last 30 days</div><div class="num" id="stat-trend">—</div></div>
-    <div class="cell flag"><div class="icon-row">🏆</div><div class="lbl">Since July ’26 start</div><div class="num" id="stat-since-start">—</div></div>
+    <div class="cell"><div class="icon-row">⛳</div><div class="num" id="stat-index">—</div><div class="lbl">Proj Next Diff.</div></div>
+    <div class="cell flag"><div class="icon-row">📈</div><div class="num" id="stat-trend">—</div><div class="lbl">Last 30 days</div></div>
+    <div class="cell flag"><div class="icon-row">🏆</div><div class="num" id="stat-since-start">—</div><div class="lbl">Since July ’26 start</div></div>
   </div>
   <p class="rounds-footnote" id="rounds-footnote"></p>
 
@@ -362,7 +417,6 @@
     <p class="note" id="courseRecordsSeeMore" style="font-style:italic;cursor:pointer;margin:8px 0 0;display:none;">Show more…</p>
     <p class="note" id="showAllStatsLink" style="font-weight:700;cursor:pointer;margin:10px 0 0;display:none;">📊 Show All Stats</p>
     <p class="note" id="showAllCoursesLink" style="font-weight:700;cursor:pointer;margin:10px 0 0;display:none;">⛳ Show All Courses</p>
-    <p class="note" id="exportCsvLink" style="font-weight:700;cursor:pointer;margin:10px 0 0;display:none;">⬇️ Export CSV</p>
   </section>
 
 </div>
@@ -383,6 +437,7 @@
   <div class="modal" id="addModal">
     <button class="modal-close" id="addClose" aria-label="Close">✕</button>
     <h3>Add a round</h3>
+    <div class="tn-banner" id="tnResumeBanner" style="display:none;"></div>
     <div class="form-grid">
       <div class="full">
         <div class="view-toggle" id="addRoundCourseTabs" style="display:flex;margin-bottom:14px;">
@@ -435,6 +490,10 @@
         <label style="margin-top:10px;display:block;">Location (city, state) <span class="idx-note" style="margin:0;display:inline;">— for weather on future rounds, optional</span></label>
         <input id="f-location" type="text" placeholder="e.g. Silver Spring, MD">
         <p class="idx-note" id="f-location-preview" style="margin:4px 0 0;"></p>
+      </div>
+      <div class="full" id="tnStartBlock">
+        <button class="btn tn-start" id="tnStartBtn" type="button"><span class="wii-only">🏆 </span>Play Live as a Backyard Open Event</button>
+        <p class="idx-note" id="tnStartHint" style="margin:6px 0 0;"></p>
       </div>
       <div class="full">
         <label id="scorePerHoleLabel">Score per hole</label>
@@ -1749,72 +1808,6 @@ function scoreOf(r){
   return parseInt(r.score.replace(/(A|Ni)$/,''), 10);
 }
 
-function csvEscape(val){
-  const s = String(val ?? '');
-  return /[",\n]/.test(s) ? `"${s.replace(/"/g,'""')}"` : s;
-}
-
-function totalParOf(r){
-  if(r.holeDetail && Array.isArray(r.holeDetail.pars) && r.holeDetail.pars.length){
-    return r.holeDetail.pars.reduce((s,p)=> s + (p||0), 0);
-  }
-  return PAR_BY_COURSE[r.course] != null ? PAR_BY_COURSE[r.course] : null;
-}
-
-function exportRoundsCsv(){
-  const header = [
-    'Date','Course','Round Type','Round Score','Rating','Slope','Differential',
-    'Expected Score','Exp Score To Par','Badges',
-    'Hole','Hole Par','Hole Yards','Hole Stroke Index','Hole Score','Hole Score To Par'
-  ];
-  const sorted = [...rounds].sort((a,b)=> a.date.localeCompare(b.date));
-  const lines = [header.join(',')];
-  sorted.forEach(r => {
-    const exp = expScoreAtTimeOf(r);
-    const totalPar = totalParOf(r);
-    const expToPar = (exp !== null && totalPar !== null) ? (exp - totalPar) : '';
-    const badgeText = computeRoundBadges(r).map(b => b.label).join('; ');
-    const roundFields = [
-      r.date,
-      csvEscape(r.course),
-      `${r.holes}-hole`,
-      scoreOf(r),
-      r.rating,
-      r.slope,
-      r.diff.toFixed(1),
-      exp !== null ? exp : '',
-      expToPar,
-      csvEscape(badgeText)
-    ];
-    const hd = r.holeDetail;
-    const holeCount = hd && Array.isArray(hd.scores) ? hd.scores.length : 0;
-    if(holeCount === 0){
-      lines.push([...roundFields, '','','','','',''].join(','));
-    } else {
-      for(let i = 0; i < holeCount; i++){
-        const par = hd.pars ? hd.pars[i] : '';
-        const yards = hd.yards ? hd.yards[i] : '';
-        const si = hd.strokeIndex ? hd.strokeIndex[i] : '';
-        const hScore = hd.scores[i];
-        const hToPar = (par !== '' && par != null && hScore != null) ? (hScore - par) : '';
-        lines.push([
-          ...roundFields,
-          i+1, par, yards, si, hScore, hToPar
-        ].join(','));
-      }
-    }
-  });
-  const blob = new Blob([lines.join('\n')], {type:'text/csv;charset=utf-8;'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `ange-golf-rounds-${new Date().toISOString().slice(0,10)}.csv`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-}
-
 function median(arr){
   const sorted = [...arr].sort((a,b)=>a-b);
   const mid = Math.floor(sorted.length/2);
@@ -2452,8 +2445,6 @@ function renderCourseRecords(){
   const seeMoreEl = document.getElementById('courseRecordsSeeMore');
   const showAllStatsLink = document.getElementById('showAllStatsLink');
   const showAllCoursesLink = document.getElementById('showAllCoursesLink');
-  const exportCsvLink = document.getElementById('exportCsvLink');
-  exportCsvLink.onclick = () => exportRoundsCsv();
   showAllStatsLink.onclick = () => { navStack.push(()=>{ renderCourseRecords(); }); openAllStatsDetail(); };
   showAllCoursesLink.onclick = () => { navStack.push(()=>{ renderCourseRecords(); }); openAllCoursesDetail(); };
   if(restRows.length > 0){
@@ -2466,7 +2457,6 @@ function renderCourseRecords(){
     seeMoreEl.style.display = 'block';
     showAllStatsLink.style.display = 'none';
     showAllCoursesLink.style.display = 'none';
-    exportCsvLink.style.display = 'none';
     seeMoreEl.onclick = () => {
       expanded = !expanded;
       if(expanded){
@@ -2481,13 +2471,11 @@ function renderCourseRecords(){
       seeMoreEl.textContent = expanded ? 'Show less' : moreLabel;
       showAllStatsLink.style.display = expanded ? 'block' : 'none';
       showAllCoursesLink.style.display = expanded ? 'block' : 'none';
-      exportCsvLink.style.display = expanded ? 'block' : 'none';
     };
   } else {
     seeMoreEl.style.display = 'none';
     showAllStatsLink.style.display = 'block';
     showAllCoursesLink.style.display = 'block';
-    exportCsvLink.style.display = 'block';
   }
 }
 
@@ -2672,7 +2660,20 @@ function fiftiethRoundDate(){
 function updateProjection(){
   const noteEl = document.getElementById('regressionCrossNote');
   if(!noteEl) return;
-  noteEl.innerHTML = '';
+  const crossDate = regressionCrossDate();
+  let html;
+  if(!crossDate){
+    html = 'Regression is flat or trending up — not projected to drop below 30.0 at this rate.';
+  } else {
+    const readable = new Date(crossDate+'T00:00:00').toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
+    html = `Projected to drop below 30.0 on <strong>${readable}</strong>.`;
+  }
+  const fiftiethDate = fiftiethRoundDate();
+  if(fiftiethDate){
+    const fiftiethReadable = new Date(fiftiethDate+'T00:00:00').toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
+    html += `<br>Handicap projected to drop below 30.0 on <strong>${fiftiethReadable}</strong>.`;
+  }
+  noteEl.innerHTML = html;
 }
 
 // ================= ROUND DETAIL MODAL =================
@@ -2746,9 +2747,9 @@ function openDetail(idx){
   let body = `<p class="note" style="margin:2px 0 0;">${dateFmt} · ${r.holes}-hole round</p>`;
   if(expAtTimeForCard !== null){
     body += `<div class="strip round-detail-strip" style="margin:10px 0 0;">
-      <div class="cell"><div class="icon-row">🎯</div><div class="lbl">Expected Score</div><div class="num">${expAtTimeForCard}</div></div>
-      <div class="cell flag"><div class="icon-row">🏌️</div><div class="lbl">Actual Score</div><div class="num">${actualScoreForCard}${scoreVsExpTextForCard}</div></div>
-      <div class="cell flag"><div class="icon-row">⛳</div><div class="lbl">Differential</div><div class="num">${r.diff.toFixed(1)}</div></div>
+      <div class="cell"><div class="icon-row">🎯</div><div class="num">${expAtTimeForCard}</div><div class="lbl">Exp. Score</div></div>
+      <div class="cell flag"><div class="icon-row">🏌️</div><div class="num">${actualScoreForCard}${scoreVsExpTextForCard}</div><div class="lbl">Actual Score</div></div>
+      <div class="cell flag"><div class="icon-row">⛳</div><div class="num">${r.diff.toFixed(1)}</div><div class="lbl">Differential</div></div>
     </div>`;
   } else {
     body += `<p class="note" style="margin:10px 0 0;">Differential ${r.diff.toFixed(1)}</p>`;
@@ -2763,6 +2764,7 @@ function openDetail(idx){
   body += `<p class="idx-note" id="roundBadgeExplain" style="display:none;margin:8px 0 0;font-size:12px;"></p>`;
 
   body += buildSingleRoundScorecardHtml(r);
+  if(typeof window.tnEventHtml === 'function') body += window.tnEventHtml(r);
 
   body += `<div style="text-align:center;margin-top:14px;display:flex;gap:10px;justify-content:center;">
     <button class="btn" id="roundCourseRecordBtn" type="button">Course Record</button>
@@ -2805,10 +2807,8 @@ function openDetail(idx){
   });
 
   const delBtn = document.getElementById('deleteRoundBtn');
-  delBtn.dataset.armed = '0';
   delBtn.addEventListener('click', function onDeleteClick(){
-    const stage = parseInt(delBtn.dataset.armed, 10);
-    if(stage === 2){
+    if(delBtn.dataset.armed === '1'){
       const key = roundKey(r);
       const addedIdx = addedRounds.findIndex(x => roundKey(x) === key);
       if(addedIdx !== -1){
@@ -2821,9 +2821,6 @@ function openDetail(idx){
       rebuildRoundsArray();
       detailOverlay.classList.remove('open');
       recompute();
-    } else if(stage === 1){
-      delBtn.dataset.armed = '2';
-      delBtn.textContent = 'Tap once more to delete';
     } else {
       delBtn.dataset.armed = '1';
       delBtn.textContent = 'Tap again to confirm delete';
@@ -2897,7 +2894,7 @@ function renderScorecardChunks(numHoles, pars, rows){
           const cls = scoreNotationClass(val, pars[h]);
           const isNewBest = row.markFn && row.markFn(h);
           const clickAttrs = row.clickable ? ` class="hole-stat-clickable" data-hole="${h+1}"` : '';
-          cells += `<td${clickAttrs}><span class="score-mark ${cls} ${isNewBest ? 'new-best-num' : ''}">${row.decimals ? val.toFixed(row.decimals) : Math.round(val)}</span></td>`;
+          cells += `<td${clickAttrs}><span class="score-mark ${cls} ${isNewBest ? 'new-best-num' : ''}">${Math.round(val)}</span></td>`;
         }
       }
       if(chunk.totalUpTo){
@@ -2907,7 +2904,7 @@ function renderScorecardChunks(numHoles, pars, rows){
           cells += `<td class="out-col">${sum}</td>`;
         } else {
           const totalIsNewBest = row.totalMarkFn && row.totalMarkFn();
-          cells += `<td class="out-col ${totalIsNewBest ? 'new-best-num' : ''}">${row.decimals ? sum.toFixed(row.decimals) : Math.round(sum)}<br>${toParFrag(sum, parSum).trim()}</td>`;
+          cells += `<td class="out-col ${totalIsNewBest ? 'new-best-num' : ''}">${Math.round(sum)}<br>${toParFrag(sum, parSum).trim()}</td>`;
         }
       }
       return `<tr><td>${row.label}</td>${cells}</tr>`;
@@ -2930,35 +2927,17 @@ function computeAllStatsSummary(){
 
   const bestPars = [];
   const bestScores = [];
-  const avgPars = [];
-  const avgScores = [];
   for(let h = 0; h < 18; h++){
     const candidates = allWithHoles.filter(r => r.holeDetail.scores.length > h);
     if(candidates.length === 0){
       bestPars.push(null);
       bestScores.push(null);
-    } else {
-      let best = candidates[0];
-      candidates.forEach(r => { if(r.holeDetail.scores[h] < best.holeDetail.scores[h]) best = r; });
-      bestScores.push(best.holeDetail.scores[h]);
-      bestPars.push(best.holeDetail.pars[h]);
-    }
-
-    // For the average scorecard specifically, holes 1-9 must only be averaged across
-    // 18-hole rounds -- a 9-hole round's "hole 3" is that course's own front (or only)
-    // nine, not comparable to an 18-hole round's hole 3, and pooling them would skew the
-    // front-nine averages with data that doesn't belong in an 18-hole composite. Holes
-    // 10-18 are unaffected since only 18-hole rounds ever have scores there anyway.
-    const avgCandidates = h < 9 ? candidates.filter(r => r.holes === 18) : candidates;
-    if(avgCandidates.length === 0){
-      avgPars.push(null);
-      avgScores.push(null);
       continue;
     }
-    const scoreSum = avgCandidates.reduce((s,r) => s + r.holeDetail.scores[h], 0);
-    const parSum = avgCandidates.reduce((s,r) => s + r.holeDetail.pars[h], 0);
-    avgScores.push(scoreSum / avgCandidates.length);
-    avgPars.push(Math.round((parSum / avgCandidates.length) * 10) / 10);
+    let best = candidates[0];
+    candidates.forEach(r => { if(r.holeDetail.scores[h] < best.holeDetail.scores[h]) best = r; });
+    bestScores.push(best.holeDetail.scores[h]);
+    bestPars.push(best.holeDetail.pars[h]);
   }
 
   const totalHolesPlayed = rounds.reduce((s,r) => s + r.holes, 0);
@@ -3002,7 +2981,7 @@ function computeAllStatsSummary(){
   const oddsZeroBirdiesCareer = Math.pow(1 - projectedBirdieRate, totalHolesWithDetail);
 
   return {
-    bestPars, bestScores, avgPars, avgScores, totalHolesPlayed, totalStrokes, dist, totalHolesWithDetail,
+    bestPars, bestScores, totalHolesPlayed, totalStrokes, dist, totalHolesWithDetail,
     projectedBirdieRate, diffMean, diffSD, expectedBirdiesCareer, oddsZeroBirdiesCareer
   };
 }
@@ -3032,13 +3011,6 @@ function openAllStatsDetail(){
   ];
   const scorecardHtml = renderScorecardChunks(18, s.bestPars.map(p => p != null ? p : 0), rows);
 
-  const avgParsRounded = s.avgPars.map(p => p != null ? Math.round(p) : 0);
-  const avgRows = [
-    {label:'Par', rawFn:(h)=> avgParsRounded[h] != null ? avgParsRounded[h] : '—', isPar:true},
-    {label:'Avg Score', rawFn:(h)=> s.avgScores[h] != null ? s.avgScores[h] : 0, isPar:false, clickable:false, decimals:1},
-  ];
-  const avgScorecardHtml = renderScorecardChunks(18, avgParsRounded, avgRows);
-
   const distList = [
     ['Birdies', s.dist.birdie], ['Pars', s.dist.par], ['Bogeys', s.dist.bogey],
     ['Double bogeys', s.dist.double], ['Triple bogeys', s.dist.triple],
@@ -3050,10 +3022,9 @@ function openAllStatsDetail(){
   const body = `
     <p class="note" style="margin:2px 0 12px;">A hypothetical composite round: your best-ever score at each hole position, regardless of which course it came from.</p>
     ${scorecardHtml}
-    <p class="note" style="margin:16px 0 12px;">Your average score at each hole position, across every round with hole detail on file, regardless of course.</p>
-    ${avgScorecardHtml}
     <p class="note" style="margin:16px 0 2px;"><strong>Total holes played:</strong> ${s.totalHolesPlayed}</p>
     <p class="note" style="margin:0 0 12px;"><strong>Total strokes taken:</strong> ${s.totalStrokes}</p>
+    ${typeof window.tnStatsHtml === 'function' ? window.tnStatsHtml() : ''}
     <p class="note" style="margin:16px 0 2px;color:var(--fairway);font-weight:700;">Score distribution (${s.totalHolesWithDetail} holes with detail on file)</p>
     ${distHtml}
     ${otherLine}
@@ -5356,6 +5327,485 @@ document.getElementById('betaNewSave').addEventListener('click', ()=>{
 
 loadPersisted();
 </script>
+<!-- ===== BACKYARD OPEN: live tournament mode (lives inside Add a Round) ===== -->
+<div class="overlay" id="tnOverlay">
+  <div class="modal" id="tnModal" style="max-width:560px;">
+    <button class="modal-close" id="tnClose" aria-label="Close">✕</button>
+    <h3>Backyard Open</h3>
+    <div id="tnBody"></div>
+  </div>
+</div>
+<script>
+(function(){
+  // Starts from the Add a Round form: whatever course, holes, rating and slope are picked
+  // there (any course the site knows, including ones synced through Firebase) becomes the
+  // event. Progress saves to this device after every hole and is deleted once the finished
+  // round is saved to Round History.
+  const TN_KEY = 'anges-golf-tournament';
+  const KIDS = ["Marky Dubois","Gretchen Hasselhoff","Reese Worthington","Kimmy Eckman","Ricky Johnson","Maria Luna","Ronny Dobbs","Lisa Crocket","Jorge Garcia","Dmitri Petrovich","Amir Khan","Billy Jean Blackwood","Ernie Steele","Annie Frazier","Sydney Webber","Ashley Webber","Stephanie Morgan","Jocinda Smith","Vicki Kawaguchi","Dante Robinson","Mikey Thomas","Angela Delvecchio","Tony Delvecchio","Sally Dobbs","Pete Wheeler","Kenny Kawaguchi","Luanne Lui","Keisha Phillips","Achmed Khan","Pablo Sanchez"].map((n,i)=>({name:n,hcp:42-i}));
+  const POOLS = [KIDS.filter(k=>k.hcp>=31), KIDS.filter(k=>k.hcp>=26&&k.hcp<=30), KIDS.filter(k=>k.hcp<=25)];
+  // Event level is set by the round: first time on a 9-hole course = Club, any later
+  // 9-hole round there = Tour, every 18-hole round = Major. HC = your index, rounded.
+  const TIERS = {
+    club: {label:'Club',  why:'First round at this course', better:1, worse:5},
+    tour: {label:'Tour',  why:'You have played this course before', better:2, worse:Infinity},
+    major:{label:'Major', why:'18-hole round', better:3, worse:Infinity}
+  };
+  function tierFor(f){
+    if(f.holes===18) return 'major';
+    const key = f.name.trim().toLowerCase();
+    return rounds.some(r=>r.holes===9 && r.course.trim().toLowerCase()===key) ? 'tour' : 'club';
+  }
+  function pickKids(tier, index){
+    const hc = Math.round(index), t = TIERS[tier];
+    return KIDS.filter(k => k.hcp >= hc - t.better && k.hcp <= hc + t.worse).map(k=>k.name);
+  }
+  // Consistency styles, relative to your own spread (1.0 = you). Fixed per player.
+  const STYLES = {Steady:{sd:.8,blow:.03,form:1.2}, Average:{sd:1,blow:.06,form:1.6}, Streaky:{sd:1.05,blow:.07,form:2.4}, Volatile:{sd:1.3,blow:.13,form:2}};
+
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  function rng(seed){return()=>{seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+  function gauss(r){let u=0;while(!u)u=r();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*r())}
+  function hash(s){let h=2166136261;for(const c of s)h=Math.imul(h^c.charCodeAt(0),16777619);return h>>>0}
+  function styleOf(name){const r=rng(hash(name))();return r<.3?'Steady':r<.65?'Average':r<.85?'Streaky':'Volatile'}
+  const baseName = n => { const m = n.trim().match(/^(.*)\s\((9|18)\)$/); return (m ? m[1] : n).trim().toLowerCase(); };
+
+  // ---------- Read the Add a Round form ----------
+  function readForm(){
+    const name = $('f-course').value.trim();
+    const holes = parseInt($('f-holes').value, 10);
+    let rating = parseFloat($('f-rating').value);
+    const slope = parseFloat($('f-slope').value);
+    if(holes === 9 && !isNaN(rating) && rating > 50) rating = rating / 2; // same rule as Save round
+    if(!name || isNaN(rating) || isNaN(slope) || !(holes===9 || holes===18)) return null;
+    const pars = (typeof currentHolePars!=='undefined' && currentHolePars.length===holes ? currentHolePars : Array(holes).fill(null))
+      .map(p => (p==null || isNaN(p)) ? 4 : p);
+    const parBoxes = Array.from(document.querySelectorAll('.hole-par-box'));
+    const newPars = $('parInputsSection').style.display !== 'none' && parBoxes.length===holes ? parBoxes.map(b=>parseInt(b.value,10)||4) : null;
+    return {name, holes, rating, slope, date: $('f-date').value || todayISO(), pars: newPars || pars, newPars};
+  }
+
+  // Stroke index (and yardage) from any logged round at this course, either 9/18 variant
+  function holeInfo(name, holes){
+    const b = baseName(name);
+    const rs = [...rounds].filter(r=>baseName(r.course)===b && r.holeDetail && Array.isArray(r.holeDetail.strokeIndex))
+      .sort((a,c)=>new Date(c.date)-new Date(a.date));
+    const pick = len => rs.find(r=>r.holeDetail.strokeIndex.length===len);
+    const yd = r => Array.isArray(r.holeDetail.yards) ? r.holeDetail.yards : null;
+    let r = pick(holes);
+    if(r) return holes && {si:[...r.holeDetail.strokeIndex], rank:[...r.holeDetail.strokeIndex], yards:yd(r)};
+    if(holes===18 && (r = pick(9))){ const s=r.holeDetail.strokeIndex, y=yd(r); return {si:[...s,...s], rank:[...s, ...s.map(x=>x+.5)], yards:y?[...y,...y]:null}; }
+    if(holes===9 && (r = pick(18))){ const s=r.holeDetail.strokeIndex.slice(0,9), y=yd(r); return {si:s, rank:s, yards:y?y.slice(0,9):null}; }
+    return {si:null, rank:null, yards:null};
+  }
+
+  function buildPlay(f){
+    const info = holeInfo(f.name, f.holes), n = f.holes;
+    const holes = f.pars.map((p,i)=>({no:i+1, par:p, si:info.si?info.si[i]:null, y:info.yards?info.yards[i]:null, key:info.rank?info.rank[i]:null}));
+    if(info.rank) [...holes].sort((a,b)=>a.key-b.key).forEach((h,r)=>h.rank=r+1);
+    holes.forEach(h=>{ h.w = h.rank ? .55+.45*(0.2+1.6*(n-h.rank)/(n-1)) : 1; });
+    return {holes, rating:f.rating, slope:f.slope, par:holes.reduce((s,h)=>s+h.par,0), hasSI:!!info.rank};
+  }
+  // Same formula as the site's "Curr. Exp." column
+  function expected(index, play){ return (play.holes.length===9 ? index/2 : index) * play.slope / 113 + play.rating; }
+  function targetFor(play, index){
+    const total = Math.round(expected(index, play)), n = play.holes.length;
+    const extra = total - play.par, base = Math.floor(extra/n), rem = extra - base*n;
+    const order = play.hasSI ? [...play.holes].sort((a,b)=>a.rank-b.rank) : [...play.holes].sort((a,b)=>b.par-a.par || a.no-b.no);
+    const bonus = new Set(order.slice(0,rem).map(h=>h.no));
+    return play.holes.map(h=>h.par + base + (bonus.has(h.no)?1:0));
+  }
+  function simulate(kid, play, r){
+    const st = STYLES[styleOf(kid.name)], n = play.holes.length;
+    const over = expected(kid.hcp, play) - play.par + gauss(r)*st.form*Math.sqrt(n/9);
+    return play.holes.map(h=>{
+      let x = Math.round(over/n*h.w + gauss(r)*.85*st.sd);
+      if(r() < st.blow) x += 2;
+      x = Math.max(-1, Math.min(6, x));
+      if(x===-1 && r()>.4) x = 0;
+      return h.par + x;
+    });
+  }
+  // Groups of up to 4, as even as possible; you are always in the last group.
+  function groupSizes(total){ const G = Math.ceil(total/4), base = Math.floor(total/G), extra = total % G;
+    return Array.from({length:G},(_,g)=> base + (g >= G-extra ? 1 : 0)); }
+  function buildField(state){
+    const r = rng(state.seed);
+    const picks = (state.picks || []).map(n=>KIDS.find(k=>k.name===n)).filter(Boolean);
+    for(let i=picks.length-1;i>0;i--){ const j=Math.floor(r()*(i+1)); [picks[i],picks[j]]=[picks[j],picks[i]]; }
+    const sizes = groupSizes(picks.length+1); sizes[sizes.length-1] -= 1; // your spot
+    state.groups = sizes.length;
+    let g = 0, left = sizes[0];
+    return picks.map(k=>{ while(left===0){ g++; left = sizes[g]; } left--;
+      return {...k, style:styleOf(k.name), group:g+1, scores:simulate(k, state.play, r)}; });
+  }
+
+  // ---------- Saved progress (this device only) ----------
+  let T = null, field = [];
+  function load(){ try{ const s = JSON.parse(localStorage.getItem(TN_KEY)||'null'); if(s && s.play && s.seed && s.form) return s; }catch(e){} return null; }
+  function save(){ try{ T ? localStorage.setItem(TN_KEY, JSON.stringify(T)) : localStorage.removeItem(TN_KEY); }catch(e){} }
+  T = load(); if(T && !T.picks) T = null; if(T) field = buildField(T);
+  function currentIndex(){ try{ return trend[trend.length-1].index; }catch(e){ return 30; } }
+
+  const fmt = n => n===0 ? 'E' : (n>0 ? '+'+n : ''+n);
+  const cls = n => n<0 ? 'tn-u' : n===0 ? 'tn-e' : '';
+  const sum = (a,k) => a.slice(0,k).reduce((x,y)=>x+y,0);
+  const thruFor = (S,g,mine,n) => Math.min(n, mine + (S.groups || 3) - g);
+
+  function standings(mine, S, F){
+    S = S || T; F = F || field;
+    const n = S.play.holes.length;
+    const rows = F.map(p=>{ const t=thruFor(S,p.group,mine,n); return {name:p.name, group:p.group, note:'HC '+p.hcp+' · '+p.style, thru:t, gross:sum(p.scores,t), vs:sum(p.scores,t)-sum(S.target,t)}; });
+    rows.push({name:'You', you:true, group:S.groups||3, note:'Index '+S.index.toFixed(1)+' · target '+sum(S.target,n), thru:mine, gross:sum(S.mine,mine), vs:sum(S.mine,mine)-sum(S.target,mine)});
+    const live = rows.filter(r=>r.thru>0).sort((a,b)=>a.vs-b.vs || (b.you?1:0)-(a.you?1:0) || b.thru-a.thru);
+    let pos=0, prev=null; live.forEach((r,i)=>{ if(r.vs!==prev){pos=i+1;prev=r.vs} r.pos=pos; });
+    const ties={}; live.forEach(r=>ties[r.pos]=(ties[r.pos]||0)+1);
+    live.forEach(r=>r.label=(ties[r.pos]>1?'T':'')+r.pos);
+    return live.concat(rows.filter(r=>r.thru===0).sort((a,b)=>a.group-b.group).map(r=>({...r,label:'–'})));
+  }
+
+  // ---------- Pieces inside Add a Round ----------
+  function refreshAddBlock(){
+    const banner = $('tnResumeBanner'), start = $('tnStartBlock');
+    if(T){
+      const n = T.play.holes.length, mine = T.mine.length, me = standings(mine).find(r=>r.you);
+      banner.innerHTML = `<div><b>${mine===n ? 'Event finished' : 'Event in progress'}</b><span>${esc(T.form.name)} · ${mine===n ? 'finished '+me.label+' · '+me.gross : mine ? 'thru '+mine+' · '+me.label+' ('+fmt(me.vs)+')' : 'on the first tee'}</span></div>
+        <button class="btn" type="button" id="tnResumeBtn">${mine===n ? 'Post Round' : 'Resume'}</button>`;
+      banner.style.display = 'flex';
+      start.style.display = 'none';
+      $('tnResumeBtn').onclick = () => mine===n ? postRound() : openLive();
+    } else {
+      banner.style.display = 'none';
+      start.style.display = 'block';
+      $('tnStartHint').textContent = 'Score it hole by hole against the Backyard Kids instead of entering a finished round.';
+      $('tnStartHint').classList.remove('tn-err');
+    }
+  }
+
+  // ---------- Event modal ----------
+  const overlay = $('tnOverlay'), body = $('tnBody');
+  let draft = null, confirmQuit = false;
+
+  function openSetup(){
+    const f = readForm();
+    if(!f){
+      $('tnStartHint').textContent = 'Pick a course first. It needs a rating and slope.';
+      $('tnStartHint').classList.add('tn-err');
+      return;
+    }
+    const play = buildPlay(f), idx = currentIndex(), tier = tierFor(f);
+    draft = {form:f, play, index:idx, target:targetFor(play, idx), tier, picks:pickKids(tier, idx)};
+    renderSetup();
+    overlay.classList.add('open');
+  }
+  function renderSetup(){
+    const {form:f, play, index, target, tier, picks} = draft;
+    const hs = picks.map(n=>KIDS.find(k=>k.name===n).hcp);
+    const sizes = groupSizes(picks.length+1);
+    body.innerHTML = `
+      <p class="idx-note" style="margin:0 0 12px;">${esc(f.name)} · ${f.holes} holes · par ${play.par}</p>
+      <div class="tn-event"><b>${TIERS[tier].label} event</b><span>${TIERS[tier].why}</span>
+        <span>${picks.length} opponents, HC ${Math.min(...hs)} to ${Math.max(...hs)} · your HC ${Math.round(index)} · ${sizes.length} groups (${sizes.join('-')}), you're in the last</span></div>
+      <div class="tn-readout">
+        <div><span class="tn-big">${sum(target,target.length)}</span><span class="tn-cap">Your target</span></div>
+        <p>Rating ${f.rating.toFixed(1)} / slope ${f.slope} · index ${index.toFixed(1)}</p>
+        ${!play.hasSI ? '<p class="tn-warn">No stroke index on file for this course, so every hole plays as equally hard.</p>' : ''}
+      </div>
+      <div class="form-actions">
+        <button class="btn secondary" id="tnBack" type="button">Back</button>
+        <button class="btn" id="tnTeeOff" type="button">Tee Off</button>
+      </div>`;
+    $('tnBack').onclick = () => overlay.classList.remove('open');
+    $('tnTeeOff').onclick = () => {
+      T = {...draft, seed: Math.floor(Math.random()*1e9), mine: [], started: Date.now()};
+      field = buildField(T); save();
+      addOverlay.classList.remove('open');
+      refreshAddBlock(); renderLive();
+    };
+  }
+  function openLive(){ confirmQuit=false; addOverlay.classList.remove('open'); renderLive(); overlay.classList.add('open'); }
+
+  function renderLive(){
+    const holes = T.play.holes, n = holes.length, mine = T.mine.length, done = mine===n;
+    const rows = standings(mine), prevPos = {};
+    if(mine>0) standings(mine-1).forEach(r=>{ if(r.pos) prevPos[r.name]=r.pos; });
+    const me = rows.find(r=>r.you), leader = rows.find(r=>r.pos);
+    const h = holes[mine];
+    let head;
+    if(done){
+      const cnt = rows.filter(r=>r.pos).length;
+      head = `<h4 class="tn-hole">${me.pos===1 ? (me.label.startsWith('T') ? 'Tied for the win!' : 'You win!') : 'Finished '+me.label+' of '+cnt}<small>gross ${me.gross} · target ${sum(T.target,n)}</small></h4>`;
+    } else {
+      head = `<h4 class="tn-hole">Hole ${h.no}<small>par ${h.par}${h.y?' · '+h.y+' yds':''}${h.si!=null?' · SI '+h.si:''} · target ${T.target[mine]}</small></h4>`;
+    }
+    const names = {'-2':'eagle','-1':'birdie','0':'par','1':'bogey','2':'double','3':'triple'};
+    const pad = done ? '' : `<div class="tn-pad">${Array.from({length:10},(_,i)=>h.par-1+i).map(s=>`<button type="button" data-s="${s}">${s}<em>${names[s-h.par]||''}</em></button>`).join('')}</div>`;
+    const card = `<div class="tn-card">${holes.map((hh,i)=>`<div class="${i===mine?'cur':''}"><i>${hh.no}</i>${T.mine[i]??'·'}<s>${T.target[i]}</s></div>`).join('')}</div>`;
+    const board = rows.map(r=>{
+      let mv=''; if(r.pos && prevPos[r.name]){ const d=prevPos[r.name]-r.pos; if(d>0) mv=` <span class="tn-mv">▲${d}</span>`; else if(d<0) mv=` <span class="tn-mv">▼${-d}</span>`; }
+      return `<tr class="${r.you?'tn-you':''}${r.thru?'':' tn-wait'}"><td>${r.label}</td><td class="tn-name">${esc(r.name)}<span class="tn-grp">G${r.group}</span>${mv}<small>${esc(r.note)}</small></td><td class="tn-n">${r.thru===n?'F':(r.thru||'–')}</td><td class="tn-n ${r.thru?cls(r.vs):''}">${r.thru?fmt(r.vs):'–'}</td><td class="tn-n">${r.thru?r.gross:'–'}</td></tr>`;
+    }).join('');
+    body.innerHTML = `
+      <p class="idx-note" style="margin:0 0 10px;">${esc(T.form.name)} · ${TIERS[T.tier].label} event · par ${T.play.par} · target ${sum(T.target,n)}</p>
+      <div class="strip" style="margin:0 0 14px;">
+        <div class="cell"><div class="num">${mine?me.label:'–'}</div><div class="lbl">Position</div></div>
+        <div class="cell flag"><div class="num">${fmt(me.vs)}</div><div class="lbl">Vs. target</div></div>
+        <div class="cell"><div class="num">${mine?(me.vs===leader.vs?'Lead':'+'+(me.vs-leader.vs)):'–'}</div><div class="lbl">Back of lead</div></div>
+      </div>
+      ${head}${pad}${card}
+      <div class="tn-row">
+        ${done ? '<button class="btn" id="tnPost" type="button">Post Round to History</button>' : ''}
+        ${mine ? '<button class="btn secondary" id="tnUndo" type="button">Undo last hole</button>' : ''}
+        ${done ? '' : `<button class="btn secondary" id="tnQuit" type="button">${confirmQuit ? 'Tap again to abandon' : 'Abandon event'}</button>`}
+      </div>
+      <div class="tn-boardwrap"><table class="tn-board">
+        <thead><tr><th>Pos</th><th>Player</th><th class="tn-n">Thru</th><th class="tn-n">Today</th><th class="tn-n">Gross</th></tr></thead>
+        <tbody>${board}</tbody></table></div>
+      <p class="note" style="margin-top:12px;font-size:12px;">Saved after every hole, so you can close the app and pick it back up from Add a Round. Each group ahead of yours is one more hole ahead of you, and you're in the last group. "Today" is gross strokes against your target, the score your index is expected to shoot here, spread by hole difficulty.</p>`;
+    body.querySelectorAll('[data-s]').forEach(b=>b.onclick=()=>{ T.mine.push(+b.dataset.s); confirmQuit=false; save(); renderLive(); refreshAddBlock(); try{ triggerHaptic(); }catch(e){} });
+    const u = $('tnUndo'); if(u) u.onclick = ()=>{ T.mine.pop(); save(); renderLive(); refreshAddBlock(); };
+    const q = $('tnQuit'); if(q) q.onclick = ()=>{ if(!confirmQuit){ confirmQuit=true; renderLive(); return; } T=null; field=[]; confirmQuit=false; save(); refreshAddBlock(); overlay.classList.remove('open'); };
+    const p = $('tnPost'); if(p) p.onclick = postRound;
+  }
+
+  // ---------- Hand the finished card to Add a Round ----------
+  let posting = false;
+  function postRound(){
+    const f = T.form;
+    overlay.classList.remove('open');
+    openAddModal();
+    // Show the course fields the same way the New Course tab does, then apply the event's course
+    $('addRoundPastPanel').style.display = 'none';
+    $('addRoundNewPanel').style.display = 'block';
+    $('addRoundKnownFields').style.display = 'block';
+    const df = $('addRoundDateField'); if(df) df.style.display = 'block';
+    applyAddRoundCourseSelection({name:f.name, rating:f.rating, slope:f.slope, holes:f.holes});
+    $('f-date').value = f.date;
+    if(f.newPars){
+      const boxes = Array.from(document.querySelectorAll('.hole-par-box'));
+      boxes.forEach((b,i)=>{ b.value = f.newPars[i]; const d = document.querySelector(`.hole-par-display[data-hole="${i+1}"]`); if(d) d.textContent = f.newPars[i]; });
+      try{ updateParTotalReadout('.hole-par-box','parTotalReadout'); }catch(e){}
+      buildHoleInputs();
+    }
+    T.mine.forEach((s,i)=>{
+      const hidden = document.querySelector(`.hole-score-box[data-hole="${i+1}"]`);
+      const disp = document.querySelector(`.hole-score-display[data-hole="${i+1}"] .score-shape`);
+      if(!hidden || !disp) return;
+      hidden.value = s;
+      const best = currentHoleBests ? currentHoleBests[i] : null;
+      applyScoreStyling(disp, s, currentHolePars[i], best != null && s < best);
+    });
+    updateGrossScoreHint(); updateHoleBestHighlights(); updateExpectedScoreHint();
+    posting = true;
+    refreshAddBlock();
+    $('tnResumeBanner').style.display = 'none';
+  }
+  // Save round runs its own handler first; if it closed the form, the round is saved and the
+  // event's in-progress copy is no longer needed.
+  $('addSave').addEventListener('click', ()=>{
+    if(posting && T && T.mine.length===T.play.holes.length && !addOverlay.classList.contains('open')){
+      // Attach the final leaderboard to the round that was just saved (synced with it)
+      try{
+        const r = addedRounds[0], n = T.play.holes.length;
+        if(r && r.holeDetail && r.course.trim().toLowerCase() === T.form.name.trim().toLowerCase() && r.holeDetail.scores.length === n){
+          // Use the scores actually saved, in case any were changed on the Add a Round form
+          T.mine = r.holeDetail.scores.slice();
+          const rows = standings(n);
+          r.event = {tier:T.tier, target:sum(T.target,n), index:T.index, seed:T.seed,
+            board: rows.map(x=>{ const p = field.find(f=>f.name===x.name);
+              return {n:x.name, you:!!x.you, pos:x.label, h:p?p.hcp:null, st:p?p.style:null, g:x.group, gross:x.gross, vs:x.vs}; })};
+          persistAdded();
+        }
+      }catch(e){}
+      T = null; field = []; posting = false; save(); refreshAddBlock();
+    }
+  });
+  ['addCancel','addClose'].forEach(id=>$(id).addEventListener('click', ()=>{ posting = false; }));
+
+  // ---------- Past rounds: backfill / edit Backyard Open, edit round ----------
+  // Rounds built into the file can't be changed in place, so an edited one is saved as a
+  // synced copy and the original is retired the same way Delete retires it.
+  function commitRound(r, mutate){
+    const inAdded = addedRounds.indexOf(r) !== -1;
+    if(inAdded){ mutate(r); persistAdded(); }
+    else {
+      const copy = JSON.parse(JSON.stringify(r));
+      if(copy.expAtTime === undefined){ const e = expScoreAtTimeOf(r); if(e != null) copy.expAtTime = e; }
+      const plain = `${r.date}|${r.course}|${r.score}`, tagged = `${plain}|b${baseRounds.indexOf(r)}`;
+      [roundKey(r), plain, tagged].forEach(k=>{ if(!deletedKeys.includes(k)) deletedKeys.push(k); });
+      persistDeleted();
+      mutate(copy);
+      addedRounds.push(copy); persistAdded();
+      r = copy;
+    }
+    rebuildRoundsArray(); try{ recompute(); }catch(e){ console.warn(e); }
+    const idx = rounds.indexOf(r);
+    if(idx !== -1) openDetail(idx);
+  }
+  function indexBefore(r){
+    try{ const k = roundNumberOf[roundKey(r)]; if(k > 1 && trend[k-2]) return trend[k-2].index; }catch(e){}
+    return currentIndex();
+  }
+  function tierAt(r){
+    if(r.holes === 18) return 'major';
+    const key = r.course.trim().toLowerCase(), d = new Date(r.date);
+    return rounds.some(x => x !== r && x.holes === 9 && x.course.trim().toLowerCase() === key && new Date(x.date) < d) ? 'tour' : 'club';
+  }
+  const hasCard = r => r.holeDetail && Array.isArray(r.holeDetail.scores) && r.holeDetail.scores.length === r.holes && Array.isArray(r.holeDetail.pars);
+  function makeEvent(r, tier, seed, index){
+    const f = {name:r.course, holes:r.holes, rating:r.rating, slope:r.slope, pars:r.holeDetail.pars.map(p=>p||4)};
+    const S = {form:f, play:buildPlay(f), index, tier, picks:pickKids(tier, index), seed, mine:r.holeDetail.scores.slice()};
+    S.target = targetFor(S.play, index);
+    const F = buildField(S), n = r.holes;
+    const rows = standings(n, S, F);
+    return {tier, target:sum(S.target,n), index, seed,
+      board: rows.map(x=>{ const p = F.find(q=>q.name===x.name); return {n:x.name, you:!!x.you, pos:x.label, h:p?p.hcp:null, st:p?p.style:null, g:x.group, gross:x.gross, vs:x.vs}; })};
+  }
+  const posNum = e => parseInt(String((e.board.find(x=>x.you)||{}).pos).replace('T',''), 10);
+
+  window.tnEventHtml = function(r){
+    const key = esc(roundKey(r)), e = r.event;
+    const editBtn = `<button class="modal-edit" type="button" data-tn-act="editround" data-key="${key}">Edit round</button>`;
+    if(!e || !Array.isArray(e.board)){
+      return `<div class="tn-saved" data-key="${key}" style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+        ${hasCard(r) ? `<button class="modal-edit" type="button" data-tn-act="add" data-key="${key}"><span class="wii-only">🏆 </span>Add Backyard Open</button>` : '<span class="idx-note">Add hole scores to backfill a Backyard Open.</span>'}
+        ${editBtn}<div class="tn-editor" style="width:100%"></div></div>`;
+    }
+    const me = e.board.find(x=>x.you) || {};
+    const tl = TIERS[e.tier] ? TIERS[e.tier].label : 'Backyard';
+    const rows = e.board.map(x=>`<tr class="${x.you?'tn-you':''}"><td>${esc(x.pos)}</td><td class="tn-name">${esc(x.n)}<span class="tn-grp">G${x.g}</span><small>${x.you ? 'Index '+Number(e.index).toFixed(1) : 'HC '+x.h+' · '+esc(x.st)}</small></td><td class="tn-n ${cls(x.vs)}">${fmt(x.vs)}</td><td class="tn-n">${x.gross}</td></tr>`).join('');
+    return `<div class="tn-saved" data-key="${key}">
+      <h4 class="tn-hole" style="margin:18px 0 2px;"><span class="wii-only">🏆 </span>Backyard Open<small>${tl} event</small></h4>
+      <p class="idx-note" style="margin:0 0 8px;">${me.pos==1 ? 'Won' : me.pos=='T1' ? 'Tied for the win' : 'Finished '+esc(me.pos)} · field of ${e.board.length} · target ${e.target}</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">${hasCard(r) ? `<button class="modal-edit" type="button" data-tn-act="editevent" data-key="${key}">Edit event</button>` : ''}${editBtn}</div>
+      <div class="tn-editor"></div>
+      <div class="tn-boardwrap"><table class="tn-board">
+        <thead><tr><th>Pos</th><th>Player</th><th class="tn-n">Today</th><th class="tn-n">Gross</th></tr></thead>
+        <tbody>${rows}</tbody></table></div></div>`;
+  };
+
+  // Backyard Open totals for All Stats. Each saved event keeps the index you played it at
+  // (event.index), so wins can later be split into HC bands.
+  window.tnStatsHtml = function(){
+    const evs = rounds.filter(r=>r.event && Array.isArray(r.event.board));
+    const P = {};
+    const get = (name, you, hc) => P[name] || (P[name] = {name, you, hc, app:{club:0,tour:0,major:0}, win:{club:0,tour:0,major:0}});
+    evs.forEach(r=>{ const t = r.event.tier; r.event.board.forEach(x=>{
+      const p = get(x.you ? 'You' : x.n, !!x.you, x.you ? null : x.h);
+      if(p.app[t] == null) return; p.app[t]++; if(String(x.pos)==='1') p.win[t]++; }); });
+    const tot = o => o.club + o.tour + o.major;
+    const list = Object.values(P).sort((a,b)=> tot(b.win)-tot(a.win) || b.win.major-a.win.major || b.win.tour-a.win.tour || tot(b.app)-tot(a.app) || a.name.localeCompare(b.name));
+    const body = list.length ? list.map(p=>`<tr${p.you?' class="tn-you"':''}><td class="tn-name">${esc(p.name)}${p.hc!=null?`<small>HC ${p.hc}</small>`:''}</td><td class="tn-n">${tot(p.app)}</td><td class="tn-n">${p.win.club}</td><td class="tn-n">${p.win.tour}</td><td class="tn-n">${p.win.major}</td><td class="tn-n"><b>${tot(p.win)}</b></td></tr>`).join('')
+      : '<tr><td colspan="6">No Backyard Open events yet.</td></tr>';
+    return `<p class="note" style="margin:16px 0 6px;color:var(--fairway);font-weight:700;"><span class="wii-only">🏆 </span>Backyard Open (${evs.length} events)</p>
+      <div class="tn-boardwrap"><table class="tn-board">
+        <thead><tr><th>Player</th><th class="tn-n">Apps</th><th class="tn-n">Club</th><th class="tn-n">Tour</th><th class="tn-n">Major</th><th class="tn-n">Wins</th></tr></thead>
+        <tbody>${body}</tbody></table></div>
+      <p class="idx-note" style="margin:6px 0 12px;">Club, Tour and Major columns are wins. Wins are outright firsts; ties for first don't count.</p>`;
+  };
+
+  function findRound(key){ return rounds.find(x => roundKey(x) === key); }
+
+  function eventEditor(box, r){
+    const e = r.event, index = e.index != null ? e.index : indexBefore(r);
+    let tier = e.tier && TIERS[e.tier] ? e.tier : tierAt(r);
+    const draw = () => {
+      const size = pickKids(tier, index).length + 1;
+      box.innerHTML = `<div class="tn-edit">
+        <label class="tn-lbl">Event level</label>
+        <div class="tn-opts">${Object.entries(TIERS).map(([k,v])=>`<button type="button" data-tier="${k}" aria-pressed="${k===tier}">${v.label}</button>`).join('')}</div>
+        <label class="tn-lbl" for="tnStanding">Final standing</label>
+        <select id="tnStanding"><option value="">Keep as is</option>${Array.from({length:size},(_,i)=>`<option value="${i+1}">${i+1} of ${size}</option>`).join('')}</select>
+        <p class="idx-note" id="tnEditMsg" style="margin:0;"></p>
+        <div class="tn-row" style="margin:0;">
+          <button class="btn" type="button" id="tnEditSave">Save</button>
+          <button class="btn secondary" type="button" id="tnEditRedraw">Re-draw field</button>
+          <button class="btn secondary" type="button" id="tnEditRemove">Remove event</button>
+        </div></div>`;
+      box.querySelectorAll('[data-tier]').forEach(b=>b.onclick=()=>{ tier=b.dataset.tier; draw(); });
+      $('tnEditSave').onclick = () => {
+        const want = parseInt($('tnStanding').value, 10);
+        let ev = null;
+        if(isNaN(want)){
+          ev = (tier === e.tier && e.seed != null) ? makeEvent(r, tier, e.seed, index) : (tier === e.tier ? e : makeEvent(r, tier, Math.floor(Math.random()*1e9), index));
+        } else {
+          let best = null, tie = null;
+          for(let i=0;i<6000;i++){
+            const cand = makeEvent(r, tier, Math.floor(Math.random()*1e9), index), p = posNum(cand);
+            const label = String((cand.board.find(x=>x.you)||{}).pos);
+            if(label === String(want)){ ev = cand; break; }
+            if(p === want && !tie) tie = cand;
+            if(!best || Math.abs(p-want) < Math.abs(posNum(best)-want)) best = cand;
+          }
+          if(!ev) ev = tie;
+          if(!ev){ $('tnEditMsg').textContent = `Couldn't land exactly ${want} with a ${sum(r.holeDetail.scores, r.holes)} in a ${TIERS[tier].label} field. Closest was ${posNum(best)}.`; $('tnEditMsg').classList.add('tn-err'); return; }
+        }
+        commitRound(r, x => { x.event = ev; });
+      };
+      $('tnEditRedraw').onclick = () => commitRound(r, x => { x.event = makeEvent(r, tier, Math.floor(Math.random()*1e9), index); });
+      const rm = $('tnEditRemove');
+      rm.onclick = () => { if(rm.dataset.armed){ commitRound(r, x => { delete x.event; }); } else { rm.dataset.armed = '1'; rm.textContent = 'Tap again to remove'; } };
+    };
+    draw();
+  }
+
+  function roundEditor(box, r){
+    const card = hasCard(r);
+    box.innerHTML = `<div class="tn-edit">
+      <label class="tn-lbl" for="tnEditDate">Date</label>
+      <input id="tnEditDate" type="date" value="${esc(r.date)}">
+      ${card ? `<label class="tn-lbl">Hole scores</label>
+      <div class="tn-edit-holes">${r.holeDetail.scores.map((s,i)=>`<label><i>${i+1}</i><small>par ${r.holeDetail.pars[i]}</small><input type="number" inputmode="numeric" min="1" max="15" data-h="${i}" value="${s}"></label>`).join('')}</div>` : '<p class="idx-note" style="margin:0;">No hole-by-hole scores on this round, so only the date can change.</p>'}
+      ${r.event ? '<p class="idx-note" style="margin:0;">Changing scores updates your line on the Backyard Open leaderboard. The field stays the same.</p>' : ''}
+      <p class="idx-note" id="tnRoundMsg" style="margin:0;"></p>
+      <div class="tn-row" style="margin:0;"><button class="btn" type="button" id="tnRoundSave">Save changes</button><button class="btn secondary" type="button" id="tnRoundCancel">Cancel</button></div></div>`;
+    $('tnRoundCancel').onclick = () => { box.innerHTML = ''; };
+    $('tnRoundSave').onclick = () => {
+      const date = $('tnEditDate').value;
+      const scores = card ? Array.from(box.querySelectorAll('[data-h]')).map(i=>parseInt(i.value,10)) : null;
+      if(!date || (scores && scores.some(v=>isNaN(v) || v<1))){ $('tnRoundMsg').textContent = 'Enter a date and a score for every hole.'; $('tnRoundMsg').classList.add('tn-err'); return; }
+      const idxAt = indexBefore(r);
+      commitRound(r, x => {
+        x.date = date;
+        if(scores && scores.join() !== x.holeDetail.scores.join()){
+          x.holeDetail.scores = scores;
+          const gross = scores.reduce((a,b)=>a+b,0);
+          x.score = gross + (x.holes===9 ? 'Ni' : 'A');
+          const raw = (gross - x.rating) * 113 / x.slope;
+          x.diff = Math.round((x.holes===9 ? raw + idxAt/2 : raw) * 10) / 10;
+          if(x.event && x.event.seed != null) x.event = makeEvent(x, x.event.tier, x.event.seed, x.event.index);
+          else if(x.event){ const me = x.event.board.find(b=>b.you); if(me){ me.gross = gross; me.vs = gross - x.event.target; }
+            const b = x.event.board.sort((p,q)=>p.vs-q.vs || (q.you?1:0)-(p.you?1:0)); let pos=0, prev=null;
+            b.forEach((row,i)=>{ if(row.vs!==prev){pos=i+1;prev=row.vs} row._p=pos; });
+            const ties={}; b.forEach(row=>ties[row._p]=(ties[row._p]||0)+1); b.forEach(row=>{ row.pos=(ties[row._p]>1?'T':'')+row._p; delete row._p; }); }
+        }
+      });
+    };
+  }
+
+  document.getElementById('detailBody').addEventListener('click', ev=>{
+    const btn = ev.target.closest('[data-tn-act]'); if(!btn) return;
+    const r = findRound(btn.dataset.key); if(!r) return;
+    const box = btn.closest('.tn-saved').querySelector('.tn-editor');
+    const act = btn.dataset.tnAct;
+    if(act === 'add'){
+      const idx = indexBefore(r);
+      commitRound(r, x => { x.event = makeEvent(x, tierAt(r), Math.floor(Math.random()*1e9), idx); });
+    } else if(act === 'editevent'){
+      box.innerHTML ? (box.innerHTML = '') : eventEditor(box, r);
+    } else if(act === 'editround'){
+      box.innerHTML ? (box.innerHTML = '') : roundEditor(box, r);
+    }
+  });
+
+  $('tnStartBtn').addEventListener('click', openSetup);
+  $('addRoundBtn').addEventListener('click', ()=>{ posting = false; refreshAddBlock(); });
+  $('tnClose').addEventListener('click', ()=>overlay.classList.remove('open'));
+  refreshAddBlock();
+})();
+</script>
+<!-- ===== END BACKYARD OPEN ===== -->
 <!-- ===== REMOVABLE: PWA service worker registration ===== -->
 <script>
   if('serviceWorker' in navigator){
