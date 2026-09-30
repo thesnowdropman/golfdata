@@ -5006,6 +5006,36 @@ function groupCoursesForPicker(entries){
       suffixKeys.forEach(s => consolidatedNames.add(variants[s].name));
     }
   });
+  // Second pass: a 9-hole and an 18-hole course that start with the same name, even without
+  // matching "(9)"/"(18)" suffixes (e.g. "Needwood Executive" and "Needwood Golf Course (18)"),
+  // become one button with tabs labeled by what differs: "Executive 9" and "18".
+  {
+    const strip = n => { const m = n.match(/^(.*)\s\(([^)]+)\)$/); return (m ? m[1] : n).trim(); };
+    const GENERIC = ['golf','course','club','links','gc','the','cc','country'];
+    const byFirst = {};
+    entries.forEach(e => {
+      if(consolidatedNames.has(e.name) || (e.holes !== 9 && e.holes !== 18)) return;
+      const first = strip(e.name).split(/\s+/)[0].toLowerCase();
+      (byFirst[first] = byFirst[first] || []).push(e);
+    });
+    Object.values(byFirst).forEach(list => {
+      if(list.length < 2 || !list.some(e=>e.holes===9) || !list.some(e=>e.holes===18)) return;
+      const words = list.map(e => strip(e.name).split(/\s+/));
+      let k = 0; while(words.every(w => w[k] && w[k].toLowerCase() === words[0][k].toLowerCase())) k++;
+      const display = words[0].slice(0, k).join(' ');
+      const variants = {};
+      list.forEach((e, i) => {
+        const extra = words[i].slice(k).filter(w => !GENERIC.includes(w.toLowerCase())).join(' ');
+        // \u2060 (invisible) keeps a bare "18" from being treated as a numeric key, which would jump it to the front
+        let label = (extra ? extra + ' ' : '') + e.holes + (extra ? '' : '\u2060');
+        while(variants[label]) label += '′';
+        variants[label] = e;
+        consolidatedNames.add(e.name);
+      });
+      const ordered = {}; Object.keys(variants).sort((a,b)=>variants[a].holes - variants[b].holes).forEach(l => ordered[l] = variants[l]);
+      grouped.push({display, variants: ordered, key: 'grp:' + display});
+    });
+  }
   entries.forEach(e => {
     if(!consolidatedNames.has(e.name)){
       // Solo (non-grouped) courses still had their raw name, parens and all -- strip any
@@ -5802,15 +5832,15 @@ loadPersisted();
   window.tnFutureEventHtml = function(f){
     const futures = [...futureRounds].sort((a,b)=>futureSortKey(a)-futureSortKey(b)), i = futures.indexOf(f);
     const key = f.course.trim().toLowerCase();
-    let name;
+    let name, evKey;
     if(f.holes === 18){
       const prior = futures.slice(0, i).filter(x=>x.holes===18).length;
-      name = MAJORS[(majorRounds().length + prior) % MAJORS.length];
+      name = MAJORS[(majorRounds().length + prior) % MAJORS.length]; evKey = name;
     } else {
       const played = rounds.some(r=>r.holes===9 && r.course.trim().toLowerCase()===key) || futures.slice(0,i).some(x=>x.holes===9 && x.course.trim().toLowerCase()===key);
-      name = played ? 'Tour event' : 'Club event';
+      name = played ? 'Tour event' : 'Club event'; evKey = played ? 'tour' : 'club';
     }
-    return `<p class="note" style="margin:-8px 0 12px;display:flex;align-items:center;gap:6px;">${majorIcon(name, 22)}<span>Backyard Open: <strong>${esc(name)}</strong></span></p>`;
+    return `<p class="note" style="margin:-8px 0 12px;display:flex;align-items:center;gap:6px;"><span class="tn-evlink" data-tn-act="eventhist" data-ev="${esc(evKey)}" data-from="future" data-fid="${esc(f.id)}">${majorIcon(name, 22)}<span>Backyard Open: <strong>${esc(name)}</strong></span></span></p>`;
   };
 
   // Every Backyard Open event, newest first
@@ -5826,7 +5856,7 @@ loadPersisted();
       const pm = r.course.match(/^(.*)\s\(([^)]+)\)$/);
       const dt = new Date(r.date+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'2-digit'});
       return `<tr class="tn-click" data-tn-act="openround" data-from="allevents" data-key="${esc(roundKey(r))}">
-        <td class="tn-wrap"><span class="tn-evlink" data-tn-act="eventhist" data-ev="${esc(isM ? mn : r.event.tier)}" data-from="allevents">${isM ? majorIcon(mn, 18)+esc(MAJOR_SHORT[mn]) : TIER_LBL(r.event.tier)}</span></td>
+        <td class="tn-wrap"><span class="tn-evlink" data-tn-act="eventhist" data-ev="${esc(isM ? mn : r.event.tier)}" data-from="allevents">${isM ? majorIcon(mn, 18)+esc(({'The Mudders':'Mudders','The PBJ Championship':'PBJ Champ','The U.S. Open Gate':'Open Gate','The Earl Grey Open':'Earl Grey'})[mn]) : TIER_LBL(r.event.tier)+' Event'}</span></td>
         <td class="tn-name tn-wrap">${esc(pm ? pm[1] : r.course)}<small>${dt}${pm ? ' · '+esc(pm[2]) : ''}</small></td>
         <td class="tn-name tn-wrap">${w.you ? '<b>You</b>' : esc(shortName(w.n))+`<small>HC ${w.h}</small>`}</td></tr>`;
     }).join('');
@@ -5964,6 +5994,7 @@ loadPersisted();
     if(act0 === 'allevents'){ navStack.push(()=>openAllStatsDetail()); openAllEvents(); return; }
     if(act0 === 'eventhist'){ ev.stopPropagation();
       if(btn.dataset.from === 'allevents'){ navStack.push(()=>openAllEvents()); }
+      else if(btn.dataset.from === 'future'){ const fid = btn.dataset.fid; navStack.push(()=>openFutureRoundDetail(fid)); }
       else if(btn.dataset.from === 'player'){ const nm = btn.dataset.name; navStack.push(()=>openPlayerDetail(nm)); }
       else { const rr = findRound(btn.dataset.key); navStack.push(()=>{ window.tnOpenEventTab = true; openDetail(rounds.indexOf(rr)); }); }
       openEventHistory(btn.dataset.ev); return; }
