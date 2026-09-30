@@ -5458,14 +5458,15 @@ loadPersisted();
   function rankRows(rows){
     rows.sort((a,b)=> a.vs-b.vs || b.hc-a.hc || (b.you?1:0)-(a.you?1:0));
     let pos=0, pv=null, ph=null;
-    rows.forEach((r,i)=>{ if(r.vs!==pv || r.hc!==ph){ pos=i+1; pv=r.vs; ph=r.hc; } r.pos=pos; });
+    // You sort first within an exact tie and take that place alone (you win a full tie)
+    rows.forEach((r,i)=>{ if(r.vs!==pv || r.hc!==ph || (i>0 && rows[i-1].you)){ pos=i+1; pv=r.vs; ph=r.hc; } r.pos=pos; });
     const ties={}; rows.forEach(r=>ties[r.pos]=(ties[r.pos]||0)+1);
     rows.forEach(r=>r.label=(ties[r.pos]>1?'T':'')+r.pos);
     return rows;
   }
   // Re-rank a saved board with the current tiebreak rule
   function rankBoard(e){
-    const myHc = Math.round(Number(e.index));
+    const myHc = Number(e.index); // your exact index breaks ties, e.g. 38.6 loses to a 39
     const rows = e.board.map(x=>({...x, hc: x.you ? myHc : x.h}));
     rankRows(rows).forEach(r=>{ r.pos = r.label; delete r.label; delete r.hc; });
     return rows;
@@ -5474,7 +5475,7 @@ loadPersisted();
     S = S || T; F = F || field;
     const n = S.play.holes.length;
     const rows = F.map(p=>{ const t=thruFor(S,p.group,mine,n); return {name:p.name, hc:p.hcp, group:p.group, note:'HC '+p.hcp+' · '+p.style, thru:t, gross:sum(p.scores,t), vs:sum(p.scores,t)-sum(S.target,t)}; });
-    rows.push({name:'You', you:true, hc:Math.round(S.index), group:S.groups||3, note:'Index '+S.index.toFixed(1)+' · target '+sum(S.target,n), thru:mine, gross:sum(S.mine,mine), vs:sum(S.mine,mine)-sum(S.target,mine)});
+    rows.push({name:'You', you:true, hc:Number(S.index), group:S.groups||3, note:'Index '+S.index.toFixed(1)+' · target '+sum(S.target,n), thru:mine, gross:sum(S.mine,mine), vs:sum(S.mine,mine)-sum(S.target,mine)});
     const live = rankRows(rows.filter(r=>r.thru>0));
     return live.concat(rows.filter(r=>r.thru===0).sort((a,b)=>a.group-b.group).map(r=>({...r,label:'–'})));
   }
