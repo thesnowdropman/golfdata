@@ -5857,7 +5857,7 @@ loadPersisted();
       const pm = r.course.match(/^(.*)\s\(([^)]+)\)$/);
       const dt = new Date(r.date+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'2-digit'});
       return `<tr class="tn-click" data-tn-act="openround" data-from="allevents" data-key="${esc(roundKey(r))}">
-        <td class="tn-nowrap"><span class="tn-evlink" data-tn-act="eventhist" data-ev="${esc(isM ? mn : r.event.tier)}" data-from="allevents">${isM ? majorIcon(mn, 18)+esc(({'The Mudders':'Mudders','The PBJ Championship':'PBJ Champ','The U.S. Open Gate':'Open Gate','The Earl Grey Open':'Earl Grey'})[mn]) : TIER_LBL(r.event.tier)+' Event'}</span></td>
+        <td class="tn-nowrap"><span class="tn-evlink" data-tn-act="eventhist" data-ev="${esc(isM ? mn : r.event.tier)}" data-from="allevents">${isM ? majorIcon(mn, 18)+'Major' : TIER_LBL(r.event.tier)+' Event'}</span></td>
         <td class="tn-name tn-wrap">${esc((pm ? pm[1] : r.course).replace(/\s+[-–]\s+.*$/, ''))}<small>${dt}</small></td>
         <td class="tn-name tn-nowrap">${w.you ? '<b>You</b>' : esc(shortName(w.n))+`<small>HC ${w.h}</small>`}</td></tr>`;
     }).join('');
