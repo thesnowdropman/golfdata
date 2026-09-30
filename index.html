@@ -5453,15 +5453,29 @@ loadPersisted();
   const sum = (a,k) => a.slice(0,k).reduce((x,y)=>x+y,0);
   const thruFor = (S,g,mine,n) => Math.min(n, mine + (S.groups || 3) - g);
 
+  // Lower score vs target ranks first; on the same score the higher HC wins the tiebreak.
+  // Only identical score AND HC share a place.
+  function rankRows(rows){
+    rows.sort((a,b)=> a.vs-b.vs || b.hc-a.hc || (b.you?1:0)-(a.you?1:0));
+    let pos=0, pv=null, ph=null;
+    rows.forEach((r,i)=>{ if(r.vs!==pv || r.hc!==ph){ pos=i+1; pv=r.vs; ph=r.hc; } r.pos=pos; });
+    const ties={}; rows.forEach(r=>ties[r.pos]=(ties[r.pos]||0)+1);
+    rows.forEach(r=>r.label=(ties[r.pos]>1?'T':'')+r.pos);
+    return rows;
+  }
+  // Re-rank a saved board with the current tiebreak rule
+  function rankBoard(e){
+    const myHc = Math.round(Number(e.index));
+    const rows = e.board.map(x=>({...x, hc: x.you ? myHc : x.h}));
+    rankRows(rows).forEach(r=>{ r.pos = r.label; delete r.label; delete r.hc; });
+    return rows;
+  }
   function standings(mine, S, F){
     S = S || T; F = F || field;
     const n = S.play.holes.length;
-    const rows = F.map(p=>{ const t=thruFor(S,p.group,mine,n); return {name:p.name, group:p.group, note:'HC '+p.hcp+' · '+p.style, thru:t, gross:sum(p.scores,t), vs:sum(p.scores,t)-sum(S.target,t)}; });
-    rows.push({name:'You', you:true, group:S.groups||3, note:'Index '+S.index.toFixed(1)+' · target '+sum(S.target,n), thru:mine, gross:sum(S.mine,mine), vs:sum(S.mine,mine)-sum(S.target,mine)});
-    const live = rows.filter(r=>r.thru>0).sort((a,b)=>a.vs-b.vs || (b.you?1:0)-(a.you?1:0) || b.thru-a.thru);
-    let pos=0, prev=null; live.forEach((r,i)=>{ if(r.vs!==prev){pos=i+1;prev=r.vs} r.pos=pos; });
-    const ties={}; live.forEach(r=>ties[r.pos]=(ties[r.pos]||0)+1);
-    live.forEach(r=>r.label=(ties[r.pos]>1?'T':'')+r.pos);
+    const rows = F.map(p=>{ const t=thruFor(S,p.group,mine,n); return {name:p.name, hc:p.hcp, group:p.group, note:'HC '+p.hcp+' · '+p.style, thru:t, gross:sum(p.scores,t), vs:sum(p.scores,t)-sum(S.target,t)}; });
+    rows.push({name:'You', you:true, hc:Math.round(S.index), group:S.groups||3, note:'Index '+S.index.toFixed(1)+' · target '+sum(S.target,n), thru:mine, gross:sum(S.mine,mine), vs:sum(S.mine,mine)-sum(S.target,mine)});
+    const live = rankRows(rows.filter(r=>r.thru>0));
     return live.concat(rows.filter(r=>r.thru===0).sort((a,b)=>a.group-b.group).map(r=>({...r,label:'–'})));
   }
 
@@ -5662,7 +5676,7 @@ loadPersisted();
     return {tier, target:sum(S.target,n), index, seed,
       board: rows.map(x=>{ const p = F.find(q=>q.name===x.name); return {n:x.name, you:!!x.you, pos:x.label, h:p?p.hcp:null, st:p?p.style:null, g:x.group, gross:x.gross, vs:x.vs}; })};
   }
-  const posNum = e => parseInt(String((e.board.find(x=>x.you)||{}).pos).replace('T',''), 10);
+  const posNum = e => parseInt(String((rankBoard(e).find(x=>x.you)||{}).pos).replace('T',''), 10);
 
   window.tnEventHtml = function(r){
     const key = esc(roundKey(r)), e = r.event;
@@ -5672,9 +5686,10 @@ loadPersisted();
         ${hasCard(r) ? `<button class="modal-edit" type="button" data-tn-act="add" data-key="${key}"><span class="wii-only">🏆 </span>Add Backyard Open</button>` : '<span class="idx-note">Add hole scores to backfill a Backyard Open.</span>'}
         ${editBtn}<div class="tn-editor" style="width:100%"></div></div>`;
     }
-    const me = e.board.find(x=>x.you) || {};
+    const board = rankBoard(e);
+    const me = board.find(x=>x.you) || {};
     const tl = TIERS[e.tier] ? TIERS[e.tier].label : 'Backyard';
-    const rows = e.board.map(x=>`<tr class="${x.you?'tn-you':''}"><td>${esc(x.pos)}</td><td class="tn-name">${esc(x.n)}<span class="tn-grp">G${x.g}</span><small>${x.you ? 'Index '+Number(e.index).toFixed(1) : 'HC '+x.h+' · '+esc(x.st)}</small></td><td class="tn-n ${cls(x.vs)}">${fmt(x.vs)}</td><td class="tn-n">${x.gross}</td></tr>`).join('');
+    const rows = board.map(x=>`<tr class="${x.you?'tn-you':''}"><td>${esc(x.pos)}</td><td class="tn-name">${esc(x.n)}<span class="tn-grp">G${x.g}</span><small>${x.you ? 'Index '+Number(e.index).toFixed(1) : 'HC '+x.h+' · '+esc(x.st)}</small></td><td class="tn-n ${cls(x.vs)}">${fmt(x.vs)}</td><td class="tn-n">${x.gross}</td></tr>`).join('');
     return `<div class="tn-saved" data-key="${key}">
       <h4 class="tn-hole" style="margin:18px 0 2px;"><span class="wii-only">🏆 </span>Backyard Open<small>${tl} event</small></h4>
       <p class="idx-note" style="margin:0 0 8px;">${me.pos==1 ? 'Won' : me.pos=='T1' ? 'Tied for the win' : 'Finished '+esc(me.pos)} · field of ${e.board.length} · target ${e.target}</p>
@@ -5691,7 +5706,7 @@ loadPersisted();
     const evs = rounds.filter(r=>r.event && Array.isArray(r.event.board));
     const P = {};
     const get = (name, you, hc) => P[name] || (P[name] = {name, you, hc, app:{club:0,tour:0,major:0}, win:{club:0,tour:0,major:0}});
-    evs.forEach(r=>{ const t = r.event.tier; r.event.board.forEach(x=>{
+    evs.forEach(r=>{ const t = r.event.tier; rankBoard(r.event).forEach(x=>{
       const p = get(x.you ? 'You' : x.n, !!x.you, x.you ? null : x.h);
       if(p.app[t] == null) return; p.app[t]++; if(String(x.pos)==='1') p.win[t]++; }); });
     const tot = o => o.club + o.tour + o.major;
@@ -5733,7 +5748,7 @@ loadPersisted();
           let best = null, tie = null;
           for(let i=0;i<6000;i++){
             const cand = makeEvent(r, tier, Math.floor(Math.random()*1e9), index), p = posNum(cand);
-            const label = String((cand.board.find(x=>x.you)||{}).pos);
+            const label = String((rankBoard(cand).find(x=>x.you)||{}).pos);
             if(label === String(want)){ ev = cand; break; }
             if(p === want && !tie) tie = cand;
             if(!best || Math.abs(p-want) < Math.abs(posNum(best)-want)) best = cand;
@@ -5776,9 +5791,7 @@ loadPersisted();
           x.diff = Math.round((x.holes===9 ? raw + idxAt/2 : raw) * 10) / 10;
           if(x.event && x.event.seed != null) x.event = makeEvent(x, x.event.tier, x.event.seed, x.event.index);
           else if(x.event){ const me = x.event.board.find(b=>b.you); if(me){ me.gross = gross; me.vs = gross - x.event.target; }
-            const b = x.event.board.sort((p,q)=>p.vs-q.vs || (q.you?1:0)-(p.you?1:0)); let pos=0, prev=null;
-            b.forEach((row,i)=>{ if(row.vs!==prev){pos=i+1;prev=row.vs} row._p=pos; });
-            const ties={}; b.forEach(row=>ties[row._p]=(ties[row._p]||0)+1); b.forEach(row=>{ row.pos=(ties[row._p]>1?'T':'')+row._p; delete row._p; }); }
+            x.event.board = rankBoard(x.event); }
         }
       });
     };
