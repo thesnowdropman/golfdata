@@ -5350,7 +5350,7 @@ loadPersisted();
   // Event level is set by the round: first time on a 9-hole course = Club, any later
   // 9-hole round there = Tour, every 18-hole round = Major. HC = your index, rounded.
   const TIERS = {
-    club: {label:'Club',  why:'First round at this course', better:1, worse:5},
+    club: {label:'Club',  why:'First round at this course', better:0, worse:0},
     tour: {label:'Tour',  why:'You have played this course before', better:2, worse:Infinity},
     major:{label:'Major', why:'18-hole round', better:3, worse:Infinity}
   };
@@ -5359,10 +5359,22 @@ loadPersisted();
     const key = f.name.trim().toLowerCase();
     return rounds.some(r=>r.holes===9 && r.course.trim().toLowerCase()===key) ? 'tour' : 'club';
   }
-  function pickKids(tier, index){
+  // Club is a ladder: it starts with only the worst player (HC 42), and each Club win
+  // adds the next-worst player to later Club fields. A loss keeps the field the same.
+  function clubWins(beforeDate, exclude){
+    return rounds.filter(r => r !== exclude && r.event && r.event.tier === 'club' && Array.isArray(r.event.board)
+      && (!beforeDate || new Date(r.date) < new Date(beforeDate))
+      && String((rankBoard(r.event).find(x=>x.you)||{}).pos) === '1').length;
+  }
+  function pickKids(tier, index, ctx){
+    if(tier === 'club'){
+      const n = Math.min(KIDS.length, 1 + clubWins(ctx && ctx.date, ctx && ctx.round));
+      return KIDS.slice(0, n).map(k=>k.name); // KIDS runs worst (42) to best
+    }
     const hc = Math.round(index), t = TIERS[tier];
     return KIDS.filter(k => k.hcp >= hc - t.better && k.hcp <= hc + t.worse).map(k=>k.name);
   }
+
   // Consistency styles, relative to your own spread (1.0 = you). Fixed per player.
   const STYLES = {Steady:{sd:.8,blow:.03,form:1.2}, Average:{sd:1,blow:.06,form:1.6}, Streaky:{sd:1.05,blow:.07,form:2.4}, Volatile:{sd:1.3,blow:.13,form:2}};
 
@@ -5524,7 +5536,8 @@ loadPersisted();
     body.innerHTML = `
       <p class="idx-note" style="margin:0 0 12px;">${esc(f.name)} · ${f.holes} holes · par ${play.par}</p>
       <div class="tn-event"><b>${TIERS[tier].label} event</b><span>${TIERS[tier].why}</span>
-        <span>${picks.length} opponents, HC ${Math.min(...hs)} to ${Math.max(...hs)} · your HC ${Math.round(index)} · ${sizes.length} groups (${sizes.join('-')}), you're in the last</span></div>
+        ${tier==='club' ? `<span>Club ladder: ${clubWins()} Club win${clubWins()===1?'':'s'} so far. Win to add the next player.</span>` : ''}
+        <span>${picks.length} opponent${picks.length===1?'':'s'}, HC ${Math.min(...hs)}${picks.length>1?' to '+Math.max(...hs):''} · your HC ${Math.round(index)} · ${sizes.length} group${sizes.length===1?'':'s'}${sizes.length>1?' ('+sizes.join('-')+')':''}, you're in the last</span></div>
       <div class="tn-readout">
         <div><span class="tn-big">${sum(target,target.length)}</span><span class="tn-cap">Your target</span></div>
         <p>Rating ${f.rating.toFixed(1)} / slope ${f.slope} · index ${index.toFixed(1)}</p>
@@ -5673,7 +5686,7 @@ loadPersisted();
   const hasCard = r => r.holeDetail && Array.isArray(r.holeDetail.scores) && r.holeDetail.scores.length === r.holes && Array.isArray(r.holeDetail.pars);
   function makeEvent(r, tier, seed, index){
     const f = {name:r.course, holes:r.holes, rating:r.rating, slope:r.slope, pars:r.holeDetail.pars.map(p=>p||4)};
-    const S = {form:f, play:buildPlay(f), index, tier, picks:pickKids(tier, index), seed, mine:r.holeDetail.scores.slice()};
+    const S = {form:f, play:buildPlay(f), index, tier, picks:pickKids(tier, index, {date:r.date, round:r}), seed, mine:r.holeDetail.scores.slice()};
     S.target = targetFor(S.play, index);
     const F = buildField(S), n = r.holes;
     const rows = standings(n, S, F);
@@ -5758,7 +5771,7 @@ loadPersisted();
     const e = r.event, index = e.index != null ? e.index : indexBefore(r);
     let tier = e.tier && TIERS[e.tier] ? e.tier : tierAt(r);
     const draw = () => {
-      const size = pickKids(tier, index).length + 1;
+      const size = pickKids(tier, index, {date:r.date, round:r}).length + 1;
       box.innerHTML = `<div class="tn-edit">
         <label class="tn-lbl">Event level</label>
         <div class="tn-opts">${Object.entries(TIERS).map(([k,v])=>`<button type="button" data-tier="${k}" aria-pressed="${k===tier}">${v.label}</button>`).join('')}</div>
