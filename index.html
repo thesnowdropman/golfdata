@@ -331,6 +331,9 @@
   .tn-edit-holes i{font-style:normal;font-size:10px;color:#8a8368;}
   .tn-edit-holes small{font-size:8px;color:#8a8368;}
   .tn-edit-holes input{width:100%;min-width:0;text-align:center;font-family:var(--font-mono);font-size:14px;padding:5px 0;border:1px solid var(--line);border-radius:4px;background:var(--paper);color:var(--ink);}
+  .tn-click{cursor:pointer !important;}
+  .tn-click:hover td{background:var(--paper-tan);}
+  .tn-of{font-size:10px;color:#8a8368;}
   .tn-err{color:var(--flag) !important;font-weight:600;}
   /* ===== END BACKYARD OPEN ===== */
   @media (max-width:600px){
@@ -5694,9 +5697,9 @@ loadPersisted();
     return `<div class="tn-saved" data-key="${key}">
       <h4 class="tn-hole" style="margin:18px 0 2px;"><span class="wii-only">🏆 </span>Backyard Open<small>${tl} event</small></h4>
       <p class="idx-note" style="margin:0 0 8px;">${me.pos==1 ? 'Won' : me.pos=='T1' ? 'Tied for the win' : 'Finished '+esc(me.pos)} · field of ${e.board.length} · target ${e.target}</p>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;">${hasCard(r) ? `<button class="modal-edit" type="button" data-tn-act="editevent" data-key="${key}">Edit event</button>` : ''}${editBtn}</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;"><button class="modal-edit" type="button" data-tn-act="toggleboard">${tnCardOpen ? 'Hide' : 'Show'} leaderboard</button>${hasCard(r) ? `<button class="modal-edit" type="button" data-tn-act="editevent" data-key="${key}">Edit event</button>` : ''}${editBtn}</div>
       <div class="tn-editor"></div>
-      <div class="tn-boardwrap"><table class="tn-board">
+      <div class="tn-boardwrap" data-tn-board${tnCardOpen ? '' : ' hidden'}><table class="tn-board">
         <thead><tr><th>Pos</th><th>Player</th><th class="tn-n">Today</th><th class="tn-n">Gross</th></tr></thead>
         <tbody>${rows}</tbody></table></div></div>`;
   };
@@ -5712,14 +5715,42 @@ loadPersisted();
       if(p.app[t] == null) return; p.app[t]++; if(String(x.pos)==='1') p.win[t]++; }); });
     const tot = o => o.club + o.tour + o.major;
     const list = Object.values(P).sort((a,b)=> tot(b.win)-tot(a.win) || b.win.major-a.win.major || b.win.tour-a.win.tour || tot(b.app)-tot(a.app) || a.name.localeCompare(b.name));
-    const body = list.length ? list.map(p=>`<tr${p.you?' class="tn-you"':''}><td class="tn-name">${esc(p.name)}${p.hc!=null?`<small>HC ${p.hc}</small>`:''}</td><td class="tn-n">${tot(p.app)}</td><td class="tn-n">${p.win.club}</td><td class="tn-n">${p.win.tour}</td><td class="tn-n">${p.win.major}</td><td class="tn-n"><b>${tot(p.win)}</b></td></tr>`).join('')
+    const body = list.length ? list.map(p=>`<tr class="tn-click${p.you?' tn-you':''}" data-tn-act="player" data-name="${esc(p.name)}"><td class="tn-name">${esc(p.name)}${p.hc!=null?`<small>HC ${p.hc}</small>`:''}</td><td class="tn-n">${tot(p.app)}</td><td class="tn-n">${p.win.club}</td><td class="tn-n">${p.win.tour}</td><td class="tn-n">${p.win.major}</td><td class="tn-n"><b>${tot(p.win)}</b></td></tr>`).join('')
       : '<tr><td colspan="6">No Backyard Open events yet.</td></tr>';
-    return `<p class="note" style="margin:16px 0 6px;color:var(--fairway);font-weight:700;"><span class="wii-only">🏆 </span>Backyard Open (${evs.length} events)</p>
+    return `<button class="modal-edit" type="button" data-tn-act="togglestats" style="margin:16px 0 6px;"><span class="wii-only">🏆 </span>${tnStatsOpen ? 'Hide' : 'Show'} Backyard Open (${evs.length} events)</button>
+      <div id="tnStatsBox"${tnStatsOpen ? '' : ' hidden'}>
       <div class="tn-boardwrap"><table class="tn-board">
         <thead><tr><th>Player</th><th class="tn-n">Apps</th><th class="tn-n">Club</th><th class="tn-n">Tour</th><th class="tn-n">Major</th><th class="tn-n">Wins</th></tr></thead>
         <tbody>${body}</tbody></table></div>
-      <p class="idx-note" style="margin:6px 0 12px;">Club, Tour and Major columns are wins. Wins are outright firsts; ties for first don't count.</p>`;
+      <p class="idx-note" style="margin:6px 0 12px;">Club, Tour and Major columns are wins. Tap a player for their round-by-round finishes.</p></div>`;
   };
+
+  let tnStatsOpen = false, tnCardOpen = false;
+  const TIER_LBL = t => TIERS[t] ? TIERS[t].label : '—';
+  function openPlayerDetail(name){
+    const rowsData = rounds.filter(r=>r.event && Array.isArray(r.event.board))
+      .map(r=>{ const x = rankBoard(r.event).find(b => name==='You' ? b.you : (!b.you && b.n===name)); return x ? {r, x, size:r.event.board.length} : null; })
+      .filter(Boolean).sort((a,b)=>new Date(b.r.date)-new Date(a.r.date));
+    const hc = name==='You' ? null : (KIDS.find(k=>k.name===name)||{}).hcp;
+    document.getElementById('detailMiiRow').innerHTML = '';
+    document.getElementById('detailMiiRow').style.display = 'none';
+    document.getElementById('detailTitle').innerHTML = `<span id="courseTitleText">${esc(name)}</span><span class="crr-rs title-subline">${hc!=null ? 'HC '+hc+' · '+styleOf(name)+' · ' : ''}Backyard Open</span>`;
+    document.getElementById('detailTitle').style.marginTop = navStack.length > 0 ? '28px' : '0';
+    const wins = t => rowsData.filter(d=>String(d.x.pos)==='1' && (!t || d.r.event.tier===t)).length;
+    const body = rowsData.map(d=>{
+      const dt = new Date(d.r.date+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'2-digit'});
+      return `<tr class="tn-click${String(d.x.pos)==='1' ? ' tn-you' : ''}" data-tn-act="openround" data-key="${esc(roundKey(d.r))}"><td class="tn-name">${esc(d.r.course)}<small>${dt}</small></td><td>${TIER_LBL(d.r.event.tier)}</td><td class="tn-n">${esc(d.x.pos)}<small class="tn-of"> of ${d.size}</small></td><td class="tn-n ${cls(d.x.vs)}">${fmt(d.x.vs)}</td></tr>`;
+    }).join('');
+    document.getElementById('detailBody').innerHTML = `
+      <p class="note" style="margin:2px 0 12px;">${rowsData.length} appearances · ${wins()} wins (Club ${wins('club')}, Tour ${wins('tour')}, Major ${wins('major')})</p>
+      <div class="tn-boardwrap"><table class="tn-board">
+        <thead><tr><th>Round</th><th>Event</th><th class="tn-n">Finish</th><th class="tn-n">Today</th></tr></thead>
+        <tbody>${body || '<tr><td colspan="4">No appearances yet.</td></tr>'}</tbody></table></div>
+      <p class="idx-note" style="margin:6px 0 0;">Tap a round to open its card. Wins are highlighted.</p>`;
+    detailOverlay.classList.add('open');
+    try{ fitCourseTitle(); }catch(e){}
+    updateBackButton();
+  }
 
   function findRound(key){ return rounds.find(x => roundKey(x) === key); }
 
@@ -5800,6 +5831,12 @@ loadPersisted();
 
   document.getElementById('detailBody').addEventListener('click', ev=>{
     const btn = ev.target.closest('[data-tn-act]'); if(!btn) return;
+    const act0 = btn.dataset.tnAct;
+    if(act0 === 'togglestats'){ tnStatsOpen = !tnStatsOpen; $('tnStatsBox').hidden = !tnStatsOpen; btn.innerHTML = btn.innerHTML.replace(tnStatsOpen ? 'Show' : 'Hide', tnStatsOpen ? 'Hide' : 'Show'); return; }
+    if(act0 === 'toggleboard'){ tnCardOpen = !tnCardOpen; const bw = btn.closest('.tn-saved').querySelector('[data-tn-board]'); if(bw) bw.hidden = !tnCardOpen; btn.textContent = (tnCardOpen ? 'Hide' : 'Show') + ' leaderboard'; return; }
+    if(act0 === 'player'){ const name = btn.dataset.name; navStack.push(()=>openAllStatsDetail()); openPlayerDetail(name); return; }
+    if(act0 === 'openround'){ const rr = findRound(btn.dataset.key); if(!rr) return;
+      const name = document.getElementById('courseTitleText').textContent; navStack.push(()=>openPlayerDetail(name)); openDetail(rounds.indexOf(rr)); return; }
     const r = findRound(btn.dataset.key); if(!r) return;
     const box = btn.closest('.tn-saved').querySelector('.tn-editor');
     const act = btn.dataset.tnAct;
