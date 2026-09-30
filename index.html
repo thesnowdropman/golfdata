@@ -5357,6 +5357,13 @@ loadPersisted();
     tour: {label:'Tour',  why:'You have played this course before', better:2, worse:Infinity},
     major:{label:'Major', why:'18-hole round', better:3, worse:Infinity}
   };
+  // Majors rotate through four names in order, by date across all Major events.
+  const MAJORS = ['The Mudders','The P.B.&J. Championship','The U.S. Open Gate','The Old Fence Open'];
+  const MAJOR_SHORT = {'The Mudders':'Mudders','The P.B.&J. Championship':'PB&J','The U.S. Open Gate':'Gate','The Old Fence Open':'Old Fence'};
+  function majorRounds(){ return rounds.filter(r=>r.event && r.event.tier==='major').sort((a,b)=>new Date(a.date)-new Date(b.date) || (a.event.seed||0)-(b.event.seed||0)); }
+  function majorNameFor(r){ const i = majorRounds().indexOf(r); return MAJORS[(i<0 ? 0 : i) % MAJORS.length]; }
+  function nextMajorName(){ return MAJORS[majorRounds().length % MAJORS.length]; }
+  function eventTitle(tier, r){ return tier==='major' ? (r ? majorNameFor(r) : nextMajorName()) : (TIERS[tier] ? TIERS[tier].label+' event' : 'Backyard Open'); }
   function tierFor(f){
     if(f.holes===18) return 'major';
     const key = f.name.trim().toLowerCase();
@@ -5538,7 +5545,7 @@ loadPersisted();
     const sizes = groupSizes(picks.length+1);
     body.innerHTML = `
       <p class="idx-note" style="margin:0 0 12px;">${esc(f.name)} · ${f.holes} holes · par ${play.par}</p>
-      <div class="tn-event"><b>${TIERS[tier].label} event</b><span>${TIERS[tier].why}</span>
+      <div class="tn-event"><b>${eventTitle(tier)}</b><span>${tier==='major' ? 'Major · ' : ''}${TIERS[tier].why}</span>
         ${tier==='club' ? `<span>Club ladder: ${clubWins()} Club win${clubWins()===1?'':'s'} so far. Win to add the next player.</span>` : ''}
         <span>${picks.length} opponent${picks.length===1?'':'s'}, HC ${Math.min(...hs)}${picks.length>1?' to '+Math.max(...hs):''} · your HC ${Math.round(index)} · ${sizes.length} group${sizes.length===1?'':'s'}${sizes.length>1?' ('+sizes.join('-')+')':''}, you're in the last</span></div>
       <div class="tn-readout">
@@ -5552,7 +5559,7 @@ loadPersisted();
       </div>`;
     $('tnBack').onclick = () => overlay.classList.remove('open');
     $('tnTeeOff').onclick = () => {
-      T = {...draft, seed: Math.floor(Math.random()*1e9), mine: [], started: Date.now()};
+      T = {...draft, seed: Math.floor(Math.random()*1e9), mine: [], started: Date.now(), majorName: draft.tier==='major' ? nextMajorName() : null};
       field = buildField(T); save();
       addOverlay.classList.remove('open');
       refreshAddBlock(); renderLive();
@@ -5581,7 +5588,7 @@ loadPersisted();
       return `<tr class="${r.you?'tn-you':''}${r.thru?'':' tn-wait'}"><td>${r.label}</td><td class="tn-name">${esc(r.name)}<span class="tn-grp">G${r.group}</span>${mv}<small>${esc(r.note)}</small></td><td class="tn-n">${r.thru===n?'F':(r.thru||'–')}</td><td class="tn-n ${r.thru?cls(r.vs):''}">${r.thru?fmt(r.vs):'–'}</td><td class="tn-n">${r.thru?r.gross:'–'}</td></tr>`;
     }).join('');
     body.innerHTML = `
-      <p class="idx-note" style="margin:0 0 10px;">${esc(T.form.name)} · ${TIERS[T.tier].label} event · par ${T.play.par} · target ${sum(T.target,n)}</p>
+      <p class="idx-note" style="margin:0 0 10px;">${esc(T.form.name)} · ${esc(T.tier==='major' ? (T.majorName||nextMajorName()) : TIERS[T.tier].label+' event')} · par ${T.play.par} · target ${sum(T.target,n)}</p>
       <div class="strip" style="margin:0 0 14px;">
         <div class="cell"><div class="num">${mine?me.label:'–'}</div><div class="lbl">Position</div></div>
         <div class="cell flag"><div class="num">${fmt(me.vs)}</div><div class="lbl">Vs. target</div></div>
@@ -5711,7 +5718,7 @@ loadPersisted();
     const tl = TIERS[e.tier] ? TIERS[e.tier].label : 'Backyard';
     const rows = board.map(x=>`<tr class="${x.you?'tn-you':''}"><td>${esc(x.pos)}</td><td class="tn-name">${esc(x.n)}<span class="tn-grp">G${x.g}</span><small>${x.you ? 'Index '+Number(e.index).toFixed(1) : 'HC '+x.h+' · '+esc(x.st)}</small></td><td class="tn-n ${cls(x.vs)}">${fmt(x.vs)}</td><td class="tn-n">${x.gross}</td></tr>`).join('');
     return `<div class="tn-saved" data-key="${key}">
-      <h4 class="tn-hole" style="margin:18px 0 2px;"><span class="wii-only">🏆 </span>Backyard Open<small>${tl} event</small></h4>
+      <h4 class="tn-hole" style="margin:18px 0 2px;"><span class="wii-only">🏆 </span>${e.tier==='major' ? esc(majorNameFor(r)) : 'Backyard Open'}<small>${e.tier==='major' ? 'Major' : tl+' event'}</small></h4>
       <p class="idx-note" style="margin:0 0 8px;">${me.pos==1 ? 'Won' : me.pos=='T1' ? 'Tied for the win' : 'Finished '+esc(me.pos)} · field of ${e.board.length} · target ${e.target}</p>
       <div style="display:flex;gap:8px;flex-wrap:wrap;"><button class="modal-edit" type="button" data-tn-act="toggleboard">${tnCardOpen ? 'Hide' : 'Show'} leaderboard</button>${hasCard(r) ? `<button class="modal-edit" type="button" data-tn-act="editevent" data-key="${key}">Edit event</button>` : ''}${editBtn}</div>
       <div class="tn-editor"></div>
@@ -5758,7 +5765,7 @@ loadPersisted();
       const dt = new Date(d.r.date+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'2-digit'});
       const pm = d.r.course.match(/^(.*)\s\(([^)]+)\)$/); // "(18)", "(Back 9)" etc. move next to the date
       const nm = pm ? pm[1] : d.r.course;
-      return `<tr class="tn-click${String(d.x.pos)==='1' ? ' tn-you' : ''}" data-tn-act="openround" data-key="${esc(roundKey(d.r))}"><td class="tn-name tn-wrap">${esc(nm)}<small>${dt}${pm ? ' · '+esc(pm[2]) : ''}</small></td><td>${TIER_LBL(d.r.event.tier)}</td><td class="tn-n">${esc(d.x.pos)}<small class="tn-of"> of ${d.size}</small></td></tr>`;
+      return `<tr class="tn-click${String(d.x.pos)==='1' ? ' tn-you' : ''}" data-tn-act="openround" data-key="${esc(roundKey(d.r))}"><td class="tn-name tn-wrap">${esc(nm)}<small>${dt}${pm ? ' · '+esc(pm[2]) : ''}</small></td><td class="tn-wrap">${d.r.event.tier==='major' ? esc(MAJOR_SHORT[majorNameFor(d.r)]) : TIER_LBL(d.r.event.tier)}</td><td class="tn-n">${esc(d.x.pos)}<small class="tn-of"> of ${d.size}</small></td></tr>`;
     }).join('');
     document.getElementById('detailBody').innerHTML = `
       <p class="note" style="margin:2px 0 12px;">${rowsData.length} appearances · ${wins()} wins (Tour ${wins('tour')}, Major ${wins('major')}) · Club wins ${wins('club')}</p>
