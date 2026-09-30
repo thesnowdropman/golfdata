@@ -5751,6 +5751,7 @@ loadPersisted();
       : '<tr><td colspan="6">No Backyard Open events yet.</td></tr>';
     return `<button class="modal-edit" type="button" data-tn-act="togglestats" style="margin:16px 0 6px;"><span class="wii-only">🏆 </span>${tnStatsOpen ? 'Hide' : 'Show'} Backyard Open (${evs.length} events)</button>
       <div id="tnStatsBox"${tnStatsOpen ? '' : ' hidden'}>
+      <button class="modal-edit" type="button" data-tn-act="allevents" style="margin:0 0 8px;">Show All Events</button>
       <div class="tn-boardwrap"><table class="tn-board">
         <thead><tr><th>Player</th><th class="tn-n">Apps</th><th class="tn-n">Club</th><th class="tn-n">Tour</th><th class="tn-n">Major</th><th class="tn-n">Wins</th></tr></thead>
         <tbody>${body}</tbody></table></div>
@@ -5800,6 +5801,34 @@ loadPersisted();
     }
     return `<p class="note" style="margin:-8px 0 12px;display:flex;align-items:center;gap:6px;">${majorIcon(name, 22)}<span>Backyard Open: <strong>${esc(name)}</strong></span></p>`;
   };
+
+  // Every Backyard Open event, newest first
+  function openAllEvents(){
+    const list = rounds.filter(r=>r.event && Array.isArray(r.event.board)).sort((a,b)=>new Date(b.date)-new Date(a.date));
+    document.getElementById('detailMiiRow').innerHTML = '';
+    document.getElementById('detailMiiRow').style.display = 'none';
+    document.getElementById('detailTitle').innerHTML = `<span id="courseTitleText">All Events</span><span class="crr-rs title-subline">Backyard Open</span>`;
+    document.getElementById('detailTitle').style.marginTop = navStack.length > 0 ? '28px' : '0';
+    const rows = list.map(r=>{
+      const b = rankBoard(r.event), w = b.find(x=>String(x.pos)==='1') || b[0];
+      const isM = r.event.tier === 'major', mn = isM ? majorNameFor(r) : null;
+      const pm = r.course.match(/^(.*)\s\(([^)]+)\)$/);
+      const dt = new Date(r.date+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'2-digit'});
+      return `<tr class="tn-click${w.you ? ' tn-you' : ''}" data-tn-act="openround" data-from="allevents" data-key="${esc(roundKey(r))}">
+        <td class="tn-wrap"><span class="tn-evlink" data-tn-act="eventhist" data-ev="${esc(isM ? mn : r.event.tier)}" data-from="allevents">${isM ? majorIcon(mn, 18)+esc(MAJOR_SHORT[mn]) : TIER_LBL(r.event.tier)}</span></td>
+        <td class="tn-name tn-wrap">${esc(pm ? pm[1] : r.course)}<small>${dt}${pm ? ' · '+esc(pm[2]) : ''}</small></td>
+        <td class="tn-name tn-wrap">${esc(w.you ? 'You' : w.n)}${w.you ? '' : `<small>HC ${w.h}</small>`}</td></tr>`;
+    }).join('');
+    document.getElementById('detailBody').innerHTML = `
+      <p class="note" style="margin:2px 0 8px;">${list.length} event${list.length===1?'':'s'}</p>
+      <div class="tn-boardwrap"><table class="tn-board">
+        <thead><tr><th>Event</th><th>Round</th><th>Winner</th></tr></thead>
+        <tbody>${rows || '<tr><td colspan="3">No events yet.</td></tr>'}</tbody></table></div>
+      <p class="idx-note" style="margin:6px 0 0;">Tap an event name for its history, or a row to open the round. Your wins are highlighted.</p>`;
+    detailOverlay.classList.add('open');
+    try{ fitCourseTitle(); }catch(e){}
+    updateBackButton();
+  }
 
   // History of one event: a Major by name, or all Club / all Tour events
   function openEventHistory(ev){
@@ -5918,11 +5947,14 @@ loadPersisted();
       box.querySelectorAll('[data-tn-pane]').forEach(p=>p.hidden = p.dataset.tnPane !== btn.dataset.tab); return; }
     if(act0 === 'toggleboard'){ tnCardOpen = !tnCardOpen; const bw = btn.closest('.tn-saved').querySelector('[data-tn-board]'); if(bw) bw.hidden = !tnCardOpen; btn.textContent = (tnCardOpen ? 'Hide' : 'Show') + ' leaderboard'; return; }
     if(act0 === 'player'){ const name = btn.dataset.name; navStack.push(()=>openAllStatsDetail()); openPlayerDetail(name); return; }
+    if(act0 === 'allevents'){ navStack.push(()=>openAllStatsDetail()); openAllEvents(); return; }
     if(act0 === 'eventhist'){ ev.stopPropagation();
-      if(btn.dataset.from === 'player'){ const nm = btn.dataset.name; navStack.push(()=>openPlayerDetail(nm)); }
+      if(btn.dataset.from === 'allevents'){ navStack.push(()=>openAllEvents()); }
+      else if(btn.dataset.from === 'player'){ const nm = btn.dataset.name; navStack.push(()=>openPlayerDetail(nm)); }
       else { const rr = findRound(btn.dataset.key); navStack.push(()=>{ window.tnOpenEventTab = true; openDetail(rounds.indexOf(rr)); }); }
       openEventHistory(btn.dataset.ev); return; }
     if(act0 === 'openround'){ const rr = findRound(btn.dataset.key); if(!rr) return;
+      if(btn.dataset.from === 'allevents'){ navStack.push(()=>openAllEvents()); window.tnOpenEventTab = true; openDetail(rounds.indexOf(rr)); return; }
       if(btn.dataset.from === 'event'){ const evn = btn.dataset.ev; navStack.push(()=>openEventHistory(evn)); window.tnOpenEventTab = true; openDetail(rounds.indexOf(rr)); return; }
       const name = document.getElementById('courseTitleText').textContent; navStack.push(()=>openPlayerDetail(name)); window.tnOpenEventTab = true; openDetail(rounds.indexOf(rr)); return; }
     const r = findRound(btn.dataset.key); if(!r) return;
