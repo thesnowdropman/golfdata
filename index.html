@@ -334,6 +334,7 @@
   .tn-click{cursor:pointer !important;}
   .tn-click:hover td{background:var(--paper-tan);}
   .tn-of{font-size:10px;color:#8a8368;}
+  .tn-board td.tn-wrap{white-space:normal;}
   .tn-err{color:var(--flag) !important;font-weight:600;}
   /* ===== END BACKYARD OPEN ===== */
   @media (max-width:600px){
@@ -2663,6 +2664,8 @@ function fiftiethRoundDate(){
 function updateProjection(){
   const noteEl = document.getElementById('regressionCrossNote');
   if(!noteEl) return;
+  // Projection lines removed by request; keep the element empty and hidden.
+  noteEl.innerHTML = ''; noteEl.style.display = 'none'; return;
   const crossDate = regressionCrossDate();
   let html;
   if(!crossDate){
@@ -5508,7 +5511,7 @@ loadPersisted();
     } else {
       banner.style.display = 'none';
       start.style.display = 'block';
-      $('tnStartHint').textContent = 'Score it hole by hole against the Backyard Kids instead of entering a finished round.';
+      $('tnStartHint').textContent = '';
       $('tnStartHint').classList.remove('tn-err');
     }
   }
@@ -5571,7 +5574,7 @@ loadPersisted();
       head = `<h4 class="tn-hole">Hole ${h.no}<small>par ${h.par}${h.y?' · '+h.y+' yds':''}${h.si!=null?' · SI '+h.si:''} · target ${T.target[mine]}</small></h4>`;
     }
     const names = {'-2':'eagle','-1':'birdie','0':'par','1':'bogey','2':'double','3':'triple'};
-    const pad = done ? '' : `<div class="tn-pad">${Array.from({length:10},(_,i)=>h.par-1+i).map(s=>`<button type="button" data-s="${s}">${s}<em>${names[s-h.par]||''}</em></button>`).join('')}</div>`;
+    const pad = done ? '' : `<div class="tn-pad">${Array.from({length:10},(_,i)=>2+i).map(s=>`<button type="button" data-s="${s}">${s}<em>${names[s-h.par]||''}</em></button>`).join('')}</div>`;
     const card = `<div class="tn-card">${holes.map((hh,i)=>`<div class="${i===mine?'cur':''}"><i>${hh.no}</i>${T.mine[i]??'·'}<s>${T.target[i]}</s></div>`).join('')}</div>`;
     const board = rows.map(r=>{
       let mv=''; if(r.pos && prevPos[r.name]){ const d=prevPos[r.name]-r.pos; if(d>0) mv=` <span class="tn-mv">▲${d}</span>`; else if(d<0) mv=` <span class="tn-mv">▼${-d}</span>`; }
@@ -5727,15 +5730,16 @@ loadPersisted();
       const p = get(x.you ? 'You' : x.n, !!x.you, x.you ? null : x.h);
       if(p.app[t] == null) return; p.app[t]++; if(String(x.pos)==='1') p.win[t]++; }); });
     const tot = o => o.club + o.tour + o.major;
-    const list = Object.values(P).sort((a,b)=> tot(b.win)-tot(a.win) || b.win.major-a.win.major || b.win.tour-a.win.tour || tot(b.app)-tot(a.app) || a.name.localeCompare(b.name));
-    const body = list.length ? list.map(p=>`<tr class="tn-click${p.you?' tn-you':''}" data-tn-act="player" data-name="${esc(p.name)}"><td class="tn-name">${esc(p.name)}${p.hc!=null?`<small>HC ${p.hc}</small>`:''}</td><td class="tn-n">${tot(p.app)}</td><td class="tn-n">${p.win.club}</td><td class="tn-n">${p.win.tour}</td><td class="tn-n">${p.win.major}</td><td class="tn-n"><b>${tot(p.win)}</b></td></tr>`).join('')
+    const totW = o => o.tour + o.major; // Club wins don't count toward total wins
+    const list = Object.values(P).sort((a,b)=> totW(b.win)-totW(a.win) || b.win.major-a.win.major || b.win.tour-a.win.tour || tot(b.app)-tot(a.app) || a.name.localeCompare(b.name));
+    const body = list.length ? list.map(p=>`<tr class="tn-click${p.you?' tn-you':''}" data-tn-act="player" data-name="${esc(p.name)}"><td class="tn-name">${esc(p.name)}${p.hc!=null?`<small>HC ${p.hc}</small>`:''}</td><td class="tn-n">${tot(p.app)}</td><td class="tn-n">${p.win.club}</td><td class="tn-n">${p.win.tour}</td><td class="tn-n">${p.win.major}</td><td class="tn-n"><b>${totW(p.win)}</b></td></tr>`).join('')
       : '<tr><td colspan="6">No Backyard Open events yet.</td></tr>';
     return `<button class="modal-edit" type="button" data-tn-act="togglestats" style="margin:16px 0 6px;"><span class="wii-only">🏆 </span>${tnStatsOpen ? 'Hide' : 'Show'} Backyard Open (${evs.length} events)</button>
       <div id="tnStatsBox"${tnStatsOpen ? '' : ' hidden'}>
       <div class="tn-boardwrap"><table class="tn-board">
         <thead><tr><th>Player</th><th class="tn-n">Apps</th><th class="tn-n">Club</th><th class="tn-n">Tour</th><th class="tn-n">Major</th><th class="tn-n">Wins</th></tr></thead>
         <tbody>${body}</tbody></table></div>
-      <p class="idx-note" style="margin:6px 0 12px;">Club, Tour and Major columns are wins. Tap a player for their round-by-round finishes.</p></div>`;
+      <p class="idx-note" style="margin:6px 0 12px;">Club, Tour and Major columns are wins. Total wins count Tour and Major only. Tap a player for their round-by-round finishes.</p></div>`;
   };
 
   let tnStatsOpen = false, tnCardOpen = false;
@@ -5749,16 +5753,18 @@ loadPersisted();
     document.getElementById('detailMiiRow').style.display = 'none';
     document.getElementById('detailTitle').innerHTML = `<span id="courseTitleText">${esc(name)}</span><span class="crr-rs title-subline">${hc!=null ? 'HC '+hc+' · '+styleOf(name)+' · ' : ''}Backyard Open</span>`;
     document.getElementById('detailTitle').style.marginTop = navStack.length > 0 ? '28px' : '0';
-    const wins = t => rowsData.filter(d=>String(d.x.pos)==='1' && (!t || d.r.event.tier===t)).length;
+    const wins = t => rowsData.filter(d=>String(d.x.pos)==='1' && (t ? d.r.event.tier===t : d.r.event.tier!=='club')).length;
     const body = rowsData.map(d=>{
       const dt = new Date(d.r.date+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'2-digit'});
-      return `<tr class="tn-click${String(d.x.pos)==='1' ? ' tn-you' : ''}" data-tn-act="openround" data-key="${esc(roundKey(d.r))}"><td class="tn-name">${esc(d.r.course)}<small>${dt}</small></td><td>${TIER_LBL(d.r.event.tier)}</td><td class="tn-n">${esc(d.x.pos)}<small class="tn-of"> of ${d.size}</small></td><td class="tn-n ${cls(d.x.vs)}">${fmt(d.x.vs)}</td></tr>`;
+      const pm = d.r.course.match(/^(.*)\s\(([^)]+)\)$/); // "(18)", "(Back 9)" etc. move next to the date
+      const nm = pm ? pm[1] : d.r.course;
+      return `<tr class="tn-click${String(d.x.pos)==='1' ? ' tn-you' : ''}" data-tn-act="openround" data-key="${esc(roundKey(d.r))}"><td class="tn-name tn-wrap">${esc(nm)}<small>${dt}${pm ? ' · '+esc(pm[2]) : ''}</small></td><td>${TIER_LBL(d.r.event.tier)}</td><td class="tn-n">${esc(d.x.pos)}<small class="tn-of"> of ${d.size}</small></td></tr>`;
     }).join('');
     document.getElementById('detailBody').innerHTML = `
-      <p class="note" style="margin:2px 0 12px;">${rowsData.length} appearances · ${wins()} wins (Club ${wins('club')}, Tour ${wins('tour')}, Major ${wins('major')})</p>
+      <p class="note" style="margin:2px 0 12px;">${rowsData.length} appearances · ${wins()} wins (Tour ${wins('tour')}, Major ${wins('major')}) · Club wins ${wins('club')}</p>
       <div class="tn-boardwrap"><table class="tn-board">
-        <thead><tr><th>Round</th><th>Event</th><th class="tn-n">Finish</th><th class="tn-n">Today</th></tr></thead>
-        <tbody>${body || '<tr><td colspan="4">No appearances yet.</td></tr>'}</tbody></table></div>
+        <thead><tr><th>Round</th><th>Event</th><th class="tn-n">Finish</th></tr></thead>
+        <tbody>${body || '<tr><td colspan="3">No appearances yet.</td></tr>'}</tbody></table></div>
       <p class="idx-note" style="margin:6px 0 0;">Tap a round to open its card. Wins are highlighted.</p>`;
     detailOverlay.classList.add('open');
     try{ fitCourseTitle(); }catch(e){}
