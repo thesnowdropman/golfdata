@@ -339,6 +339,7 @@
   .tn-tabs .view-toggle-btn{background:var(--paper);}
   .tn-tabs .view-toggle-btn.active{background:var(--fairway);}
   .tn-evlink{cursor:pointer;display:inline-flex;align-items:center;text-decoration:underline;text-decoration-color:var(--line);text-underline-offset:3px;}
+  .tn-board td.tn-nowrap{white-space:nowrap;}
   .tn-err{color:var(--flag) !important;font-weight:600;}
   /* ===== END BACKYARD OPEN ===== */
   @media (max-width:600px){
@@ -5856,9 +5857,9 @@ loadPersisted();
       const pm = r.course.match(/^(.*)\s\(([^)]+)\)$/);
       const dt = new Date(r.date+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'2-digit'});
       return `<tr class="tn-click" data-tn-act="openround" data-from="allevents" data-key="${esc(roundKey(r))}">
-        <td class="tn-wrap"><span class="tn-evlink" data-tn-act="eventhist" data-ev="${esc(isM ? mn : r.event.tier)}" data-from="allevents">${isM ? majorIcon(mn, 18)+esc(({'The Mudders':'Mudders','The PBJ Championship':'PBJ Champ','The U.S. Open Gate':'Open Gate','The Earl Grey Open':'Earl Grey'})[mn]) : TIER_LBL(r.event.tier)+' Event'}</span></td>
-        <td class="tn-name tn-wrap">${esc(pm ? pm[1] : r.course)}<small>${dt}${pm ? ' · '+esc(pm[2]) : ''}</small></td>
-        <td class="tn-name tn-wrap">${w.you ? '<b>You</b>' : esc(shortName(w.n))+`<small>HC ${w.h}</small>`}</td></tr>`;
+        <td class="tn-nowrap"><span class="tn-evlink" data-tn-act="eventhist" data-ev="${esc(isM ? mn : r.event.tier)}" data-from="allevents">${isM ? majorIcon(mn, 18)+esc(({'The Mudders':'Mudders','The PBJ Championship':'PBJ Champ','The U.S. Open Gate':'Open Gate','The Earl Grey Open':'Earl Grey'})[mn]) : TIER_LBL(r.event.tier)+' Event'}</span></td>
+        <td class="tn-name tn-wrap">${esc((pm ? pm[1] : r.course).replace(/\s+[-–]\s+.*$/, ''))}<small>${dt}</small></td>
+        <td class="tn-name tn-nowrap">${w.you ? '<b>You</b>' : esc(shortName(w.n))+`<small>HC ${w.h}</small>`}</td></tr>`;
     }).join('');
     document.getElementById('detailBody').innerHTML = `
       <p class="note" style="margin:2px 0 8px;">${list.length} event${list.length===1?'':'s'}</p>
