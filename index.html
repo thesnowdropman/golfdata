@@ -346,6 +346,10 @@
   @media (hover:hover){ .tn-click:hover td{background:var(--paper-tan);} }
   .tn-hubmenu{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
   .tn-hubmenu .btn{width:100%;}
+  .tn-titlelogo{float:right;margin:0 0 0 10px;line-height:0;}
+  #detailBody .tn-tabs{clear:both;}
+  #detailTitle::after{content:'';display:block;clear:both;}
+  .tn-titlelogo img{margin:0;}
   .tn-err{color:var(--flag) !important;font-weight:600;}
   /* ===== END BACKYARD OPEN ===== */
   @media (max-width:600px){
@@ -5399,7 +5403,7 @@ loadPersisted();
   const TIERS = {
     club: {label:'Club',  why:'First round at this course', better:0, worse:0},
     tour: {label:'Tour',  why:'You have played this course before', better:2, worse:Infinity},
-    major:{label:'Major', why:'18-hole round', better:3, worse:Infinity}
+    major:{label:'Major', why:'18-hole round', better:2, worse:Infinity}
   };
   // Majors rotate through four names in order, by date across all Major events.
   const MAJORS = ['The Mudders','The PBJ Championship','The U.S. Open Gate','The Earl Grey Open'];
@@ -5424,6 +5428,10 @@ loadPersisted();
   // Club/Tour events are named after the course: "Country Club"/"CC" -> "Invitational",
   // "Golf ..." -> "Open" (otherwise "Open" is added), then a Roman numeral per playing.
   function roman(n){ const t=[[1000,'M'],[900,'CM'],[500,'D'],[400,'CD'],[100,'C'],[90,'XC'],[50,'L'],[40,'XL'],[10,'X'],[9,'IX'],[5,'V'],[4,'IV'],[1,'I']]; let o=''; t.forEach(([v,sy])=>{ while(n>=v){ o+=sy; n-=v; } }); return o; }
+  // Short course label for event tables: no tee info, nothing after a dash, and "Golf ..." / "Country ..." dropped
+  function courseShort(course){
+    return course.replace(/\s\([^)]*\)\s*$/, '').replace(/\s+[-–]\s+.*$/, '').replace(/\s+\b(golf|country)\b.*$/i, '').trim();
+  }
   function seriesName(course){
     let n = course.replace(/\s\([^)]*\)\s*$/, '').replace(/\s+[-–]\s+.*$/, '').trim();
     if(/\b(country club|cc)\b/i.test(n)) return n.replace(/\s*\b(country club|cc)\b.*$/i, '').trim() + ' Invitational';
@@ -5938,7 +5946,7 @@ loadPersisted();
       const pm = r.course.match(/^(.*)\s\(([^)]+)\)$/);
       const dt = new Date(r.date+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'2-digit'});
       return `<tr class="tn-click" data-tn-act="openround" data-from="allevents" data-key="${esc(roundKey(r))}">
-        <td class="tn-name tn-wrap"><span class="tn-evlink" data-tn-act="eventhist" data-ev="${esc(isM ? mn : 'series:'+seriesName(r.course))}" data-from="allevents">${isM ? majorIcon(mn, 18) : ''}${esc(eventName(r))}</span><small>${dt}${isM ? ' · '+esc((pm ? pm[1] : r.course).replace(/\s+[-–]\s+.*$/, '')) : ''}</small></td>
+        <td class="tn-name tn-wrap"><span class="tn-evlink" data-tn-act="eventhist" data-ev="${esc(isM ? mn : 'series:'+seriesName(r.course))}" data-from="allevents">${isM ? majorIcon(mn, 18) : ''}${esc(eventName(r))}</span><small>${dt}${isM ? ' · '+esc(courseShort(r.course)) : ''}</small></td>
         <td class="tn-name tn-nowrap"><span class="tn-plink" data-tn-act="player" data-name="${esc(w.you ? 'You' : w.n)}" data-from="allevents">${w.you ? '<b>You</b>' : esc(shortName(w.n))}</span><small>HC ${w.you ? Number(r.event.index).toFixed(1) : w.h} (${fmt(w.vs)})</small></td></tr>`;
     }).join('');
     document.getElementById('detailBody').innerHTML = `
@@ -5960,7 +5968,8 @@ loadPersisted();
     const title = all ? 'All Majors' : isMajor ? ev : series ? series : (TIERS[ev] ? TIERS[ev].label+' events' : 'Backyard Open');
     document.getElementById('detailMiiRow').innerHTML = '';
     document.getElementById('detailMiiRow').style.display = 'none';
-    document.getElementById('detailTitle').innerHTML = `<span id="courseTitleText">${esc(title)}</span><span class="crr-rs title-subline">${isMajor ? 'Major · ' : ''}Backyard Open</span>`;
+    const logo = isMajor && !all && MAJOR_ICONS[ev] ? `<span class="tn-titlelogo">${majorIcon(ev, 60)}</span>` : '';
+    document.getElementById('detailTitle').innerHTML = `${logo}<span id="courseTitleText">${esc(title)}</span><span class="crr-rs title-subline">${isMajor ? 'Major · ' : ''}Backyard Open</span>`;
     document.getElementById('detailTitle').style.marginTop = navStack.length > 0 ? '28px' : '0';
     const winsBy = {};
     const rows = list.map(r=>{
@@ -5969,12 +5978,11 @@ loadPersisted();
       const pm = r.course.match(/^(.*)\s\(([^)]+)\)$/);
       const dt = new Date(r.date+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'2-digit'});
       const mn = all ? majorNameFor(r) : null;
-      return `<tr class="tn-click${w.you ? ' tn-you' : ''}" data-tn-act="openround" data-from="event" data-ev="${esc(ev)}" data-view="${all ? 'all' : 'one'}" data-key="${esc(roundKey(r))}"><td class="tn-name tn-wrap">${r.event.tier==='major' ? majorIcon(majorNameFor(r), 18)+esc(MAJOR_SHORT[majorNameFor(r)]) : esc(eventName(r))}<small>${dt} · ${esc((pm ? pm[1] : r.course).replace(/\s+[-–]\s+.*$/, ''))}</small></td><td class="tn-name tn-wrap"><span class="tn-plink" data-tn-act="player" data-name="${esc(wn)}" data-from="event" data-ev="${esc(ev)}" data-view="${all ? 'all' : 'one'}">${esc(shortName(wn))}</span><small style="white-space:nowrap">HC ${w.you ? Number(r.event.index).toFixed(1) : w.h} (${fmt(w.vs)})</small></td><td class="tn-n">${esc(ordinal(me.pos))}</td></tr>`;
+      return `<tr class="tn-click${w.you ? ' tn-you' : ''}" data-tn-act="openround" data-from="event" data-ev="${esc(ev)}" data-view="${all ? 'all' : 'one'}" data-key="${esc(roundKey(r))}"><td class="tn-name tn-wrap">${r.event.tier==='major' ? majorIcon(majorNameFor(r), 18)+esc(MAJOR_SHORT[majorNameFor(r)]) : esc(eventName(r))}<small>${dt} · ${esc(courseShort(r.course))}</small></td><td class="tn-name tn-wrap"><span class="tn-plink" data-tn-act="player" data-name="${esc(wn)}" data-from="event" data-ev="${esc(ev)}" data-view="${all ? 'all' : 'one'}">${esc(shortName(wn))}</span><small style="white-space:nowrap">HC ${w.you ? Number(r.event.index).toFixed(1) : w.h} (${fmt(w.vs)})</small></td><td class="tn-n">${esc(ordinal(me.pos))}</td></tr>`;
     }).join('');
     const champs = Object.entries(winsBy).sort((a,b)=>b[1]-a[1]).map(([n,c])=>`${esc(shortName(n))} ${c}`).join(' · ');
     document.getElementById('detailBody').innerHTML = `
       ${isMajor ? `<div class="view-toggle tn-tabs" style="display:flex;margin:4px 0 10px;"><button type="button" class="view-toggle-btn${all?'':' active'}" data-tn-act="majortab" data-ev="${esc(ev)}" data-view="one">${esc(MAJOR_SHORT[ev])}</button><button type="button" class="view-toggle-btn${all?' active':''}" data-tn-act="majortab" data-ev="${esc(ev)}" data-view="all">All Majors</button></div>` : ''}
-      ${isMajor && !all && MAJOR_ICONS[ev] ? `<div style="margin:4px 0 8px;">${majorIcon(ev, 72)}</div>` : ''}
       <p class="note" style="margin:2px 0 4px;">Played ${list.length} time${list.length===1?'':'s'}${champs ? ' · Winners: '+champs : ''}</p>
       <div class="tn-boardwrap"><table class="tn-board">
         <thead><tr><th>Event</th><th>Winner</th><th class="tn-n">You</th></tr></thead>
