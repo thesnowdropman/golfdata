@@ -340,6 +340,12 @@
   .tn-tabs .view-toggle-btn.active{background:var(--fairway);}
   .tn-evlink{cursor:pointer;display:inline-flex;align-items:center;text-decoration:underline;text-decoration-color:var(--line);text-underline-offset:3px;}
   .tn-board td.tn-nowrap{white-space:nowrap;}
+  .tn-plink{cursor:pointer;color:inherit;}
+  #detailBody [data-tn-act], #detailBody .tn-click{-webkit-tap-highlight-color:transparent;}
+  .tn-click:hover td{background:none;}
+  @media (hover:hover){ .tn-click:hover td{background:var(--paper-tan);} }
+  .tn-hubmenu{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  .tn-hubmenu .btn{width:100%;}
   .tn-err{color:var(--flag) !important;font-weight:600;}
   /* ===== END BACKYARD OPEN ===== */
   @media (max-width:600px){
@@ -426,6 +432,7 @@
     <p class="note" id="courseRecordsSeeMore" style="font-style:italic;cursor:pointer;margin:8px 0 0;display:none;">Show more…</p>
     <p class="note" id="showAllStatsLink" style="font-weight:700;cursor:pointer;margin:10px 0 0;display:none;">📊 Show All Stats</p>
     <p class="note" id="showAllCoursesLink" style="font-weight:700;cursor:pointer;margin:10px 0 0;display:none;">⛳ Show All Courses</p>
+    <p class="note" id="backyardOpenLink" style="font-weight:700;cursor:pointer;margin:10px 0 0;">🏆 Backyard Open</p>
   </section>
 
 </div>
@@ -2754,6 +2761,10 @@ function openDetail(idx){
   const scoreVsExpDiffForCard = expAtTimeForCard !== null ? actualScoreForCard - expAtTimeForCard : null;
   const scoreVsExpTextForCard = scoreVsExpDiffForCard === null ? '' : (scoreVsExpDiffForCard === 0 ? ' (E)' : ` (${scoreVsExpDiffForCard > 0 ? '+' : ''}${scoreVsExpDiffForCard})`);
   let body = `<p class="note" style="margin:2px 0 0;">${dateFmt} · ${r.holes}-hole round</p>`;
+  // Scorecard and Backyard Open tabs sit above everything; Backyard Open shows only the standings
+  const tnEvTab = !!window.tnOpenEventTab; window.tnOpenEventTab = false;
+  body += `<div class="view-toggle tn-tabs" style="display:flex;margin:12px 0 4px;"><button type="button" class="view-toggle-btn${tnEvTab?'':' active'}" data-tn-act="tab" data-tab="card">Scorecard</button><button type="button" class="view-toggle-btn${tnEvTab?' active':''}" data-tn-act="tab" data-tab="event">Backyard Open</button></div>`;
+  body += `<div data-tn-pane="card"${tnEvTab?' hidden':''}>`;
   if(expAtTimeForCard !== null){
     body += `<div class="strip round-detail-strip" style="margin:10px 0 0;">
       <div class="cell"><div class="icon-row">🎯</div><div class="num">${expAtTimeForCard}</div><div class="lbl">Exp. Score</div></div>
@@ -2772,10 +2783,7 @@ function openDetail(idx){
   </div>`;
   body += `<p class="idx-note" id="roundBadgeExplain" style="display:none;margin:8px 0 0;font-size:12px;"></p>`;
 
-  // Scorecard and Backyard Open as two tabs
-  const tnEvTab = !!window.tnOpenEventTab; window.tnOpenEventTab = false;
-  body += `<div class="view-toggle tn-tabs" style="display:flex;margin:14px 0 4px;"><button type="button" class="view-toggle-btn${tnEvTab?'':' active'}" data-tn-act="tab" data-tab="card">Scorecard</button><button type="button" class="view-toggle-btn${tnEvTab?' active':''}" data-tn-act="tab" data-tab="event">Backyard Open</button></div>`;
-  body += `<div data-tn-pane="card"${tnEvTab?' hidden':''}>` + buildSingleRoundScorecardHtml(r) + `</div>`;
+  body += buildSingleRoundScorecardHtml(r) + `</div>`;
   body += `<div data-tn-pane="event"${tnEvTab?'':' hidden'}>` + (typeof window.tnEventHtml === 'function' ? window.tnEventHtml(r) : '') + `</div>`;
 
   body += `<div style="text-align:center;margin-top:14px;display:flex;gap:10px;justify-content:center;">
@@ -3036,7 +3044,6 @@ function openAllStatsDetail(){
     ${scorecardHtml}
     <p class="note" style="margin:16px 0 2px;"><strong>Total holes played:</strong> ${s.totalHolesPlayed}</p>
     <p class="note" style="margin:0 0 12px;"><strong>Total strokes taken:</strong> ${s.totalStrokes}</p>
-    ${typeof window.tnStatsHtml === 'function' ? window.tnStatsHtml() : ''}
     <p class="note" style="margin:16px 0 2px;color:var(--fairway);font-weight:700;">Score distribution (${s.totalHolesWithDetail} holes with detail on file)</p>
     ${distHtml}
     ${otherLine}
@@ -5795,7 +5802,7 @@ loadPersisted();
     const board = rankBoard(e);
     const me = board.find(x=>x.you) || {};
     const tl = TIERS[e.tier] ? TIERS[e.tier].label : 'Backyard';
-    const rows = board.map(x=>`<tr class="${x.you?'tn-you':''}"><td>${esc(x.pos)}</td><td class="tn-name">${esc(x.n)}<span class="tn-grp">G${x.g}</span><small>${x.you ? 'Index '+Number(e.index).toFixed(1) : 'HC '+x.h+' · '+esc(x.st)}</small></td><td class="tn-n ${cls(x.vs)}">${fmt(x.vs)}</td><td class="tn-n">${x.gross}</td></tr>`).join('');
+    const rows = board.map(x=>`<tr class="${x.you?'tn-you':''}"><td>${esc(x.pos)}</td><td class="tn-name"><span class="tn-plink" data-tn-act="player" data-name="${esc(x.you ? 'You' : x.n)}" data-from="round" data-key="${key}">${esc(x.n)}</span><span class="tn-grp">G${x.g}</span><small>${x.you ? 'Index '+Number(e.index).toFixed(1) : 'HC '+x.h+' · '+esc(x.st)}</small></td><td class="tn-n ${cls(x.vs)}">${fmt(x.vs)}</td><td class="tn-n">${x.gross}</td></tr>`).join('');
     return `<div class="tn-saved" data-key="${key}">
       <h4 class="tn-hole" style="margin:10px 0 2px;display:flex;align-items:center;gap:6px;"><span class="wii-only">🏆 </span><span class="tn-evlink" data-tn-act="eventhist" data-ev="${esc(e.tier==='major' ? majorNameFor(r) : 'series:'+seriesName(r.course))}" data-from="round" data-key="${key}">${e.tier==='major' ? majorIcon(majorNameFor(r), 30)+esc(majorNameFor(r)) : esc(eventName(r))}</span><small>${e.tier==='major' ? 'Major' : esc(tl)+' event'}</small></h4>
       <p class="idx-note" style="margin:0 0 8px;">${me.pos==1 ? 'Won' : me.pos=='T1' ? 'Tied for the win' : 'Finished '+esc(ordinal(me.pos))} · field of ${e.board.length} · target ${e.target}</p>
@@ -5820,9 +5827,7 @@ loadPersisted();
     const list = Object.values(P).sort((a,b)=> totW(b.win)-totW(a.win) || b.win.major-a.win.major || b.win.tour-a.win.tour || tot(b.app)-tot(a.app) || a.name.localeCompare(b.name));
     const body = list.length ? list.map(p=>`<tr class="tn-click${p.you?' tn-you':''}" data-tn-act="player" data-name="${esc(p.name)}"><td class="tn-name">${esc(shortName(p.name))}${p.hc!=null?`<small>HC ${p.hc}</small>`:''}</td><td class="tn-n">${tot(p.app)}</td><td class="tn-n">${p.win.club}</td><td class="tn-n">${p.win.tour}</td><td class="tn-n">${p.win.major}</td><td class="tn-n"><b>${totW(p.win)}</b></td></tr>`).join('')
       : '<tr><td colspan="6">No Backyard Open events yet.</td></tr>';
-    return `<button class="modal-edit" type="button" data-tn-act="togglestats" style="margin:16px 0 6px;"><span class="wii-only">🏆 </span>${tnStatsOpen ? 'Hide' : 'Show'} Backyard Open (${evs.length} events)</button>
-      <div id="tnStatsBox"${tnStatsOpen ? '' : ' hidden'}>
-      <button class="modal-edit" type="button" data-tn-act="allevents" style="margin:0 0 8px;">Show All Events</button>
+    return `      <div id="tnStatsBox">
       <div class="tn-boardwrap"><table class="tn-board">
         <thead><tr><th>Player</th><th class="tn-n">Apps</th><th class="tn-n">Club</th><th class="tn-n">Tour</th><th class="tn-n">Major</th><th class="tn-n">Wins</th></tr></thead>
         <tbody>${body}</tbody></table></div>
@@ -5874,6 +5879,52 @@ loadPersisted();
     return `<p class="note" style="margin:-8px 0 12px;display:flex;align-items:center;gap:6px;"><span class="tn-evlink" data-tn-act="eventhist" data-ev="${esc(evKey)}" data-from="future" data-fid="${esc(f.id)}">${majorIcon(name, 22)}<span>Backyard Open: <strong>${esc(name)}</strong></span></span></p>`;
   };
 
+  function detailTitle(t, sub){
+    document.getElementById('detailMiiRow').innerHTML = '';
+    document.getElementById('detailMiiRow').style.display = 'none';
+    document.getElementById('detailTitle').innerHTML = `<span id="courseTitleText">${esc(t)}</span><span class="crr-rs title-subline">${sub}</span>`;
+    document.getElementById('detailTitle').style.marginTop = navStack.length > 0 ? '28px' : '0';
+  }
+  function showDetail(html){ document.getElementById('detailBody').innerHTML = html; detailOverlay.classList.add('open'); try{ fitCourseTitle(); }catch(e){} updateBackButton(); }
+  const hubLink = () => `<p class="note tn-hublink" data-tn-act="hub" style="margin:14px 0 0;font-weight:700;cursor:pointer;"><span class="wii-only">🏆 </span>Backyard Open home</p>`;
+
+  // Backyard Open home: summary plus links to every view
+  function openBackyardHub(){
+    const evs = rounds.filter(r=>r.event && Array.isArray(r.event.board));
+    const myPos = r => String((rankBoard(r.event).find(x=>x.you)||{}).pos);
+    const won = t => evs.filter(r=>r.event.tier===t && myPos(r)==='1').length;
+    const played = t => evs.filter(r=>r.event.tier===t).length;
+    const ladder = 1 + won('club');
+    detailTitle('Backyard Open', `${evs.length} event${evs.length===1?'':'s'} played`);
+    const stat = (n, l) => `<div class="cell"><div class="num">${n}</div><div class="lbl">${l}</div></div>`;
+    showDetail(`
+      <div class="strip" style="margin:6px 0 14px;">${stat(won('tour')+won('major'), 'Wins')}${stat(won('major')+' / '+played('major'), 'Majors won')}${stat(won('tour')+' / '+played('tour'), 'Tour won')}</div>
+      <p class="note" style="margin:0 0 14px;">Club ladder: ${won('club')} Qualifier win${won('club')===1?'':'s'} · next Qualifier field ${Math.min(30, ladder)} opponent${ladder===1?'':'s'}</p>
+      <div class="tn-hubmenu">
+        <button type="button" class="btn" data-tn-act="allevents">Show All Events</button>
+        <button type="button" class="btn" data-tn-act="career">Career Results</button>
+        <button type="button" class="btn" data-tn-act="majorshub">All Majors</button>
+        <button type="button" class="btn" data-tn-act="serieslist">Course Events</button>
+      </div>`);
+  }
+  function openCareerResults(){
+    detailTitle('Career Results', 'Backyard Open');
+    showDetail(window.tnStatsHtml() + hubLink());
+  }
+  // Every course's Qualifier and Opens, grouped
+  function openSeriesList(){
+    const evs = rounds.filter(r=>r.event && r.event.tier!=='major' && Array.isArray(r.event.board));
+    const S = {};
+    evs.forEach(r=>{ const n = seriesName(r.course); (S[n] = S[n] || []).push(r); });
+    const rows = Object.entries(S).sort((a,b)=>b[1].length-a[1].length || a[0].localeCompare(b[0])).map(([n,list])=>{
+      const mine = list.filter(r=>String((rankBoard(r.event).find(x=>x.you)||{}).pos)==='1').length;
+      return `<tr class="tn-click" data-tn-act="eventhist" data-ev="${esc('series:'+n)}" data-from="serieslist"><td class="tn-name tn-wrap">${esc(n)}</td><td class="tn-n">${list.length}</td><td class="tn-n">${mine}</td></tr>`;
+    }).join('');
+    detailTitle('Course Events', 'Qualifiers and Opens');
+    showDetail(`<div class="tn-boardwrap"><table class="tn-board"><thead><tr><th>Event</th><th class="tn-n">Played</th><th class="tn-n">Your wins</th></tr></thead>
+      <tbody>${rows || '<tr><td colspan="3">No course events yet.</td></tr>'}</tbody></table></div>` + hubLink());
+  }
+
   // Every Backyard Open event, newest first
   function openAllEvents(){
     const list = rounds.filter(r=>r.event && Array.isArray(r.event.board)).sort((a,b)=>new Date(b.date)-new Date(a.date));
@@ -5888,14 +5939,14 @@ loadPersisted();
       const dt = new Date(r.date+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'2-digit'});
       return `<tr class="tn-click" data-tn-act="openround" data-from="allevents" data-key="${esc(roundKey(r))}">
         <td class="tn-name tn-wrap"><span class="tn-evlink" data-tn-act="eventhist" data-ev="${esc(isM ? mn : 'series:'+seriesName(r.course))}" data-from="allevents">${isM ? majorIcon(mn, 18) : ''}${esc(eventName(r))}</span><small>${dt}${isM ? ' · '+esc((pm ? pm[1] : r.course).replace(/\s+[-–]\s+.*$/, '')) : ''}</small></td>
-        <td class="tn-name tn-nowrap">${w.you ? '<b>You</b>' : esc(shortName(w.n))}<small>HC ${w.you ? Number(r.event.index).toFixed(1) : w.h} (${w.gross})</small></td></tr>`;
+        <td class="tn-name tn-nowrap"><span class="tn-plink" data-tn-act="player" data-name="${esc(w.you ? 'You' : w.n)}" data-from="allevents">${w.you ? '<b>You</b>' : esc(shortName(w.n))}</span><small>HC ${w.you ? Number(r.event.index).toFixed(1) : w.h} (${fmt(w.vs)})</small></td></tr>`;
     }).join('');
     document.getElementById('detailBody').innerHTML = `
       <p class="note" style="margin:2px 0 8px;">${list.length} event${list.length===1?'':'s'}</p>
       <div class="tn-boardwrap"><table class="tn-board">
         <thead><tr><th>Event</th><th>Winner</th></tr></thead>
         <tbody>${rows || '<tr><td colspan="2">No events yet.</td></tr>'}</tbody></table></div>
-      <p class="idx-note" style="margin:6px 0 0;">Tap an event name for its history, or a row to open the round.</p>`;
+      <p class="idx-note" style="margin:6px 0 0;">Tap an event name for its history, a winner for their results, or a row to open the round.</p>${hubLink()}`;
     detailOverlay.classList.add('open');
     try{ fitCourseTitle(); }catch(e){}
     updateBackButton();
@@ -5918,7 +5969,7 @@ loadPersisted();
       const pm = r.course.match(/^(.*)\s\(([^)]+)\)$/);
       const dt = new Date(r.date+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'2-digit'});
       const mn = all ? majorNameFor(r) : null;
-      return `<tr class="tn-click${w.you ? ' tn-you' : ''}" data-tn-act="openround" data-from="event" data-ev="${esc(ev)}" data-view="${all ? 'all' : 'one'}" data-key="${esc(roundKey(r))}">${all ? `<td class="tn-wrap">${majorIcon(mn, 18)}${esc(MAJOR_SHORT[mn])}</td>` : ''}<td class="tn-name tn-wrap">${esc(series ? eventName(r) : (pm ? pm[1] : r.course))}<small>${dt}${series ? ' · '+TIER_LBL(r.event.tier) : (pm ? ' · '+esc(pm[2]) : '')}</small></td><td class="tn-name tn-wrap">${esc(shortName(wn))}<small>HC ${w.you ? Number(r.event.index).toFixed(1) : w.h} (${w.gross})</small></td><td class="tn-n">${esc(ordinal(me.pos))}</td></tr>`;
+      return `<tr class="tn-click${w.you ? ' tn-you' : ''}" data-tn-act="openround" data-from="event" data-ev="${esc(ev)}" data-view="${all ? 'all' : 'one'}" data-key="${esc(roundKey(r))}">${all ? `<td class="tn-wrap">${majorIcon(mn, 18)}${esc(MAJOR_SHORT[mn])}</td>` : ''}<td class="tn-name tn-wrap">${esc(series ? eventName(r) : (pm ? pm[1] : r.course))}<small>${dt}${series ? ' · '+TIER_LBL(r.event.tier) : (pm ? ' · '+esc(pm[2]) : '')}</small></td><td class="tn-name tn-wrap"><span class="tn-plink" data-tn-act="player" data-name="${esc(wn)}" data-from="event" data-ev="${esc(ev)}" data-view="${all ? 'all' : 'one'}">${esc(shortName(wn))}</span><small>HC ${w.you ? Number(r.event.index).toFixed(1) : w.h} (${fmt(w.vs)})</small></td><td class="tn-n">${esc(ordinal(me.pos))}</td></tr>`;
     }).join('');
     const champs = Object.entries(winsBy).sort((a,b)=>b[1]-a[1]).map(([n,c])=>`${esc(shortName(n))} ${c}`).join(' · ');
     document.getElementById('detailBody').innerHTML = `
@@ -5928,7 +5979,7 @@ loadPersisted();
       <div class="tn-boardwrap"><table class="tn-board">
         <thead><tr>${all ? '<th>Event</th>' : ''}<th>Round</th><th>Winner</th><th class="tn-n">You</th></tr></thead>
         <tbody>${rows || `<tr><td colspan="${all?4:3}">Not played yet.</td></tr>`}</tbody></table></div>
-      <p class="idx-note" style="margin:6px 0 0;">Tap a round to open its card. Your wins are highlighted.</p>`;
+      <p class="idx-note" style="margin:6px 0 0;">Tap a round to open its card. Your wins are highlighted.</p>${hubLink()}`;
     detailOverlay.classList.add('open');
     try{ fitCourseTitle(); }catch(e){}
     updateBackButton();
@@ -6019,11 +6070,21 @@ loadPersisted();
       box.querySelectorAll('[data-tn-act="tab"]').forEach(b=>b.classList.toggle('active', b===btn));
       box.querySelectorAll('[data-tn-pane]').forEach(p=>p.hidden = p.dataset.tnPane !== btn.dataset.tab); return; }
     if(act0 === 'toggleboard'){ tnCardOpen = !tnCardOpen; const bw = btn.closest('.tn-saved').querySelector('[data-tn-board]'); if(bw) bw.hidden = !tnCardOpen; btn.textContent = (tnCardOpen ? 'Hide' : 'Show') + ' leaderboard'; return; }
-    if(act0 === 'player'){ const name = btn.dataset.name; navStack.push(()=>openAllStatsDetail()); openPlayerDetail(name); return; }
+    if(act0 === 'player'){ ev.stopPropagation(); const name = btn.dataset.name, from = btn.dataset.from;
+      if(from === 'round'){ const rr = findRound(btn.dataset.key); navStack.push(()=>{ window.tnOpenEventTab = true; openDetail(rounds.indexOf(rr)); }); }
+      else if(from === 'allevents') navStack.push(()=>openAllEvents());
+      else if(from === 'event'){ const e2 = btn.dataset.ev, v2 = btn.dataset.view; navStack.push(()=>openEventHistory(e2, v2)); }
+      else navStack.push(()=>openCareerResults());
+      openPlayerDetail(name); return; }
+    if(act0 === 'hub'){ navStack = []; openBackyardHub(); return; }
+    if(act0 === 'career'){ navStack.push(()=>openBackyardHub()); openCareerResults(); return; }
+    if(act0 === 'serieslist'){ navStack.push(()=>openBackyardHub()); openSeriesList(); return; }
+    if(act0 === 'majorshub'){ navStack.push(()=>openBackyardHub()); openEventHistory(MAJORS[0], 'all'); return; }
     if(act0 === 'majortab'){ openEventHistory(btn.dataset.ev, btn.dataset.view); return; }
-    if(act0 === 'allevents'){ navStack.push(()=>openAllStatsDetail()); openAllEvents(); return; }
+    if(act0 === 'allevents'){ navStack.push(()=>openBackyardHub()); openAllEvents(); return; }
     if(act0 === 'eventhist'){ ev.stopPropagation();
       if(btn.dataset.from === 'allevents'){ navStack.push(()=>openAllEvents()); }
+      else if(btn.dataset.from === 'serieslist'){ navStack.push(()=>openSeriesList()); }
       else if(btn.dataset.from === 'future'){ const fid = btn.dataset.fid; navStack.push(()=>openFutureRoundDetail(fid)); }
       else if(btn.dataset.from === 'player'){ const nm = btn.dataset.name; navStack.push(()=>openPlayerDetail(nm)); }
       else { const rr = findRound(btn.dataset.key); navStack.push(()=>{ window.tnOpenEventTab = true; openDetail(rounds.indexOf(rr)); }); }
@@ -6046,6 +6107,7 @@ loadPersisted();
   });
 
   $('tnStartBtn').addEventListener('click', openSetup);
+  $('backyardOpenLink').addEventListener('click', ()=>{ navStack = []; openBackyardHub(); });
   $('addRoundBtn').addEventListener('click', ()=>{ posting = false; refreshAddBlock(); });
   $('tnClose').addEventListener('click', ()=>overlay.classList.remove('open'));
   refreshAddBlock();
