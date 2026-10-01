@@ -5402,6 +5402,23 @@ loadPersisted();
   function majorRounds(){ return rounds.filter(r=>r.event && r.event.tier==='major').sort((a,b)=>new Date(a.date)-new Date(b.date) || (a.event.seed||0)-(b.event.seed||0)); }
   function majorNameFor(r){ const i = majorRounds().indexOf(r); return MAJORS[(i<0 ? 0 : i) % MAJORS.length]; }
   function nextMajorName(){ return MAJORS[majorRounds().length % MAJORS.length]; }
+  // Club/Tour events are named after the course: "Country Club"/"CC" -> "Invitational",
+  // "Golf ..." -> "Open" (otherwise "Open" is added), then a Roman numeral per playing.
+  function roman(n){ const t=[[1000,'M'],[900,'CM'],[500,'D'],[400,'CD'],[100,'C'],[90,'XC'],[50,'L'],[40,'XL'],[10,'X'],[9,'IX'],[5,'V'],[4,'IV'],[1,'I']]; let o=''; t.forEach(([v,sy])=>{ while(n>=v){ o+=sy; n-=v; } }); return o; }
+  function seriesName(course){
+    let n = course.replace(/\s\([^)]*\)\s*$/, '').replace(/\s+[-–]\s+.*$/, '').trim();
+    if(/\b(country club|cc)\b/i.test(n)) return n.replace(/\s*\b(country club|cc)\b.*$/i, '').trim() + ' Invitational';
+    if(/\bgolf\b/i.test(n)) return n.replace(/\s*\bgolf\b.*$/i, '').trim() + ' Open';
+    return n + ' Open';
+  }
+  function seriesRounds(name){ return rounds.filter(r=>r.event && r.event.tier!=='major' && Array.isArray(r.event.board) && seriesName(r.course)===name)
+    .sort((a,b)=>new Date(a.date)-new Date(b.date) || (a.event.seed||0)-(b.event.seed||0)); }
+  // Club events are the course's Qualifier (no numeral); Tour events are numbered among Tour events only
+  function qualifierName(course){ return seriesName(course).replace(/\s+(Open|Invitational)$/, '') + ' Qualifier'; }
+  function tourRounds(nm){ return seriesRounds(nm).filter(r=>r.event.tier==='tour'); }
+  function eventName(r){ if(r.event.tier==='major') return majorNameFor(r); if(r.event.tier==='club') return qualifierName(r.course);
+    const nm = seriesName(r.course); const i = tourRounds(nm).indexOf(r); return nm+' '+roman((i<0?0:i)+1); }
+  function nextSeriesName(course, extra, tier){ if(tier==='club') return qualifierName(course); const nm = seriesName(course); return nm+' '+roman(tourRounds(nm).length + 1 + (extra||0)); }
   function eventTitle(tier, r){ return tier==='major' ? (r ? majorNameFor(r) : nextMajorName()) : (TIERS[tier] ? TIERS[tier].label+' event' : 'Backyard Open'); }
   function tierFor(f){
     if(f.holes===18) return 'major';
@@ -5595,7 +5612,7 @@ loadPersisted();
     const sizes = groupSizes(picks.length+1);
     body.innerHTML = `
       <p class="idx-note" style="margin:0 0 12px;">${esc(f.name)} · ${f.holes} holes · par ${play.par}</p>
-      <div class="tn-event"><b>${eventTitle(tier)}</b><span>${tier==='major' ? 'Major · ' : ''}${TIERS[tier].why}</span>
+      <div class="tn-event"><b>${esc(tier==='major' ? eventTitle(tier) : nextSeriesName(f.name, 0, tier))}</b><span>${tier==='major' ? 'Major' : TIERS[tier].label+' event'} · ${TIERS[tier].why}</span>
         ${tier==='club' ? `<span>Club ladder: ${clubWins()} Club win${clubWins()===1?'':'s'} so far. Win to add the next player.</span>` : ''}
         <span>${picks.length} opponent${picks.length===1?'':'s'}, HC ${Math.min(...hs)}${picks.length>1?' to '+Math.max(...hs):''} · your HC ${Math.round(index)} · ${sizes.length} group${sizes.length===1?'':'s'}${sizes.length>1?' ('+sizes.join('-')+')':''}, you're in the last</span></div>
       <div class="tn-readout">
@@ -5609,7 +5626,7 @@ loadPersisted();
       </div>`;
     $('tnBack').onclick = () => overlay.classList.remove('open');
     $('tnTeeOff').onclick = () => {
-      T = {...draft, seed: Math.floor(Math.random()*1e9), mine: [], started: Date.now(), majorName: draft.tier==='major' ? nextMajorName() : null};
+      T = {...draft, seed: Math.floor(Math.random()*1e9), mine: [], started: Date.now(), majorName: draft.tier==='major' ? nextMajorName() : nextSeriesName(draft.form.name, 0, draft.tier)};
       field = buildField(T); save();
       addOverlay.classList.remove('open');
       refreshAddBlock(); renderLive();
@@ -5638,7 +5655,7 @@ loadPersisted();
       return `<tr class="${r.you?'tn-you':''}${r.thru?'':' tn-wait'}"><td>${r.label}</td><td class="tn-name">${esc(r.name)}<span class="tn-grp">G${r.group}</span>${mv}<small>${esc(r.note)}</small></td><td class="tn-n">${r.thru===n?'F':(r.thru||'–')}</td><td class="tn-n ${r.thru?cls(r.vs):''}">${r.thru?fmt(r.vs):'–'}</td><td class="tn-n">${r.thru?r.gross:'–'}</td></tr>`;
     }).join('');
     body.innerHTML = `
-      <p class="idx-note" style="margin:0 0 10px;">${esc(T.form.name)} · ${esc(T.tier==='major' ? (T.majorName||nextMajorName()) : TIERS[T.tier].label+' event')} · par ${T.play.par} · target ${sum(T.target,n)}</p>
+      <p class="idx-note" style="margin:0 0 10px;">${esc(T.form.name)} · ${esc(T.majorName || (T.tier==='major' ? nextMajorName() : nextSeriesName(T.form.name, 0, T.tier)))} · par ${T.play.par} · target ${sum(T.target,n)}</p>
       <div class="strip" style="margin:0 0 14px;">
         <div class="cell"><div class="num">${mine?me.label:'–'}</div><div class="lbl">Position</div></div>
         <div class="cell flag"><div class="num">${fmt(me.vs)}</div><div class="lbl">Vs. target</div></div>
@@ -5768,7 +5785,7 @@ loadPersisted();
     const tl = TIERS[e.tier] ? TIERS[e.tier].label : 'Backyard';
     const rows = board.map(x=>`<tr class="${x.you?'tn-you':''}"><td>${esc(x.pos)}</td><td class="tn-name">${esc(x.n)}<span class="tn-grp">G${x.g}</span><small>${x.you ? 'Index '+Number(e.index).toFixed(1) : 'HC '+x.h+' · '+esc(x.st)}</small></td><td class="tn-n ${cls(x.vs)}">${fmt(x.vs)}</td><td class="tn-n">${x.gross}</td></tr>`).join('');
     return `<div class="tn-saved" data-key="${key}">
-      <h4 class="tn-hole" style="margin:10px 0 2px;display:flex;align-items:center;gap:6px;"><span class="wii-only">🏆 </span><span class="tn-evlink" data-tn-act="eventhist" data-ev="${esc(e.tier==='major' ? majorNameFor(r) : e.tier)}" data-from="round" data-key="${key}">${e.tier==='major' ? majorIcon(majorNameFor(r), 30)+esc(majorNameFor(r)) : esc(tl)+' event'}</span><small>${e.tier==='major' ? 'Major' : 'Backyard Open'}</small></h4>
+      <h4 class="tn-hole" style="margin:10px 0 2px;display:flex;align-items:center;gap:6px;"><span class="wii-only">🏆 </span><span class="tn-evlink" data-tn-act="eventhist" data-ev="${esc(e.tier==='major' ? majorNameFor(r) : 'series:'+seriesName(r.course))}" data-from="round" data-key="${key}">${e.tier==='major' ? majorIcon(majorNameFor(r), 30)+esc(majorNameFor(r)) : esc(eventName(r))}</span><small>${e.tier==='major' ? 'Major' : esc(tl)+' event'}</small></h4>
       <p class="idx-note" style="margin:0 0 8px;">${me.pos==1 ? 'Won' : me.pos=='T1' ? 'Tied for the win' : 'Finished '+esc(ordinal(me.pos))} · field of ${e.board.length} · target ${e.target}</p>
       <div style="display:flex;gap:8px;flex-wrap:wrap;">${hasCard(r) ? `<button class="modal-edit" type="button" data-tn-act="editevent" data-key="${key}">Edit event</button>` : ''}${editBtn}</div>
       <div class="tn-editor"></div>
@@ -5816,7 +5833,7 @@ loadPersisted();
       const dt = new Date(d.r.date+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'2-digit'});
       const pm = d.r.course.match(/^(.*)\s\(([^)]+)\)$/); // "(18)", "(Back 9)" etc. move next to the date
       const nm = pm ? pm[1] : d.r.course;
-      return `<tr class="tn-click${String(d.x.pos)==='1' ? ' tn-you' : ''}" data-tn-act="openround" data-key="${esc(roundKey(d.r))}"><td class="tn-name tn-wrap">${esc(nm)}<small>${dt}${pm ? ' · '+esc(pm[2]) : ''}</small></td><td class="tn-wrap"><span class="tn-evlink" data-tn-act="eventhist" data-ev="${esc(d.r.event.tier==='major' ? majorNameFor(d.r) : d.r.event.tier)}" data-from="player" data-name="${esc(name)}">${d.r.event.tier==='major' ? majorIcon(majorNameFor(d.r), 18)+esc(MAJOR_SHORT[majorNameFor(d.r)]) : TIER_LBL(d.r.event.tier)}</span></td><td class="tn-n">${esc(ordinal(d.x.pos))}</td></tr>`;
+      return `<tr class="tn-click${String(d.x.pos)==='1' ? ' tn-you' : ''}" data-tn-act="openround" data-key="${esc(roundKey(d.r))}"><td class="tn-name tn-wrap">${esc(nm)}<small>${dt}${pm ? ' · '+esc(pm[2]) : ''}</small></td><td class="tn-wrap"><span class="tn-evlink" data-tn-act="eventhist" data-ev="${esc(d.r.event.tier==='major' ? majorNameFor(d.r) : 'series:'+seriesName(d.r.course))}" data-from="player" data-name="${esc(name)}">${d.r.event.tier==='major' ? majorIcon(majorNameFor(d.r), 18)+esc(MAJOR_SHORT[majorNameFor(d.r)]) : esc(eventName(d.r))}</span></td><td class="tn-n">${esc(ordinal(d.x.pos))}</td></tr>`;
     }).join('');
     document.getElementById('detailBody').innerHTML = `
       <p class="note" style="margin:2px 0 12px;">${rowsData.length} appearances · ${wins()} wins (Tour ${wins('tour')}, Major ${wins('major')}) · Club wins ${wins('club')}</p>
@@ -5839,7 +5856,8 @@ loadPersisted();
       name = MAJORS[(majorRounds().length + prior) % MAJORS.length]; evKey = name;
     } else {
       const played = rounds.some(r=>r.holes===9 && r.course.trim().toLowerCase()===key) || futures.slice(0,i).some(x=>x.holes===9 && x.course.trim().toLowerCase()===key);
-      name = played ? 'Tour event' : 'Club event'; evKey = played ? 'tour' : 'club';
+      const earlier = futures.slice(0,i).filter(x=>x.holes===9 && seriesName(x.course)===seriesName(f.course)).length - (rounds.some(r=>r.holes===9 && r.course.trim().toLowerCase()===key) ? 0 : 1);
+      name = played ? nextSeriesName(f.course, Math.max(0, earlier), 'tour') : qualifierName(f.course); evKey = 'series:'+seriesName(f.course);
     }
     return `<p class="note" style="margin:-8px 0 12px;display:flex;align-items:center;gap:6px;"><span class="tn-evlink" data-tn-act="eventhist" data-ev="${esc(evKey)}" data-from="future" data-fid="${esc(f.id)}">${majorIcon(name, 22)}<span>Backyard Open: <strong>${esc(name)}</strong></span></span></p>`;
   };
@@ -5857,15 +5875,14 @@ loadPersisted();
       const pm = r.course.match(/^(.*)\s\(([^)]+)\)$/);
       const dt = new Date(r.date+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'2-digit'});
       return `<tr class="tn-click" data-tn-act="openround" data-from="allevents" data-key="${esc(roundKey(r))}">
-        <td class="tn-nowrap"><span class="tn-evlink" data-tn-act="eventhist" data-ev="${esc(isM ? mn : r.event.tier)}" data-from="allevents">${isM ? majorIcon(mn, 18)+'Major' : TIER_LBL(r.event.tier)+' Event'}</span></td>
-        <td class="tn-name tn-wrap">${esc((pm ? pm[1] : r.course).replace(/\s+[-–]\s+.*$/, ''))}<small>${dt}</small></td>
+        <td class="tn-name tn-wrap"><span class="tn-evlink" data-tn-act="eventhist" data-ev="${esc(isM ? mn : 'series:'+seriesName(r.course))}" data-from="allevents">${isM ? majorIcon(mn, 18) : ''}${esc(eventName(r))}</span><small>${dt}${isM ? ' · '+esc((pm ? pm[1] : r.course).replace(/\s+[-–]\s+.*$/, '')) : ''}</small></td>
         <td class="tn-name tn-nowrap">${w.you ? '<b>You</b>' : esc(shortName(w.n))+`<small>HC ${w.h}</small>`}</td></tr>`;
     }).join('');
     document.getElementById('detailBody').innerHTML = `
       <p class="note" style="margin:2px 0 8px;">${list.length} event${list.length===1?'':'s'}</p>
       <div class="tn-boardwrap"><table class="tn-board">
-        <thead><tr><th>Event</th><th>Round</th><th>Winner</th></tr></thead>
-        <tbody>${rows || '<tr><td colspan="3">No events yet.</td></tr>'}</tbody></table></div>
+        <thead><tr><th>Event</th><th>Winner</th></tr></thead>
+        <tbody>${rows || '<tr><td colspan="2">No events yet.</td></tr>'}</tbody></table></div>
       <p class="idx-note" style="margin:6px 0 0;">Tap an event name for its history, or a row to open the round.</p>`;
     detailOverlay.classList.add('open');
     try{ fitCourseTitle(); }catch(e){}
@@ -5874,10 +5891,10 @@ loadPersisted();
 
   // History of one event: a Major by name, or all Club / all Tour events
   function openEventHistory(ev, view){
-    const isMajor = MAJORS.includes(ev), all = isMajor && view === 'all';
-    const list = (all ? majorRounds() : isMajor ? majorRounds().filter(r=>majorNameFor(r)===ev) : rounds.filter(r=>r.event && r.event.tier===ev && Array.isArray(r.event.board)))
-      .sort((a,b)=>new Date(b.date)-new Date(a.date));
-    const title = all ? 'All Majors' : isMajor ? ev : (TIERS[ev] ? TIERS[ev].label+' events' : 'Backyard Open');
+    const isMajor = MAJORS.includes(ev), all = isMajor && view === 'all', series = ev.startsWith('series:') ? ev.slice(7) : null;
+    const list = (all ? majorRounds() : isMajor ? majorRounds().filter(r=>majorNameFor(r)===ev) : series ? seriesRounds(series) : rounds.filter(r=>r.event && r.event.tier===ev && Array.isArray(r.event.board)))
+      .slice().sort((a,b)=>new Date(b.date)-new Date(a.date));
+    const title = all ? 'All Majors' : isMajor ? ev : series ? series : (TIERS[ev] ? TIERS[ev].label+' events' : 'Backyard Open');
     document.getElementById('detailMiiRow').innerHTML = '';
     document.getElementById('detailMiiRow').style.display = 'none';
     document.getElementById('detailTitle').innerHTML = `<span id="courseTitleText">${esc(title)}</span><span class="crr-rs title-subline">${isMajor ? 'Major · ' : ''}Backyard Open</span>`;
@@ -5889,7 +5906,7 @@ loadPersisted();
       const pm = r.course.match(/^(.*)\s\(([^)]+)\)$/);
       const dt = new Date(r.date+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'2-digit'});
       const mn = all ? majorNameFor(r) : null;
-      return `<tr class="tn-click${w.you ? ' tn-you' : ''}" data-tn-act="openround" data-from="event" data-ev="${esc(ev)}" data-view="${all ? 'all' : 'one'}" data-key="${esc(roundKey(r))}">${all ? `<td class="tn-wrap">${majorIcon(mn, 18)}${esc(MAJOR_SHORT[mn])}</td>` : ''}<td class="tn-name tn-wrap">${esc(pm ? pm[1] : r.course)}<small>${dt}${pm ? ' · '+esc(pm[2]) : ''}</small></td><td class="tn-name tn-wrap">${esc(shortName(wn))}${w.you ? '' : `<small>HC ${w.h}</small>`}</td><td class="tn-n">${esc(ordinal(me.pos))}</td></tr>`;
+      return `<tr class="tn-click${w.you ? ' tn-you' : ''}" data-tn-act="openround" data-from="event" data-ev="${esc(ev)}" data-view="${all ? 'all' : 'one'}" data-key="${esc(roundKey(r))}">${all ? `<td class="tn-wrap">${majorIcon(mn, 18)}${esc(MAJOR_SHORT[mn])}</td>` : ''}<td class="tn-name tn-wrap">${esc(series ? eventName(r) : (pm ? pm[1] : r.course))}<small>${dt}${series ? ' · '+TIER_LBL(r.event.tier) : (pm ? ' · '+esc(pm[2]) : '')}</small></td><td class="tn-name tn-wrap">${esc(shortName(wn))}${w.you ? '' : `<small>HC ${w.h}</small>`}</td><td class="tn-n">${esc(ordinal(me.pos))}</td></tr>`;
     }).join('');
     const champs = Object.entries(winsBy).sort((a,b)=>b[1]-a[1]).map(([n,c])=>`${esc(shortName(n))} ${c}`).join(' · ');
     document.getElementById('detailBody').innerHTML = `
