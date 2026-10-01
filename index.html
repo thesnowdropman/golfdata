@@ -5398,7 +5398,19 @@ loadPersisted();
   const MAJORS = ['The Mudders','The PBJ Championship','The U.S. Open Gate','The Earl Grey Open'];
   const MAJOR_SHORT = {'The Mudders':'Mudders','The PBJ Championship':'PBJ Championship','The U.S. Open Gate':'U.S. Open Gate','The Earl Grey Open':'Earl Grey'};
   const MAJOR_ICONS = {'The U.S. Open Gate':'backyard-gate.png', 'The Earl Grey Open':'backyard-earlgrey.png', 'The PBJ Championship':'backyard-pbj.png', 'The Mudders':'backyard-mudders.png'};
-  const majorIcon = (name, px) => MAJOR_ICONS[name] ? `<img src="${MAJOR_ICONS[name]}" alt="" class="tn-micon" style="height:${px}px">` : '';
+  // Logos: preloaded once into memory at startup (as data URLs) so screens that show them
+  // draw instantly instead of blinking in; each <img> also reserves its exact size.
+  const MAJOR_ICON_RATIO = {'The U.S. Open Gate':120/101, 'The Earl Grey Open':120/117, 'The PBJ Championship':120/114, 'The Mudders':120/114};
+  const tnLogoKeep = [];
+  Object.entries(MAJOR_ICONS).forEach(([name, url]) => {
+    const im = new Image(); im.src = url; tnLogoKeep.push(im);
+    if(im.decode) im.decode().catch(()=>{});
+    try{
+      fetch(url).then(r => r.ok ? r.blob() : null).then(b => { if(!b) return;
+        const fr = new FileReader(); fr.onload = () => { MAJOR_ICONS[name] = fr.result; }; fr.readAsDataURL(b); }).catch(()=>{});
+    }catch(e){}
+  });
+  const majorIcon = (name, px) => MAJOR_ICONS[name] ? `<img src="${MAJOR_ICONS[name]}" alt="" class="tn-micon" decoding="sync" width="${Math.round(px*(MAJOR_ICON_RATIO[name]||1))}" height="${px}" style="height:${px}px;width:${Math.round(px*(MAJOR_ICON_RATIO[name]||1))}px">` : '';
   function majorRounds(){ return rounds.filter(r=>r.event && r.event.tier==='major').sort((a,b)=>new Date(a.date)-new Date(b.date) || (a.event.seed||0)-(b.event.seed||0)); }
   function majorNameFor(r){ const i = majorRounds().indexOf(r); return MAJORS[(i<0 ? 0 : i) % MAJORS.length]; }
   function nextMajorName(){ return MAJORS[majorRounds().length % MAJORS.length]; }
