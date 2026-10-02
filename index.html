@@ -440,7 +440,7 @@
     <p class="note" id="courseRecordsSeeMore" style="font-style:italic;cursor:pointer;margin:8px 0 0;display:none;">Show more…</p>
     <p class="note" id="showAllStatsLink" style="font-weight:700;cursor:pointer;margin:10px 0 0;display:none;">📊 Show All Stats</p>
     <p class="note" id="showAllCoursesLink" style="font-weight:700;cursor:pointer;margin:10px 0 0;display:none;">⛳ Show All Courses</p>
-    <p class="note" id="backyardOpenLink" style="font-weight:700;cursor:pointer;margin:10px 0 0;display:flex;align-items:center;gap:6px;"><img src="BGA.png" alt="" class="tn-bga" style="height:20px;width:auto" onerror="this.replaceWith(document.createTextNode('🏆'))">BGA</p>
+    <p class="note" id="backyardOpenLink" style="font-weight:700;cursor:pointer;margin:10px 0 0;display:flex;align-items:center;gap:6px;"><img src="bga.png" alt="" class="tn-bga" style="height:20px;width:auto" onerror="this.replaceWith(document.createTextNode('🏆'))">BGA</p>
   </section>
 
 </div>
@@ -516,7 +516,7 @@
         <p class="idx-note" id="f-location-preview" style="margin:4px 0 0;"></p>
       </div>
       <div class="full" id="tnStartBlock">
-        <button class="btn tn-start" id="tnStartBtn" type="button"><img src="BGA.png" alt="" class="tn-bga" style="height:20px;width:auto" onerror="this.replaceWith(document.createTextNode('🏆'))"> Play Live as a BGA Event</button>
+        <button class="btn tn-start" id="tnStartBtn" type="button"><img src="bga.png" alt="" class="tn-bga" style="height:20px;width:auto" onerror="this.replaceWith(document.createTextNode('🏆'))"> Play Live as a BGA Event</button>
         <p class="idx-note" id="tnStartHint" style="margin:6px 0 0;"></p>
       </div>
       <div class="full">
@@ -5389,7 +5389,7 @@ loadPersisted();
 <div class="overlay" id="tnOverlay">
   <div class="modal" id="tnModal" style="max-width:560px;">
     <button class="modal-close" id="tnClose" aria-label="Close">✕</button>
-    <h3 style="display:flex;align-items:center;gap:8px;"><img src="BGA.png" alt="" class="tn-bga" style="height:28px;width:auto" onerror="this.replaceWith(document.createTextNode('🏆'))">BGA</h3>
+    <h3 style="display:flex;align-items:center;gap:8px;"><img src="bga.png" alt="" class="tn-bga" style="height:28px;width:auto" onerror="this.replaceWith(document.createTextNode('🏆'))">BGA</h3>
     <div id="tnBody"></div>
   </div>
 </div>
@@ -5425,8 +5425,8 @@ loadPersisted();
         const fr = new FileReader(); fr.onload = () => { MAJOR_ICONS[name] = fr.result; }; fr.readAsDataURL(b); }).catch(()=>{});
     }catch(e){}
   });
-  // BGA logo (BGA.png next to the page); falls back to a trophy if the file is missing
-  let BGA_SRC = 'BGA.png';
+  // BGA logo (bga.png next to the page); falls back to a trophy if the file is missing
+  let BGA_SRC = 'bga.png';
   try{ fetch(BGA_SRC).then(r => r.ok ? r.blob() : null).then(b => { if(!b) return; const fr = new FileReader(); fr.onload = () => { BGA_SRC = fr.result; }; fr.readAsDataURL(b); }).catch(()=>{}); }catch(e){}
   const bgaImg = px => `<img src="${BGA_SRC}" alt="" class="tn-bga" decoding="sync" style="height:${px}px;width:auto" onerror="this.replaceWith(document.createTextNode('🏆'))">`;
   const majorIcon = (name, px) => MAJOR_ICONS[name] ? `<img src="${MAJOR_ICONS[name]}" alt="" class="tn-micon" decoding="sync" width="${Math.round(px*(MAJOR_ICON_RATIO[name]||1))}" height="${px}" style="height:${px}px;width:${Math.round(px*(MAJOR_ICON_RATIO[name]||1))}px">` : '';
