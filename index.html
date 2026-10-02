@@ -5832,7 +5832,7 @@ loadPersisted();
     const board = rankBoard(e);
     const me = board.find(x=>x.you) || {};
     const tl = TIERS[e.tier] ? TIERS[e.tier].label : 'Backyard';
-    const rows = board.map(x=>`<tr class="${x.you?'tn-you':''}"><td>${esc(x.pos)}</td><td class="tn-name"><span class="tn-plink" data-tn-act="player" data-name="${esc(x.you ? 'You' : x.n)}" data-from="round" data-key="${key}">${esc(x.n)}</span><span class="tn-grp">G${x.g}</span><small>${x.you ? 'Index '+Number(e.index).toFixed(1) : 'HC '+x.h+' · '+esc(x.st)}</small></td><td class="tn-n ${cls(x.vs)}">${fmt(x.vs)}</td><td class="tn-n">${x.gross}</td></tr>`).join('');
+    const rows = board.map(x=>`<tr class="${x.you?'tn-you':''}"><td>${esc(x.pos)}</td><td class="tn-name"><span class="tn-plink" data-tn-act="player" data-name="${esc(x.you ? 'You' : x.n)}" data-from="round" data-key="${key}">${esc(x.n)}</span><span class="tn-grp">G${x.g}</span><small>${x.you ? 'Index '+Number(e.index).toFixed(1) : 'HC '+x.h+' · '+esc(x.st)}${e.tier!=='club' ? ' · +'+pointsFor(x.pos)+' pts ('+cupTotalThrough(r, x.you ? 'You' : x.n)+' total)' : ''}</small></td><td class="tn-n ${cls(x.vs)}">${fmt(x.vs)}</td><td class="tn-n">${x.gross}</td></tr>`).join('');
     return `<div class="tn-saved" data-key="${key}">
       <h4 class="tn-hole" style="margin:10px 0 2px;display:flex;align-items:center;gap:6px;">${e.tier==='major' ? '' : bgaImg(19)}<span class="tn-evlink" data-tn-act="eventhist" data-ev="${esc(e.tier==='major' ? majorNameFor(r) : 'series:'+seriesName(r.course))}" data-from="round" data-key="${key}">${e.tier==='major' ? majorIcon(majorNameFor(r), 30)+esc(majorNameFor(r)) : esc(eventName(r))}</span><small>${e.tier==='major' ? 'Major' : esc(tl)+' event'}</small></h4>
       <p class="idx-note" style="margin:0 0 8px;">${me.pos==1 ? 'Won' : me.pos=='T1' ? 'Tied for the win' : 'Finished '+esc(ordinal(me.pos))} · field of ${e.board.length} · target ${e.target}</p>
@@ -5994,6 +5994,13 @@ loadPersisted();
   const pointsFor = pos => { const n = parseInt(String(pos).replace(/^T/,''),10); return n>=1 && n<=TOUR_POINTS.length ? TOUR_POINTS[n-1] : 0; };
   const monthKey = d => { if(typeof d==='string' && /^\d{4}-\d{2}/.test(d)) return d.slice(0,7); const x = new Date(d); return x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0'); };
   const monthLabel = k => new Date(+k.slice(0,4), +k.slice(5,7)-1, 1).toLocaleDateString(undefined,{month:'long', year:'numeric'});
+  // A player's ShedEx Cup points for the month, counting events up to and including round r
+  function cupTotalThrough(r, name){
+    const k = monthKey(r.date), t = new Date(r.date+'T00:00:00').getTime(), idx = rounds.indexOf(r);
+    return rounds.filter(q=>q.event && Array.isArray(q.event.board) && q.event.tier!=='club' && monthKey(q.date)===k)
+      .filter(q=>{ const tq = new Date(q.date+'T00:00:00').getTime(); return tq < t || (tq === t && (q===r || rounds.indexOf(q) > idx)); })
+      .reduce((sum,q)=>{ const x = rankBoard(q.event).find(b=> name==='You' ? b.you : (!b.you && b.n===name)); return sum + (x ? pointsFor(x.pos) : 0); }, 0);
+  }
   function shedexMonths(){
     const M = {};
     rounds.filter(r=>r.event && Array.isArray(r.event.board) && r.event.tier!=='club').forEach(r=>{
@@ -6046,13 +6053,13 @@ loadPersisted();
     const list = rounds.filter(r=>r.event && Array.isArray(r.event.board)).sort((a,b)=>new Date(b.date)-new Date(a.date));
     document.getElementById('detailMiiRow').innerHTML = '';
     document.getElementById('detailMiiRow').style.display = 'none';
-    document.getElementById('detailTitle').innerHTML = `<span id="courseTitleText">All Events</span><span class="crr-rs title-subline">BGA Tour</span>`;
+    document.getElementById('detailTitle').innerHTML = `<span class="tn-titlelogo">${bgaImg(46)}</span><span id="courseTitleText">All Events</span><span class="crr-rs title-subline">BGA Tour</span>`;
     document.getElementById('detailTitle').style.marginTop = navStack.length > 0 ? '28px' : '0';
     const cupRow = m => { const w = m.list[0], y = +m.key.slice(0,4), mo = +m.key.slice(5,7);
       const dt = new Date(y, mo, 0).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'2-digit'});
       const hc = w.you ? null : (KIDS.find(k=>k.name===w.name)||{}).hcp;
       return `<tr class="tn-click" data-tn-act="shedexmonth" data-month="${m.key}">
-        <td class="tn-name tn-wrap"><span class="tn-evlink">${shedexIcon(16)}ShedEx Cup · ${esc(monthLabel(m.key))}</span><small>${dt} · monthly points</small></td>
+        <td class="tn-name tn-wrap"><span class="tn-evlink">${shedexIcon(16)}ShedEx Cup · ${esc(monthLabel(m.key))}</span><small>${dt} · Monthly Points Title</small></td>
         <td class="tn-name tn-nowrap"><span class="tn-plink" data-tn-act="player" data-name="${esc(w.name)}" data-from="allevents">${w.you ? '<b>You</b>' : esc(shortName(w.name))}</span><small>${hc!=null ? 'HC '+hc+' ' : ''}<span data-tn-act="shedexmonth" data-month="${m.key}" style="text-decoration:underline;cursor:pointer;">(${w.pts} pts)</span></small></td></tr>`; };
     const cups = shedexMonths().filter(m=>m.done && m.list.length);
     const items = list.map(r=>({t:new Date(r.date+'T00:00:00').getTime(), r}))
@@ -6086,7 +6093,7 @@ loadPersisted();
     const title = all ? 'All Majors' : isMajor ? ev : series ? series : (TIERS[ev] ? TIERS[ev].label+' events' : 'BGA Tour');
     document.getElementById('detailMiiRow').innerHTML = '';
     document.getElementById('detailMiiRow').style.display = 'none';
-    const logo = isMajor && !all && MAJOR_ICONS[ev] ? `<span class="tn-titlelogo">${majorIcon(ev, 60)}</span>` : '';
+    const logo = isMajor && !all && MAJOR_ICONS[ev] ? `<span class="tn-titlelogo">${majorIcon(ev, 60)}</span>` : `<span class="tn-titlelogo">${bgaImg(46)}</span>`;
     document.getElementById('detailTitle').innerHTML = `${logo}<span id="courseTitleText">${esc(title)}</span><span class="crr-rs title-subline">${isMajor ? 'Major · ' : ''}BGA Tour</span>`;
     document.getElementById('detailTitle').style.marginTop = navStack.length > 0 ? '28px' : '0';
     const winsBy = {};
@@ -6096,11 +6103,11 @@ loadPersisted();
       const pm = r.course.match(/^(.*)\s\(([^)]+)\)$/);
       const dt = new Date(r.date+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'2-digit'});
       const mn = all ? majorNameFor(r) : null;
-      return `<tr class="tn-click${w.you ? ' tn-you' : ''}" data-tn-act="openround" data-from="event" data-ev="${esc(ev)}" data-view="${all ? 'all' : 'one'}" data-key="${esc(roundKey(r))}"><td class="tn-name tn-wrap">${r.event.tier==='major' ? majorIcon(majorNameFor(r), 18)+esc(MAJOR_SHORT[majorNameFor(r)]) : esc(eventName(r))}<small>${dt} · ${esc(courseShort(r.course))}</small></td><td class="tn-name tn-wrap"><span class="tn-plink" data-tn-act="player" data-name="${esc(wn)}" data-from="event" data-ev="${esc(ev)}" data-view="${all ? 'all' : 'one'}">${esc(shortName(wn))}</span><small style="white-space:nowrap">HC ${w.you ? Number(r.event.index).toFixed(1) : w.h} (${fmt(w.vs)})</small></td><td class="tn-n">${esc(ordinal(me.pos))}</td></tr>`;
+      return `<tr class="tn-click${w.you ? ' tn-you' : ''}" data-tn-act="openround" data-from="event" data-ev="${esc(ev)}" data-view="${all ? 'all' : 'one'}" data-key="${esc(roundKey(r))}"><td class="tn-name tn-wrap">${r.event.tier==='major' ? majorIcon(majorNameFor(r), 18)+esc(majorNameFor(r)) : esc(eventName(r))}<small>${dt} · ${esc(courseShort(r.course))}</small></td><td class="tn-name tn-wrap"><span class="tn-plink" data-tn-act="player" data-name="${esc(wn)}" data-from="event" data-ev="${esc(ev)}" data-view="${all ? 'all' : 'one'}">${esc(shortName(wn))}</span><small style="white-space:nowrap">HC ${w.you ? Number(r.event.index).toFixed(1) : w.h} (${fmt(w.vs)})</small></td><td class="tn-n">${esc(ordinal(me.pos))}</td></tr>`;
     }).join('');
     const champs = Object.entries(winsBy).sort((a,b)=>b[1]-a[1]).map(([n,c])=>`${esc(shortName(n))} ${c}`).join(' · ');
     document.getElementById('detailBody').innerHTML = `
-      ${isMajor ? `<div class="view-toggle tn-tabs" style="display:flex;margin:4px 0 10px;"><button type="button" class="view-toggle-btn${all?'':' active'}" data-tn-act="majortab" data-ev="${esc(ev)}" data-view="one">${esc(MAJOR_SHORT[ev])}</button><button type="button" class="view-toggle-btn${all?' active':''}" data-tn-act="majortab" data-ev="${esc(ev)}" data-view="all">All Majors</button></div>` : ''}
+      ${isMajor && !all ? `<div class="view-toggle tn-tabs" style="display:flex;margin:4px 0 10px;"><button type="button" class="view-toggle-btn${all?'':' active'}" data-tn-act="majortab" data-ev="${esc(ev)}" data-view="one">${esc(MAJOR_SHORT[ev])}</button><button type="button" class="view-toggle-btn${all?' active':''}" data-tn-act="majortab" data-ev="${esc(ev)}" data-view="all">All Majors</button></div>` : ''}
       <p class="note" style="margin:2px 0 4px;">Played ${list.length} time${list.length===1?'':'s'}${champs ? ' · Winners: '+champs : ''}</p>
       <div class="tn-boardwrap"><table class="tn-board">
         <thead><tr><th>Event</th><th>Winner</th><th class="tn-n">You</th></tr></thead>
