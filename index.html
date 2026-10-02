@@ -5598,10 +5598,10 @@ loadPersisted();
     rankRows(rows).forEach(r=>{ r.pos = r.label; delete r.label; delete r.hc; });
     return rows;
   }
-  // " · Last: +1" / " · Last: E" from the most recent hole played, vs that hole's par
+  // " · Last: +1" / " · Last: E" from the most recent hole played, vs that hole's target (same scale as Today)
   function lastTxt(S, scores, t){
-    if(!t || !scores || scores[t-1]==null || !S.play.holes[t-1]) return '';
-    const d = scores[t-1] - S.play.holes[t-1].par;
+    if(!t || !scores || scores[t-1]==null || S.target[t-1]==null) return '';
+    const d = scores[t-1] - S.target[t-1];
     return ' · Last: ' + (d===0 ? 'E' : d>0 ? '+'+d : String(d));
   }
   function standings(mine, S, F){
