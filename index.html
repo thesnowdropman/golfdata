@@ -440,7 +440,7 @@
     <p class="note" id="courseRecordsSeeMore" style="font-style:italic;cursor:pointer;margin:8px 0 0;display:none;">Show more…</p>
     <p class="note" id="showAllStatsLink" style="font-weight:700;cursor:pointer;margin:10px 0 0;display:none;">📊 Show All Stats</p>
     <p class="note" id="showAllCoursesLink" style="font-weight:700;cursor:pointer;margin:10px 0 0;display:none;">⛳ Show All Courses</p>
-    <p class="note" id="backyardOpenLink" style="font-weight:700;cursor:pointer;margin:10px 0 0;display:flex;align-items:center;gap:6px;"><img src="BGA.png" alt="" class="tn-bga" style="height:20px;width:auto" onerror="this.replaceWith(document.createTextNode('🏆'))">BGA</p>
+    <p class="note" id="backyardOpenLink" style="font-weight:700;cursor:pointer;margin:10px 0 0;display:flex;align-items:center;gap:6px;"><img src="bga.png" alt="" class="tn-bga" style="height:16px;width:auto" onerror="this.replaceWith(document.createTextNode('🏆'))">BGA</p>
   </section>
 
 </div>
@@ -516,7 +516,7 @@
         <p class="idx-note" id="f-location-preview" style="margin:4px 0 0;"></p>
       </div>
       <div class="full" id="tnStartBlock">
-        <button class="btn tn-start" id="tnStartBtn" type="button"><img src="BGA.png" alt="" class="tn-bga" style="height:20px;width:auto" onerror="this.replaceWith(document.createTextNode('🏆'))"> Play Live as a BGA Event</button>
+        <button class="btn tn-start" id="tnStartBtn" type="button"><img src="bga.png" alt="" class="tn-bga" style="height:16px;width:auto" onerror="this.replaceWith(document.createTextNode('🏆'))"> Play Live as a BGA Event</button>
         <p class="idx-note" id="tnStartHint" style="margin:6px 0 0;"></p>
       </div>
       <div class="full">
@@ -5389,7 +5389,7 @@ loadPersisted();
 <div class="overlay" id="tnOverlay">
   <div class="modal" id="tnModal" style="max-width:560px;">
     <button class="modal-close" id="tnClose" aria-label="Close">✕</button>
-    <h3 style="display:flex;align-items:center;gap:8px;"><img src="BGA.png" alt="" class="tn-bga" style="height:28px;width:auto" onerror="this.replaceWith(document.createTextNode('🏆'))">BGA</h3>
+    <h3 style="display:flex;align-items:center;gap:8px;"><img src="bga.png" alt="" class="tn-bga" style="height:22px;width:auto" onerror="this.replaceWith(document.createTextNode('🏆'))">BGA</h3>
     <div id="tnBody"></div>
   </div>
 </div>
@@ -5425,8 +5425,8 @@ loadPersisted();
         const fr = new FileReader(); fr.onload = () => { MAJOR_ICONS[name] = fr.result; }; fr.readAsDataURL(b); }).catch(()=>{});
     }catch(e){}
   });
-  // BGA logo (BGA.png next to the page); falls back to a trophy if the file is missing
-  let BGA_SRC = 'BGA.png';
+  // BGA logo (bga.png next to the page); falls back to a trophy if the file is missing
+  let BGA_SRC = 'bga.png';
   try{ fetch(BGA_SRC).then(r => r.ok ? r.blob() : null).then(b => { if(!b) return; const fr = new FileReader(); fr.onload = () => { BGA_SRC = fr.result; }; fr.readAsDataURL(b); }).catch(()=>{}); }catch(e){}
   const bgaImg = px => `<img src="${BGA_SRC}" alt="" class="tn-bga" decoding="sync" style="height:${px}px;width:auto" onerror="this.replaceWith(document.createTextNode('🏆'))">`;
   const majorIcon = (name, px) => MAJOR_ICONS[name] ? `<img src="${MAJOR_ICONS[name]}" alt="" class="tn-micon" decoding="sync" width="${Math.round(px*(MAJOR_ICON_RATIO[name]||1))}" height="${px}" style="height:${px}px;width:${Math.round(px*(MAJOR_ICON_RATIO[name]||1))}px">` : '';
@@ -5826,7 +5826,7 @@ loadPersisted();
     const editBtn = `<button class="modal-edit" type="button" data-tn-act="editround" data-key="${key}">Edit round</button>`;
     if(!e || !Array.isArray(e.board)){
       return `<div class="tn-saved" data-key="${key}" style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-        ${hasCard(r) ? `<button class="modal-edit" type="button" data-tn-act="add" data-key="${key}">${bgaImg(18)}Add BGA Event</button>` : '<span class="idx-note">Add hole scores to backfill a BGA event.</span>'}
+        ${hasCard(r) ? `<button class="modal-edit" type="button" data-tn-act="add" data-key="${key}">${bgaImg(15)}Add BGA Event</button>` : '<span class="idx-note">Add hole scores to backfill a BGA event.</span>'}
         ${editBtn}<div class="tn-editor" style="width:100%"></div></div>`;
     }
     const board = rankBoard(e);
@@ -5834,7 +5834,7 @@ loadPersisted();
     const tl = TIERS[e.tier] ? TIERS[e.tier].label : 'Backyard';
     const rows = board.map(x=>`<tr class="${x.you?'tn-you':''}"><td>${esc(x.pos)}</td><td class="tn-name"><span class="tn-plink" data-tn-act="player" data-name="${esc(x.you ? 'You' : x.n)}" data-from="round" data-key="${key}">${esc(x.n)}</span><span class="tn-grp">G${x.g}</span><small>${x.you ? 'Index '+Number(e.index).toFixed(1) : 'HC '+x.h+' · '+esc(x.st)}</small></td><td class="tn-n ${cls(x.vs)}">${fmt(x.vs)}</td><td class="tn-n">${x.gross}</td></tr>`).join('');
     return `<div class="tn-saved" data-key="${key}">
-      <h4 class="tn-hole" style="margin:10px 0 2px;display:flex;align-items:center;gap:6px;">${bgaImg(24)}<span class="tn-evlink" data-tn-act="eventhist" data-ev="${esc(e.tier==='major' ? majorNameFor(r) : 'series:'+seriesName(r.course))}" data-from="round" data-key="${key}">${e.tier==='major' ? majorIcon(majorNameFor(r), 30)+esc(majorNameFor(r)) : esc(eventName(r))}</span><small>${e.tier==='major' ? 'Major' : esc(tl)+' event'}</small></h4>
+      <h4 class="tn-hole" style="margin:10px 0 2px;display:flex;align-items:center;gap:6px;">${bgaImg(19)}<span class="tn-evlink" data-tn-act="eventhist" data-ev="${esc(e.tier==='major' ? majorNameFor(r) : 'series:'+seriesName(r.course))}" data-from="round" data-key="${key}">${e.tier==='major' ? majorIcon(majorNameFor(r), 30)+esc(majorNameFor(r)) : esc(eventName(r))}</span><small>${e.tier==='major' ? 'Major' : esc(tl)+' event'}</small></h4>
       <p class="idx-note" style="margin:0 0 8px;">${me.pos==1 ? 'Won' : me.pos=='T1' ? 'Tied for the win' : 'Finished '+esc(ordinal(me.pos))} · field of ${e.board.length} · target ${e.target}</p>
       <div style="display:flex;gap:8px;flex-wrap:wrap;">${hasCard(r) ? `<button class="modal-edit" type="button" data-tn-act="editevent" data-key="${key}">Edit event</button>` : ''}${editBtn}</div>
       <div class="tn-editor"></div>
@@ -5950,7 +5950,7 @@ loadPersisted();
     document.getElementById('detailTitle').style.marginTop = navStack.length > 0 ? '28px' : '0';
   }
   function showDetail(html){ document.getElementById('detailBody').innerHTML = html; detailOverlay.classList.add('open'); detailOverlay.scrollTop = 0; try{ fitCourseTitle(); }catch(e){} updateBackButton(); }
-  const hubLink = () => `<p class="note tn-hublink" data-tn-act="hub" style="margin:14px 0 0;font-weight:700;cursor:pointer;text-decoration:underline;text-underline-offset:3px;display:flex;align-items:center;gap:6px;">${bgaImg(18)}BGA Home</p>`;
+  const hubLink = () => `<p class="note tn-hublink" data-tn-act="hub" style="margin:14px 0 0;font-weight:700;cursor:pointer;text-decoration:underline;text-underline-offset:3px;display:flex;align-items:center;gap:6px;">${bgaImg(15)}BGA Home</p>`;
 
   // Backyard Open home: summary plus links to every view
   function openBackyardHub(){
@@ -5960,7 +5960,7 @@ loadPersisted();
     const played = t => evs.filter(r=>r.event.tier===t).length;
     const ladder = 1 + won('club');
     detailTitle('BGA', `${evs.length} event${evs.length===1?'':'s'} played`);
-    document.getElementById('detailTitle').insertAdjacentHTML('afterbegin', `<span class="tn-titlelogo">${bgaImg(60)}</span>`);
+    document.getElementById('detailTitle').insertAdjacentHTML('afterbegin', `<span class="tn-titlelogo">${bgaImg(46)}</span>`);
     const stat = (n, l) => `<div class="cell"><div class="num">${n}</div><div class="lbl">${l}</div></div>`;
     showDetail(`
       <div class="strip" style="margin:6px 0 14px;">${stat(won('club'), 'Qualifier Wins')}${stat(won('tour'), 'Tour Wins')}${stat(won('major'), 'Majors')}</div>
