@@ -5598,11 +5598,17 @@ loadPersisted();
     rankRows(rows).forEach(r=>{ r.pos = r.label; delete r.label; delete r.hc; });
     return rows;
   }
+  // " · Last: +1" / " · Last: E" from the most recent hole played, vs that hole's par
+  function lastTxt(S, scores, t){
+    if(!t || !scores || scores[t-1]==null || !S.play.holes[t-1]) return '';
+    const d = scores[t-1] - S.play.holes[t-1].par;
+    return ' · Last: ' + (d===0 ? 'E' : d>0 ? '+'+d : String(d));
+  }
   function standings(mine, S, F){
     S = S || T; F = F || field;
     const n = S.play.holes.length;
-    const rows = F.map(p=>{ const t=thruFor(S,p.group,mine,n); return {name:p.name, hc:p.hcp, group:p.group, note:'HC '+p.hcp+' · '+p.style, thru:t, gross:sum(p.scores,t), vs:sum(p.scores,t)-sum(S.target,t)}; });
-    rows.push({name:'You', you:true, hc:Number(S.index), group:S.groups||3, note:'Index '+S.index.toFixed(1)+' · target '+sum(S.target,n), thru:mine, gross:sum(S.mine,mine), vs:sum(S.mine,mine)-sum(S.target,mine)});
+    const rows = F.map(p=>{ const t=thruFor(S,p.group,mine,n); return {name:p.name, hc:p.hcp, group:p.group, note:'HC '+p.hcp+' · '+p.style+lastTxt(S, p.scores, t), thru:t, gross:sum(p.scores,t), vs:sum(p.scores,t)-sum(S.target,t)}; });
+    rows.push({name:'You', you:true, hc:Number(S.index), group:S.groups||3, note:'Index '+S.index.toFixed(1)+' · target '+sum(S.target,n)+lastTxt(S, S.mine, mine), thru:mine, gross:sum(S.mine,mine), vs:sum(S.mine,mine)-sum(S.target,mine)});
     const live = rankRows(rows.filter(r=>r.thru>0));
     return live.concat(rows.filter(r=>r.thru===0).sort((a,b)=>a.group-b.group).map(r=>({...r,label:'–'})));
   }
@@ -5710,14 +5716,14 @@ loadPersisted();
         <div class="cell"><div class="num">${mine?(me.vs===leader.vs?'Lead':'+'+(me.vs-leader.vs)):'–'}</div><div class="lbl">Back of lead</div></div>
       </div>
       ${head}${pad}${card}
-      <div class="tn-row">
-        ${done ? '<button class="btn" id="tnPost" type="button">Post Round to History</button>' : ''}
-        ${mine ? '<button class="btn secondary" id="tnUndo" type="button">Undo last hole</button>' : ''}
-        ${done ? '' : `<button class="btn secondary" id="tnQuit" type="button">${confirmQuit ? 'Tap again to abandon' : 'Abandon event'}</button>`}
-      </div>
+      ${done ? '<div class="tn-row"><button class="btn" id="tnPost" type="button">Post Round to History</button></div>' : ''}
       <div class="tn-boardwrap"><table class="tn-board">
         <thead><tr><th>Pos</th><th>Player</th><th class="tn-n">Thru</th><th class="tn-n">Today</th><th class="tn-n">Gross</th></tr></thead>
         <tbody>${board}</tbody></table></div>
+      <div class="tn-row" style="margin-top:12px;">
+        ${mine ? '<button class="btn secondary" id="tnUndo" type="button">Undo last hole</button>' : ''}
+        ${done ? '' : `<button class="btn secondary" id="tnQuit" type="button">${confirmQuit ? 'Tap again to abandon' : 'Abandon event'}</button>`}
+      </div>
 `;
     tnSlide(body, tnBefore);
     body.querySelectorAll('[data-s]').forEach(b=>b.onclick=()=>{ T.mine.push(+b.dataset.s); confirmQuit=false; save(); renderLive(); refreshAddBlock(); try{ triggerHaptic(); }catch(e){} });
