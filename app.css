@@ -172,3 +172,18 @@ html.app #roundCourseRecordBtn, html.app #deleteRoundBtn{text-transform:none;let
 .rec-h.h18{background:#d9c9a0;color:#4a3f22;}
 .hc-flat{color:var(--ink);}
 .rec-g small{white-space:nowrap;}
+
+/* Courses tab 9/18 badges match Round History */
+html.app .badge.b9{background:var(--green2);color:#fff;}
+html.app .badge.b18{background:#d9c9a0;color:#4a3f22;}
+/* BGA hero: centered logo only */
+.bga-hero{justify-content:center;padding:14px;}
+.bga-hero img{height:84px;}
+.bga-menu{margin-top:14px;}
+/* Trophy shelves: uniform boxes, 4 across, logos centered */
+.tn-shelf{grid-template-columns:repeat(4,1fr);}
+.tn-tro{min-height:84px;justify-content:flex-start;}
+.tn-tro img, .tro img{margin:0 auto !important;display:block;}
+.tn-tro span{white-space:normal;}
+.tn-shelf > .tn-tro:nth-child(4n+1):nth-last-child(2){grid-column:2;}
+.tn-shelf > .tn-tour:nth-child(5):last-child{grid-column:3;}

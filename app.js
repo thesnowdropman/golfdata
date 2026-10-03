@@ -44,7 +44,7 @@
       <button type="button" class="app-btn bga" id="appPlay"><img src="bga.png" alt="" onerror="this.remove()">Play BGA</button>
     </div>
     <div id="homeUpcoming"></div>
-    <div class="app-sec-h"><h2>Score Record</h2><span class="app-cap" id="recCount"></span></div>
+    <div class="app-sec-h"><h2>Round History</h2><span class="app-cap" id="recCount"></span></div>
     <div class="seg" id="recSeg"><button type="button" data-v="recent" class="on">Recent 20</button><button type="button" data-v="all">All</button><button type="button" data-v="best">Best</button></div>
     <div class="rec-list" id="recList"></div>
     <button type="button" class="rec-more" id="recMore" hidden>Show more</button>`;
@@ -156,10 +156,9 @@
       const sgn = v => v===0 ? 'E' : (v>0?'+':'')+v;
       const vsTxt = [toPar != null ? sgn(toPar) : null, ex != null && !isNaN(g) ? sgn(g - ex) : null].filter(x=>x!=null).join('/');
       const tag = courseTag(r.course);
-      const ev = r.event && Array.isArray(r.event.board) && window.BGA ? (()=>{ try{ const me = BGA.rankBoard(r.event).find(x=>x.you); return me ? `<span class="rec-bga">${BGA.ordinal(me.pos)}</span>` : ''; }catch(e){ return ''; } })() : '';
       return `<button type="button" class="rec-row" data-i="${rounds.indexOf(r)}">
         <span class="rec-d"><b>${d.getDate()}</b>${d.toLocaleDateString('en-US',{month:'short'}).toUpperCase()}${recView!=='recent' ? `<i>${String(d.getFullYear()).slice(2)}</i>` : ''}</span>
-        <span class="rec-c">${esc(courseName(r.course))}${ev}<small><span class="rec-h h${r.holes}">${r.holes}</span>${tag ? esc(tag)+' · ' : ''}${Number(r.rating).toFixed(1)}/${r.slope}</small></span>
+        <span class="rec-c">${esc(courseName(r.course))}<small><span class="rec-h h${r.holes}">${r.holes}</span>${tag ? esc(tag)+' · ' : ''}${Number(r.rating).toFixed(1)}/${r.slope}</small></span>
         <span class="rec-g">${isNaN(g) ? esc(r.score) : g}${vsTxt ? `<small>${vsTxt}</small>` : ''}</span>
         <span class="rec-df${r.diff===best?' best':''}">${r.diff.toFixed(1)}</span>
       </button>`;
@@ -186,6 +185,7 @@
   }
 
   // ---------- BGA page ----------
+  let rankOpen = false;
   function renderBga(){
     const B = window.BGA, page = $('bgaPage');
     if(!B || !page || typeof rounds === 'undefined') return;
@@ -226,39 +226,36 @@
     // Rankings by Elo
     const ranked = Object.entries(E.R).sort((a,b)=>b[1]-a[1]);
     const myRank = ranked.findIndex(x=>x[0]==='You');
-    const showRank = ranked.slice(0, 10);
+    const showRank = rankOpen ? ranked : ranked.slice(0, 10);
     const rankRows = list => list.map(([n, v]) => { const i = ranked.findIndex(x=>x[0]===n);
       const kid = B.KIDS.find(k=>k.name===n);
       return `<button type="button" class="rk-row${n==='You'?' me':''}" data-bga="player" data-name="${esc(n)}"><span class="lb-pos">${i+1}</span><span class="lb-nm">${n==='You' ? '<b>You</b>' : esc(n)}<small>${kid ? 'HC '+kid.hcp+' · '+B.styleOf(n) : 'Index '+trend[trend.length-1].index.toFixed(1)}</small></span><span class="rk-elo">${Math.round(v)}</span></button>`; }).join('');
 
     page.innerHTML = `
-      <div class="bga-hero">
-        <img src="bga.png" alt="BGA" onerror="this.remove()">
-        <div><h1>Backyard Golf Association</h1><p>${evs.length} event${evs.length===1?'':'s'} played${myRank>=0 ? ' · ranked '+B.ordinal(myRank+1)+' of '+ranked.length : ''}</p></div>
-      </div>
+      <div class="bga-hero"><img src="bga.png" alt="Backyard Golf Association" onerror="this.remove()"></div>
       <div class="bga-tiles">
         <div><b>${won('tour') + won('major')}</b><span>Wins</span></div>
         <div><b>${won('major')}</b><span>Majors</span></div>
         <div><b>${won('tour')}</b><span>Tour</span></div>
         <div><b>${won('club')}</b><span>Qual.</span></div>
       </div>
-      <button type="button" class="app-btn bga wide" data-bga="play">${B.inProgress() ? 'Resume event' : '<img src="bga.png" alt="" onerror="this.remove()">Play a BGA event'}</button>
-      ${latest}
-      <div class="app-sec-h"><h2>Majors</h2><span class="app-cap">your wins</span></div>
-      <div class="shelf">${majors}</div>
-      <div class="app-sec-h"><h2>BGA Rankings</h2><span class="app-cap">Elo</span></div>
-      <div class="lb">${ranked.length ? rankRows(showRank) + (myRank >= 10 ? `<div class="lb-cut">· · ·</div>` + rankRows([ranked[myRank]]) : '') : '<p class="note" style="padding:14px;margin:0;">Play an event to start the rankings.</p>'}</div>
       <div class="bga-menu">
         <button type="button" data-bga="allevents">All Events<span>›</span></button>
         <button type="button" data-bga="career">Career Results<span>›</span></button>
         <button type="button" data-bga="majors">All Majors<span>›</span></button>
-        <button type="button" data-bga="series">Course Events<span>›</span></button>
-      </div>`;
+      </div>
+      ${latest}
+      <div class="app-sec-h"><h2>Majors</h2><span class="app-cap">your wins</span></div>
+      <div class="shelf">${majors}</div>
+      <div class="app-sec-h"><h2>BGA Rankings</h2><span class="app-cap">Elo</span></div>
+      <div class="lb">${ranked.length ? rankRows(showRank) + (!rankOpen && myRank >= 10 ? `<div class="lb-cut">· · ·</div>` + rankRows([ranked[myRank]]) : '') : '<p class="note" style="padding:14px;margin:0;">Play an event to start the rankings.</p>'}</div>
+      ${ranked.length > 10 ? `<button type="button" class="rec-more" data-bga="rankmore">${rankOpen ? 'Show less' : 'Show all '+ranked.length}</button>` : ''}`;
   }
   $('bgaPage').addEventListener('click', e => {
     const b = e.target.closest('[data-bga]'); if(!b || !window.BGA) return;
     const a = b.dataset.bga;
     if(a === 'play') post();
+    else if(a === 'rankmore'){ rankOpen = !rankOpen; renderBga(); }
     else if(a === 'player') BGA.openPlayer(b.dataset.name);
     else if(a === 'round') BGA.openRound(b.dataset.key);
     else if(a === 'major') BGA.openMajors(b.dataset.name);
