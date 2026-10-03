@@ -200,3 +200,7 @@ html.app .badge.b18{background:#d9c9a0;color:#4a3f22;}
 .app-brand{font-family:'Snell Roundhand','Segoe Script','Brush Script MT',cursive;font-weight:700;font-size:28px;text-transform:none;letter-spacing:0;line-height:1;}
 .app-top-in .app-tabname{margin-left:auto;}
 .app-heron{height:40px;width:auto;flex-shrink:0;}
+
+/* Home handicap card opens the Handicap screen */
+.hc-card{cursor:pointer;}
+.hc-more{float:right;text-transform:none;letter-spacing:0;font-size:11.5px;color:var(--green);}

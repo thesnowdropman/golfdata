@@ -1183,6 +1183,9 @@ function toParAndExpStr(r){
 }
 
 // ================= CORE RECOMPUTE =================
+// The last index calculation (for the Handicap screen) and the manual-index key
+var whsCalc = {recent:[], k:0, plus:0, index:null, override:null};
+const HI_OVERRIDE_KEY = 'anges-golf-hi-override';
 function recompute(){
   const chrono = [...rounds].sort((a,b)=> new Date(a.date) - new Date(b.date));
   t0 = dayNum(chrono[0].date);
@@ -1213,7 +1216,7 @@ function recompute(){
       const raw9 = (gross - r.rating) * 113 / r.slope;
       d = Math.round((raw9 + 0.52*whsIdx + 1.2) * 10) / 10;
     }
-    const e = {d, adj:0};
+    const e = {d, adj:0, r};
     outingDiffs.push(e);
     if(whsIdx != null){ const gap = whsIdx - d; const cut = gap >= 10 ? 2 : gap >= 7 ? 1 : 0; if(cut) outingDiffs.slice(-20).forEach(z => z.adj -= cut); }
     const recent = outingDiffs.slice(-20), n = recent.length;
@@ -1221,16 +1224,25 @@ function recompute(){
     if(n < 3){
       // USGA needs 3 scores; until then show the plain average so the chart has a line
       roundedAvg = Math.round(recent.reduce((s,z)=>s+z.d,0)/n*10)/10;
+      whsCalc = {recent, k:n, plus:0, index:roundedAvg};
     } else {
       const [k, plus] = n >= 20 ? [8, 0] : WHS_TABLE[n];
       const best = recent.map(z => z.d + z.adj).sort((a,b)=>a-b).slice(0,k);
       roundedAvg = Math.round((best.reduce((s,x)=>s+x,0)/k + plus)*10)/10;
       whsIdx = roundedAvg;
+      whsCalc = {recent, k, plus, index:roundedAvg};
     }
     if(n >= 3) whsIdx = roundedAvg;
     chartSegPoints.push({segNum: chartSegPoints.length+1, index: roundedAvg});
     trend.push({date:r.date, day:dayNum(r.date)-t0, index:roundedAvg, diff:r.diff});
   }
+  // Manual index (e.g. from GHIN): replaces the current index until the next round is posted
+  whsCalc.override = null;
+  try{
+    const ov = JSON.parse(localStorage.getItem(HI_OVERRIDE_KEY) || 'null');
+    if(ov && ov.n === chrono.length && !isNaN(ov.value)){ whsCalc.override = ov.value; trend[trend.length-1].index = ov.value; }
+    else if(ov) localStorage.removeItem(HI_OVERRIDE_KEY);
+  }catch(e){}
 
   function linreg(points){
     const n = points.length;

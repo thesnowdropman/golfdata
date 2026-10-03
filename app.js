@@ -115,7 +115,9 @@
   function renderCard(){
     if(typeof trend === 'undefined' || !trend || !trend.length) return;
     const idx = trend[trend.length-1].index;
-    const low = Math.min(...trend.map(p=>p.index));
+    // Low HI from calculated values only (a manual index isn't part of your history)
+    const calcNow = window.whsCalc && whsCalc.index != null ? whsCalc.index : idx;
+    const low = Math.min(...trend.slice(0,-1).map(p=>p.index), calcNow);
     const per30 = reg ? reg.slope*30 : 0;
     const dir = per30 < -0.05 ? 'down' : per30 > 0.05 ? 'up' : 'flat';
     let next = '', sinceJul = '';
@@ -129,7 +131,7 @@
       if(f){ const e = computeExpScoreFor(f.rating, f.slope, f.holes); if(e != null) next = `<div><span class="app-cap">Next exp.</span><b>${e}</b><small>${esc(courseName(f.course).replace(/\s+\b(golf|country)\b.*$/i,''))}</small></div>`; }
     }catch(e){}
     $('hcCard').innerHTML = `
-      <div class="app-cap">Handicap Index</div>
+      <div class="app-cap">Handicap Index${whsCalc && whsCalc.override != null ? ' · Manual' : ''}<span class="hc-more">How it's figured ›</span></div>
       <div class="hc-row"><div class="hc-big">${idx.toFixed(1)}</div>${spark(trend.slice(-30).map(p=>p.index), 140, 56)}</div>
       <div class="hc-sub">
         <div><span class="app-cap">Low HI</span><b>${low.toFixed(1)}</b></div>
@@ -138,6 +140,48 @@
         ${next}
       </div>`;
   }
+
+  // ---------- Handicap screen: the rounds behind the index, and a manual index ----------
+  function openHandicap(){
+    const C = window.whsCalc; if(!C || !C.recent.length) return;
+    const rows = C.recent.map(z => ({...z, v: Math.round((z.d + z.adj)*10)/10}));
+    const used = new Set([...rows].sort((a,b)=>a.v-b.v).slice(0, C.k));
+    const sumUsed = [...used].reduce((s,z)=>s+z.v, 0);
+    const list = [...rows].reverse().map(z => {
+      const r = z.r, d = new Date(r.date+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'});
+      const note = [r.holes===9 ? '9-hole → 18' : '', z.adj ? 'exceptional ' + z.adj.toFixed(1) : ''].filter(Boolean).join(' · ');
+      return `<tr class="${used.has(z) ? 'tn-you' : ''}"><td class="tn-name tn-rcol">${esc(courseName(r.course).replace(/\s+[-–]\s+.*$/,'').replace(/\s+\b(golf|country)\b.*$/i,''))}<small>${d} · ${esc(String(r.score).replace(/\D+$/,''))}</small></td><td class="tn-n">${r.diff.toFixed(1)}</td><td class="tn-n"><b>${z.v.toFixed(1)}</b>${note ? `<small style="display:block;font-weight:400;font-size:10px;color:var(--mute)">${note}</small>` : ''}</td><td class="tn-n">${used.has(z) ? '✓' : ''}</td></tr>`;
+    }).join('');
+    const ov = C.override;
+    document.getElementById('detailMiiRow').innerHTML = ''; document.getElementById('detailMiiRow').style.display = 'none';
+    document.getElementById('detailTitle').innerHTML = `<span id="courseTitleText">Handicap Index</span><span class="crr-rs title-subline">USGA World Handicap System</span>`;
+    document.getElementById('detailTitle').style.marginTop = '0';
+    document.getElementById('detailBody').innerHTML = `
+      <div class="strip" style="margin:6px 0 12px;">
+        <div class="cell flag"><div class="num">${(ov != null ? ov : C.index).toFixed(1)}</div><div class="lbl">${ov != null ? 'Manual index' : 'Your index'}</div></div>
+        <div class="cell"><div class="num">${C.index.toFixed(1)}</div><div class="lbl">Calculated</div></div>
+        <div class="cell"><div class="num">${C.k} of ${C.recent.length}</div><div class="lbl">Rounds counted</div></div>
+      </div>
+      <p class="note" style="margin:0 0 10px;">Average of your ${C.k} lowest of the last ${C.recent.length}: ${sumUsed.toFixed(1)} ÷ ${C.k} = ${(sumUsed/C.k).toFixed(2)}${C.plus ? ` ${C.plus>0?'+':'−'} ${Math.abs(C.plus).toFixed(1)} (USGA adjustment for under 20 rounds)` : ''} → <b>${C.index.toFixed(1)}</b></p>
+      <div class="tn-boardwrap"><table class="tn-board">
+        <thead><tr><th>Round</th><th class="tn-n">Diff</th><th class="tn-n">Counts as</th><th class="tn-n">Used</th></tr></thead>
+        <tbody>${list}</tbody></table></div>
+      <p class="idx-note" style="margin:6px 0 14px;">Diff is the round's own differential (the chart). Counts as is what USGA uses: a 9-hole round adds your expected 9-hole differential (0.52 × index that day + 1.2), and a round 7+ below your index takes 1.0 (10+ takes 2.0) off your last 20. Highlighted rounds are the ones averaged.</p>
+      <h4 class="tn-shelf-h">Manual index</h4>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <input id="hiManual" type="number" inputmode="decimal" step="0.1" min="0" max="54" placeholder="e.g. 30.4" value="${ov != null ? ov : ''}" style="width:110px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;font-size:16px;">
+        <button class="btn" type="button" id="hiSave">Use this</button>
+        ${ov != null ? '<button class="btn secondary" type="button" id="hiClear">Go back to calculated</button>' : ''}
+      </div>
+      <p class="idx-note" style="margin:6px 0 0;">Enter your GHIN index to use it everywhere (expected scores, BGA). It stays until you post your next round, then the app goes back to calculating.</p>`;
+    detailOverlay.classList.add('open'); detailOverlay.scrollTop = 0;
+    navStack = []; try{ updateBackButton(); }catch(e){}
+    const refresh = () => { try{ recompute(); }catch(e){} openHandicap(); };
+    $('hiSave').onclick = () => { const v = parseFloat($('hiManual').value); if(isNaN(v) || v < 0 || v > 54) return;
+      try{ localStorage.setItem(HI_OVERRIDE_KEY, JSON.stringify({value: Math.round(v*10)/10, n: rounds.length})); }catch(e){} refresh(); };
+    const c = $('hiClear'); if(c) c.onclick = () => { try{ localStorage.removeItem(HI_OVERRIDE_KEY); }catch(e){} refresh(); };
+  }
+  $('hcCard').addEventListener('click', e => { if(!e.target.closest('a,button')) openHandicap(); });
 
   // ---------- Home: score record ----------
   let recView = 'recent', recOpen = false;
