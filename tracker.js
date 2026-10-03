@@ -1194,18 +1194,40 @@ function recompute(){
   // round counts once, regardless of whether it was 9 or 18 holes. Previously an
   // 18-hole round was double-counted as two 9-hole "segments," which skewed the
   // average toward 18-hole rounds; that's intentionally gone now.
+  // Handicap Index by USGA World Handicap System rules. Only the index uses these numbers;
+  // each round's own differential (r.diff, the chart) is left as it is.
+  //  - 9-hole rounds: 9-hole differential + expected 9-hole differential (0.52 x index at
+  //    the time + 1.2) makes the 18-hole differential that counts.
+  //  - Fewer than 20 scores: USGA table (how many lowest count, plus any adjustment).
+  //  - Exceptional score: 7.0-9.9 below the index at the time takes 1.0 off the most recent
+  //    20 differentials, 10.0+ takes 2.0 off.
+  const WHS_TABLE = {3:[1,-2],4:[1,-1],5:[1,0],6:[2,-1],7:[2,0],8:[2,0],9:[3,0],10:[3,0],11:[3,0],12:[4,0],13:[4,0],14:[4,0],15:[5,0],16:[5,0],17:[6,0],18:[6,0],19:[7,0]};
   const outingDiffs = [];
+  let whsIdx = null;
   trend = [];
   chartSegPoints = [];
   for(const r of chrono){
-    outingDiffs.push(r.diff);
-    // WHS-style: best 8 of the most recent 20 outings (same window the handicap-spot
-    // badges already use), so a run of bad rounds can push good ones out and raise it.
-    const recent = outingDiffs.slice(-20);
-    const k = Math.min(8, recent.length);
-    const sorted = [...recent].sort((a,b)=>a-b);
-    const avg = sorted.slice(0,k).reduce((s,x)=>s+x,0)/k;
-    const roundedAvg = Math.round(avg*10)/10;
+    let d = r.diff;
+    const gross = parseInt(String(r.score), 10);
+    if(r.holes === 9 && whsIdx != null && !isNaN(gross) && r.rating && r.slope){
+      const raw9 = (gross - r.rating) * 113 / r.slope;
+      d = Math.round((raw9 + 0.52*whsIdx + 1.2) * 10) / 10;
+    }
+    const e = {d, adj:0};
+    outingDiffs.push(e);
+    if(whsIdx != null){ const gap = whsIdx - d; const cut = gap >= 10 ? 2 : gap >= 7 ? 1 : 0; if(cut) outingDiffs.slice(-20).forEach(z => z.adj -= cut); }
+    const recent = outingDiffs.slice(-20), n = recent.length;
+    let roundedAvg;
+    if(n < 3){
+      // USGA needs 3 scores; until then show the plain average so the chart has a line
+      roundedAvg = Math.round(recent.reduce((s,z)=>s+z.d,0)/n*10)/10;
+    } else {
+      const [k, plus] = n >= 20 ? [8, 0] : WHS_TABLE[n];
+      const best = recent.map(z => z.d + z.adj).sort((a,b)=>a-b).slice(0,k);
+      roundedAvg = Math.round((best.reduce((s,x)=>s+x,0)/k + plus)*10)/10;
+      whsIdx = roundedAvg;
+    }
+    if(n >= 3) whsIdx = roundedAvg;
     chartSegPoints.push({segNum: chartSegPoints.length+1, index: roundedAvg});
     trend.push({date:r.date, day:dayNum(r.date)-t0, index:roundedAvg, diff:r.diff});
   }
