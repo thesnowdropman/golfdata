@@ -9,7 +9,7 @@ html.app{
   --font-mono:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
   --radius:14px; --card-shadow:0 2px 10px rgba(16,32,43,.06);
 }
-html.app body{font-size:15px;-webkit-font-smoothing:antialiased;padding-bottom:calc(72px + env(safe-area-inset-bottom));}
+html.app body{font-size:15px;-webkit-font-smoothing:antialiased;padding-bottom:calc(96px + env(safe-area-inset-bottom));}
 html.app .sky, html.app .app-legacy{display:none !important;}
 html.app .wrap{max-width:560px;padding:0 14px 24px;}
 html.app [hidden]{display:none !important;}
@@ -23,11 +23,11 @@ html.app #tab-home{margin-top:0;}
 html.app #tab-home::before{content:"";display:block;height:56px;background:var(--green);margin:0 -14px -56px;}
 
 /* Bottom tabs */
-.app-nav{position:fixed;left:0;right:0;bottom:0;z-index:45;background:#fff;border-top:1px solid var(--line);display:flex;justify-content:center;padding-bottom:env(safe-area-inset-bottom);box-shadow:0 -4px 16px rgba(16,32,43,.05);}
-.app-nav button{flex:1;max-width:140px;background:none;border:0;padding:9px 0 8px;display:flex;flex-direction:column;align-items:center;gap:3px;font:700 11px/1 var(--font-body);color:var(--mute);cursor:pointer;letter-spacing:.02em;}
-.app-nav svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
-.app-nav button[aria-current="page"]{color:var(--green);}
-.app-nav button[data-tab="bga"][aria-current="page"]{color:var(--navy);}
+.app-nav{position:fixed;left:0;right:0;bottom:0;z-index:45;background:#fff;border-top:1px solid var(--line);display:flex;justify-content:center;gap:6px;padding:8px 10px max(18px, calc(env(safe-area-inset-bottom) + 6px));box-shadow:0 -4px 16px rgba(16,32,43,.06);}
+.app-nav button{flex:1;max-width:130px;min-height:58px;background:none;border:0;border-radius:14px;padding:8px 0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font:700 11.5px/1 var(--font-body);color:var(--mute);cursor:pointer;letter-spacing:.02em;-webkit-tap-highlight-color:transparent;transition:background .15s ease,color .15s ease;}
+.app-nav svg{width:25px;height:25px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
+.app-nav button[aria-current="page"]{background:var(--green);color:#fff;}
+.app-nav button[data-tab="bga"][aria-current="page"]{background:var(--navy);}
 .app-nav button:focus-visible{outline:2px solid var(--green);outline-offset:-4px;}
 
 /* Shared */
@@ -41,7 +41,7 @@ html.app .note{color:var(--mute);}
 html.app .idx-note{color:var(--mute);font-family:var(--font-body);}
 html.app .btn{font-family:var(--font-display);font-size:15px;letter-spacing:.04em;text-transform:uppercase;border-radius:10px;padding:9px 16px;}
 html.app th{font-family:var(--font-body);color:var(--mute);border-bottom-color:var(--line);}
-html.app .badge.b18{background:var(--navy);} html.app .badge.b9{background:var(--green2);}
+html.app .badge.b18{background:#CBAE78;} html.app .badge.b9{background:var(--green2);}
 .app-btn{flex:1;border-radius:12px;padding:13px 8px;font:700 16px/1 var(--font-display);letter-spacing:.05em;text-transform:uppercase;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;border:1.5px solid var(--green);}
 .app-btn.primary{background:var(--green);color:#fff;}
 .app-btn.bga{background:#fff;color:var(--navy);border-color:var(--navy);}
@@ -102,7 +102,7 @@ html.app .chart-box{border:0;background:none;padding:0;}
 
 /* Detail modal (round cards, BGA screens) */
 html.app .modal{background:var(--paper);border-radius:20px;}
-html.app #detailTitle, html.app .modal h3{font-family:var(--font-display);font-weight:700;letter-spacing:.01em;}
+html.app .modal h3:not(#detailTitle){font-family:var(--font-display);font-weight:700;letter-spacing:.01em;}
 
 /* BGA page */
 .bga-hero{display:flex;align-items:center;gap:14px;background:linear-gradient(160deg,var(--navy),var(--navy2));color:#fff;border-radius:18px;padding:16px;margin-top:14px;}
@@ -150,7 +150,7 @@ html.app #detailTitle, html.app .modal h3{font-family:var(--font-display);font-w
 
 /* Player profile trophy shelf (inside the detail modal) */
 .tn-shelf-h{font:700 16px/1 var(--font-display);text-transform:uppercase;letter-spacing:.06em;margin:4px 0 8px;}
-.tn-shelf{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin:0 0 14px;}
+.tn-shelf{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:0 0 14px;}
 .tn-tro{background:#fff;border-radius:10px;padding:8px 2px 6px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;box-shadow:var(--card-shadow);}
 .tn-tro img{opacity:.3;filter:grayscale(1);height:30px !important;width:auto !important;}
 .tn-tro.won img{opacity:1;filter:none;}
@@ -160,3 +160,6 @@ html.app #detailTitle, html.app .modal h3{font-family:var(--font-display);font-w
 
 @media (prefers-reduced-motion: reduce){ html.app *{scroll-behavior:auto;} }
 html.app .modal h4{font-family:var(--font-display);font-weight:700;letter-spacing:.02em;}
+.bga-hero .bga-sub{margin:2px 0 0;font-size:12px;opacity:.75;letter-spacing:.04em;}
+.lb-cols.rk{grid-template-columns:36px 1fr 56px;}
+.lb-cols.rk span:nth-child(3){text-align:right;}

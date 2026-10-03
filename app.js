@@ -147,10 +147,9 @@
       const par = (typeof PAR_BY_COURSE !== 'undefined') ? PAR_BY_COURSE[r.course] : null;
       const g = gross(r), toPar = par != null ? g - par : null;
       const tag = courseTag(r.course);
-      const ev = r.event && Array.isArray(r.event.board) && window.BGA ? (()=>{ try{ const me = BGA.rankBoard(r.event).find(x=>x.you); return me ? `<span class="rec-bga">${BGA.ordinal(me.pos)}</span>` : ''; }catch(e){ return ''; } })() : '';
       return `<button type="button" class="rec-row" data-i="${rounds.indexOf(r)}">
         <span class="rec-d"><b>${d.getDate()}</b>${d.toLocaleDateString('en-US',{month:'short'}).toUpperCase()}${recView!=='recent' ? `<i>${String(d.getFullYear()).slice(2)}</i>` : ''}</span>
-        <span class="rec-c">${esc(courseName(r.course))}${ev}<small>${r.holes} holes${tag ? ' · '+esc(tag) : ''} · ${Number(r.rating).toFixed(1)}/${r.slope}</small></span>
+        <span class="rec-c">${esc(courseName(r.course))}<small>${r.holes} holes${tag ? ' · '+esc(tag) : ''} · ${Number(r.rating).toFixed(1)}/${r.slope}</small></span>
         <span class="rec-g">${isNaN(g) ? esc(r.score) : g}${toPar != null ? `<small>${toPar===0?'E':(toPar>0?'+':'')+toPar}</small>` : ''}</span>
         <span class="rec-df${r.diff===best?' best':''}">${r.diff.toFixed(1)}</span>
       </button>`;
@@ -198,13 +197,29 @@
       const d = new Date(r.date+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'});
       latest = `<div class="app-sec-h"><h2>Latest Event</h2><span class="app-cap">${d}</span></div>
         <div class="lb">
-          <button type="button" class="lb-head" data-bga="round" data-key="${esc(roundKey(r))}">${r.event.tier==='major' ? B.majorIcon(name, 40) : B.bgaImg(30)}<span><b>${esc(name)}</b><small>${esc(courseName(r.course))} · ${r.event.tier==='major'?'Major':r.event.tier==='club'?'Qualifier':'Tour'} · Target ${r.event.target}</small></span></button>
+          <button type="button" class="lb-head" data-bga="round" data-key="${esc(roundKey(r))}">${r.event.tier==='major' ? B.majorIcon(name, 40) : B.bgaImg(30)}<span><b>${esc(name)}</b><small>${esc(courseName(r.course))} · ${r.event.tier==='major'?'Major':r.event.tier==='club'?'Club':'Tour'} · Target ${r.event.target}</small></span></button>
           <div class="lb-cols"><span>Pos</span><span>Player</span><span>To par</span><span>Tot</span></div>
           ${rowsFor(top)}
           ${me && !top.includes(me) ? `<div class="lb-cut">· · · ${b.indexOf(me) - 5 > 0 ? (b.indexOf(me) - 5)+' more · · ·' : ''}</div>${rowsFor([me])}` : ''}
           ${b.length > 5 && (!me || top.includes(me)) ? `<div class="lb-cut">· · · ${b.length-5} more · · ·</div>` : ''}
         </div>`;
     }
+
+    // ShedEx Cup: this month's points race (top 5, plus you if lower)
+    let cup = '';
+    try{
+      const months = B.shedexMonths(), cur = months.find(m=>!m.done) || months[0];
+      const cupsWon = months.filter(m=>m.done && m.list.some(p=>p.you && p.pos===1)).length;
+      if(cur){
+        const top = cur.list.slice(0,5), me = cur.list.find(p=>p.you);
+        const row = p => `<button type="button" class="rk-row${p.you?' me':''}" data-bga="player" data-name="${esc(p.name)}"><span class="lb-pos">${esc(p.label)}</span><span class="lb-nm">${p.you ? '<b>You</b>' : esc(p.name)}<small>${p.ev} event${p.ev===1?'':'s'}${p.wins ? ' · '+p.wins+' win'+(p.wins===1?'':'s') : ''}</small></span><span class="rk-elo">${p.pts}</span></button>`;
+        cup = `<div class="app-sec-h"><h2>ShedEx Cup</h2><span class="app-cap">${esc(B.monthLabel(cur.key))}</span></div>
+          <div class="lb">
+            <button type="button" class="lb-head" data-bga="shedex">${B.shedexIcon(40)}<span><b>Monthly points race</b><small>${cur.events} event${cur.events===1?'':'s'} this month · you've won ${cupsWon} Cup${cupsWon===1?'':'s'}</small></span></button>
+            ${cur.list.length ? `<div class="lb-cols rk"><span>Pos</span><span>Player</span><span>Pts</span></div>` + top.map(row).join('') + (me && !top.includes(me) ? `<div class="lb-cut">· · ·</div>` + row(me) : '') : '<p class="note" style="padding:12px 14px;margin:0;">No Tour events or Majors yet this month.</p>'}
+          </div>`;
+      }
+    }catch(e){ console.error(e); }
 
     // Majors shelf
     const majorEvs = evs.filter(r=>r.event.tier==='major');
@@ -225,16 +240,17 @@
     page.innerHTML = `
       <div class="bga-hero">
         <img src="bga.png" alt="BGA" onerror="this.remove()">
-        <div><h1>Backyard Golf Association</h1><p>${evs.length} event${evs.length===1?'':'s'} played${myRank>=0 ? ' · ranked '+B.ordinal(myRank+1)+' of '+ranked.length : ''}</p></div>
+        <div><h1>BGA Tour</h1><p class="bga-sub">Backyard Golf Association</p><p>${evs.length} event${evs.length===1?'':'s'} played${myRank>=0 ? ' · ranked '+B.ordinal(myRank+1)+' of '+ranked.length : ''}</p></div>
       </div>
       <div class="bga-tiles">
         <div><b>${won('tour') + won('major')}</b><span>Wins</span></div>
         <div><b>${won('major')}</b><span>Majors</span></div>
         <div><b>${won('tour')}</b><span>Tour</span></div>
-        <div><b>${won('club')}</b><span>Qual.</span></div>
+        <div><b>${won('club')}</b><span>Club</span></div>
       </div>
       <button type="button" class="app-btn bga wide" data-bga="play">${B.inProgress() ? 'Resume event' : '<img src="bga.png" alt="" onerror="this.remove()">Play a BGA event'}</button>
       ${latest}
+      ${cup}
       <div class="app-sec-h"><h2>Majors</h2><span class="app-cap">your wins</span></div>
       <div class="shelf">${majors}</div>
       <div class="app-sec-h"><h2>BGA Rankings</h2><span class="app-cap">Elo</span></div>
@@ -244,6 +260,7 @@
         <button type="button" data-bga="career">Career Results<span>›</span></button>
         <button type="button" data-bga="majors">All Majors<span>›</span></button>
         <button type="button" data-bga="series">Course Events<span>›</span></button>
+        <button type="button" data-bga="shedex">ShedEx Cup history<span>›</span></button>
       </div>`;
   }
   $('bgaPage').addEventListener('click', e => {
@@ -257,6 +274,7 @@
     else if(a === 'career') BGA.openCareer();
     else if(a === 'majors') BGA.openMajors();
     else if(a === 'series') BGA.openSeries();
+    else if(a === 'shedex') BGA.openShedex();
   });
 
   // ---------- Keep in sync with data changes ----------
