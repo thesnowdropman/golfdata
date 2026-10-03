@@ -1,39 +1,26 @@
-const CACHE_NAME = 'anges-golf-v1';
-const SHELL_FILES = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
+// Ange's Golf service worker: network first, so a new upload shows up the next time
+// the app opens. The saved copy is only used when there's no signal (e.g. on the course).
+const CACHE = 'anges-golf-v2';
 
-self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(SHELL_FILES))
+self.addEventListener('install', () => self.skipWaiting());
+
+self.addEventListener('activate', e => {
+  e.waitUntil(
+    caches.keys()
+      .then(keys => Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k))))
+      .then(() => self.clients.claim())
   );
-  self.skipWaiting();
 });
 
-self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    caches.keys().then((names) =>
-      Promise.all(names.filter((n) => n !== CACHE_NAME).map((n) => caches.delete(n)))
-    )
-  );
-  self.clients.claim();
-});
-
-self.addEventListener('fetch', (event) => {
-  const url = new URL(event.request.url);
-  // Only ever handle same-origin GET requests for the app shell itself. Firebase/
-  // Firestore calls go to a different origin entirely and are never touched here --
-  // sync must always hit the live network, offline caching is only for the app shell.
-  if (event.request.method !== 'GET' || url.origin !== self.location.origin) {
-    return;
-  }
-  // Network-first: always try to get the latest version when online (this app gets
-  // updated often), only falling back to the cached copy if the network is unreachable.
-  event.respondWith(
-    fetch(event.request)
-      .then((response) => {
-        const clone = response.clone();
-        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
-        return response;
+self.addEventListener('fetch', e => {
+  const req = e.request;
+  if (req.method !== 'GET' || new URL(req.url).origin !== location.origin) return;
+  e.respondWith(
+    fetch(req, { cache: 'no-store' })
+      .then(res => {
+        if (res && res.ok) { const copy = res.clone(); caches.open(CACHE).then(c => c.put(req, copy)); }
+        return res;
       })
-      .catch(() => caches.match(event.request))
+      .catch(() => caches.match(req).then(hit => hit || caches.match('./index.html')))
   );
 });

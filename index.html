@@ -367,6 +367,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600;700;800&display=swap">
 <link rel="stylesheet" href="app.css">
+<script>document.documentElement.classList.add('app','app-loading');setTimeout(function(){document.documentElement.classList.remove('app-loading');},3000);</script>
 </head>
 <body>
 
@@ -802,8 +803,11 @@
 <!-- ===== REMOVABLE: PWA service worker registration ===== -->
 <script>
   if('serviceWorker' in navigator){
+    // When a new version takes over, reload once so the new files show right away
+    let swReloaded = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => { if(swReloaded) return; swReloaded = true; location.reload(); });
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('./sw.js').catch(()=>{});
+      navigator.serviceWorker.register('./sw.js', {updateViaCache:'none'}).then(r => r.update()).catch(()=>{});
     });
   }
 </script>
