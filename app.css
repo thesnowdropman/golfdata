@@ -196,3 +196,8 @@ html.app .badge.b18{background:#d9c9a0;color:#4a3f22;}
 .tn-fin.f1{background:#c9a227;} .tn-fin.f2{background:#9ea4ab;} .tn-fin.f3{background:#a0662e;}
 .tn-fin.f4{background:#14857f;} .tn-fin.f5{background:#2e7a50;} .tn-fin.f6{background:#e3c12b;color:#3a3000;}
 .tn-fin.f7{background:#e07a1f;} .tn-fin.f8{background:#c8102e;} .tn-fin.f9{background:#7d858d;}
+
+/* Top bar: cursive title, heron on the right */
+.app-brand{font-family:'Snell Roundhand','Segoe Script','Brush Script MT',cursive;font-weight:700;font-size:28px;text-transform:none;letter-spacing:0;line-height:1;}
+.app-top-in .app-tabname{margin-left:auto;}
+.app-heron{height:40px;width:auto;flex-shrink:0;}

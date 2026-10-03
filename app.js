@@ -19,6 +19,9 @@
   bar.className = 'app-top';
   bar.innerHTML = `<div class="app-top-in"><span class="app-brand">Ange's Golf</span><span class="app-tabname" id="appTabName">Home</span></div>`;
   document.body.insertBefore(bar, document.body.firstChild);
+  // Heron from the original header, top right
+  const heron = document.querySelector('img[alt="Heron"]');
+  if(heron){ const h = heron.cloneNode(); h.className = 'app-heron'; h.removeAttribute('style'); bar.querySelector('.app-top-in').appendChild(h); }
 
   const panels = {};
   TABS.forEach(t => { const d = document.createElement('div'); d.className = 'app-panel'; d.id = 'tab-'+t.id; d.hidden = true; panels[t.id] = d; });
