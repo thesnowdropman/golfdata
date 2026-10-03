@@ -1210,15 +1210,16 @@ function recompute(){
   trend = [];
   chartSegPoints = [];
   for(const r of chrono){
-    let d = r.diff;
+    let d = r.diff, raw9 = null;
     const gross = parseInt(String(r.score), 10);
     if(r.holes === 9 && whsIdx != null && !isNaN(gross) && r.rating && r.slope){
-      const raw9 = (gross - r.rating) * 113 / r.slope;
+      raw9 = Math.round((gross - r.rating) * 113 / r.slope * 10) / 10;
       d = Math.round((raw9 + 0.52*whsIdx + 1.2) * 10) / 10;
     }
-    const e = {d, adj:0, r};
+    // hi = index going into this round (used for the 9-hole conversion and the exceptional-score check)
+    const e = {d, adj:0, r, raw9, hi:whsIdx, cut:0};
     outingDiffs.push(e);
-    if(whsIdx != null){ const gap = whsIdx - d; const cut = gap >= 10 ? 2 : gap >= 7 ? 1 : 0; if(cut) outingDiffs.slice(-20).forEach(z => z.adj -= cut); }
+    if(whsIdx != null){ const gap = whsIdx - d; const cut = gap >= 10 ? 2 : gap >= 7 ? 1 : 0; if(cut){ e.cut = cut; outingDiffs.slice(-20).forEach(z => z.adj -= cut); } }
     const recent = outingDiffs.slice(-20), n = recent.length;
     let roundedAvg;
     if(n < 3){

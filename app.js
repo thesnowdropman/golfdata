@@ -149,8 +149,16 @@
     const sumUsed = [...used].reduce((s,z)=>s+z.v, 0);
     const list = [...rows].reverse().map(z => {
       const r = z.r, d = new Date(r.date+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'});
-      const note = [r.holes===9 ? '9-hole → 18' : '', z.adj ? 'exceptional ' + z.adj.toFixed(1) : ''].filter(Boolean).join(' · ');
-      return `<tr class="${used.has(z) ? 'tn-you' : ''}"><td class="tn-name tn-rcol">${esc(courseName(r.course).replace(/\s+[-–]\s+.*$/,'').replace(/\s+\b(golf|country)\b.*$/i,''))}<small>${d} · ${esc(String(r.score).replace(/\D+$/,''))}</small></td><td class="tn-n">${r.diff.toFixed(1)}</td><td class="tn-n"><b>${z.v.toFixed(1)}</b>${note ? `<small style="display:block;font-weight:400;font-size:10px;color:var(--mute)">${note}</small>` : ''}</td><td class="tn-n">${used.has(z) ? '✓' : ''}</td></tr>`;
+      // Show the work: 9-hole conversion with the index at that time, and any exceptional-score cut
+      const parts = [];
+      if(z.raw9 != null && z.hi != null){
+        const exp = Math.round((0.52*z.hi + 1.2)*10)/10;
+        parts.push(`9-hole diff ${z.raw9.toFixed(1)} + expected ${exp.toFixed(1)}<br>(HI ${z.hi.toFixed(1)} × 0.52 + 1.2) = ${z.d.toFixed(1)}`);
+      } else if(r.holes===9) parts.push('first rounds: own diff');
+      if(z.cut) parts.push(`exceptional: ${(z.hi - z.d).toFixed(1)} below HI ${z.hi.toFixed(1)} → −${z.cut}.0 to last 20`);
+      if(z.adj) parts.push(`${z.d.toFixed(1)} − ${Math.abs(z.adj).toFixed(1)} exceptional = ${z.v.toFixed(1)}`);
+      const note = parts.join('<br>');
+      return `<tr class="${used.has(z) ? 'tn-you' : ''}"><td class="tn-name tn-rcol">${esc(courseName(r.course).replace(/\s+[-–]\s+.*$/,'').replace(/\s+\b(golf|country)\b.*$/i,''))}<small>${d} · ${esc(String(r.score).replace(/\D+$/,''))}</small></td><td class="tn-n">${r.diff.toFixed(1)}</td><td class="tn-n"><b>${used.has(z) ? '✓ ' : ''}${z.v.toFixed(1)}</b>${note ? `<small style="display:block;font-weight:400;font-size:10px;line-height:1.3;color:var(--mute);white-space:nowrap">${note}</small>` : ''}</td></tr>`;
     }).join('');
     const ov = C.override;
     document.getElementById('detailMiiRow').innerHTML = ''; document.getElementById('detailMiiRow').style.display = 'none';
@@ -164,9 +172,9 @@
       </div>
       <p class="note" style="margin:0 0 10px;">Average of your ${C.k} lowest of the last ${C.recent.length}: ${sumUsed.toFixed(1)} ÷ ${C.k} = ${(sumUsed/C.k).toFixed(2)}${C.plus ? ` ${C.plus>0?'+':'−'} ${Math.abs(C.plus).toFixed(1)} (USGA adjustment for under 20 rounds)` : ''} → <b>${C.index.toFixed(1)}</b></p>
       <div class="tn-boardwrap"><table class="tn-board">
-        <thead><tr><th>Round</th><th class="tn-n">Diff</th><th class="tn-n">Counts as</th><th class="tn-n">Used</th></tr></thead>
+        <thead><tr><th>Round</th><th class="tn-n">Diff</th><th class="tn-n">Counts as</th></tr></thead>
         <tbody>${list}</tbody></table></div>
-      <p class="idx-note" style="margin:6px 0 14px;">Diff is the round's own differential (the chart). Counts as is what USGA uses: a 9-hole round adds your expected 9-hole differential (0.52 × index that day + 1.2), and a round 7+ below your index takes 1.0 (10+ takes 2.0) off your last 20. Highlighted rounds are the ones averaged.</p>
+      <p class="idx-note" style="margin:6px 0 14px;">Diff is the round's own differential (the chart). Counts as is what USGA uses: a 9-hole round adds your expected 9-hole differential (0.52 × index that day + 1.2), and a round 7+ below your index takes 1.0 (10+ takes 2.0) off your last 20. Highlighted (✓) rounds are the ones averaged. HI is your index going into that round.</p>
       <h4 class="tn-shelf-h">Manual index</h4>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
         <input id="hiManual" type="number" inputmode="decimal" step="0.1" min="0" max="54" placeholder="e.g. 30.4" value="${ov != null ? ov : ''}" style="width:110px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;font-size:16px;">
