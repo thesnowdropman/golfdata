@@ -186,4 +186,12 @@ html.app .badge.b18{background:#d9c9a0;color:#4a3f22;}
 .tn-tro img, .tro img{margin:0 auto !important;display:block;}
 .tn-tro span{white-space:normal;}
 .tn-shelf > .tn-tro:nth-child(4n+1):nth-last-child(2){grid-column:2;}
-.tn-shelf > .tn-tour:nth-child(5):last-child{grid-column:3;}
+.tn-cuprow{background:#fbf6e6;}
+
+/* Player card: narrow Round column, colored finish badges */
+.tn-rcol{width:26%;max-width:110px;font-size:12.5px;white-space:normal;line-height:1.2;}
+.tn-rcol small{white-space:nowrap;}
+.tn-fin{display:inline-block;min-width:30px;text-align:center;font:700 11px/1 var(--font-body);border-radius:4px;padding:3px 4px;color:#fff;background:#14202b;}
+.tn-fin.f1{background:#c9a227;} .tn-fin.f2{background:#9ea4ab;} .tn-fin.f3{background:#a0662e;}
+.tn-fin.f4{background:#14857f;} .tn-fin.f5{background:#2e7a50;} .tn-fin.f6{background:#e3c12b;color:#3a3000;}
+.tn-fin.f7{background:#e07a1f;} .tn-fin.f8{background:#c8102e;} .tn-fin.f9{background:#7d858d;}

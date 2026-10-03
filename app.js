@@ -243,6 +243,7 @@
         <button type="button" data-bga="allevents">All Events<span>›</span></button>
         <button type="button" data-bga="career">Career Results<span>›</span></button>
         <button type="button" data-bga="majors">All Majors<span>›</span></button>
+        <button type="button" data-bga="cup">ShedEx Cup<span>›</span></button>
       </div>
       ${latest}
       <div class="app-sec-h"><h2>Majors</h2><span class="app-cap">your wins</span></div>
@@ -260,6 +261,7 @@
     else if(a === 'round') BGA.openRound(b.dataset.key);
     else if(a === 'major') BGA.openMajors(b.dataset.name);
     else if(a === 'allevents') BGA.openAllEvents();
+    else if(a === 'cup') BGA.openCup();
     else if(a === 'career') BGA.openCareer();
     else if(a === 'majors') BGA.openMajors();
     else if(a === 'series') BGA.openSeries();

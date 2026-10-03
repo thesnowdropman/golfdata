@@ -1,3 +1,4 @@
+// Ange's Golf Tracker: core tracker code (rounds, handicap, charts, modals).
 // ================= DATA =================
 const baseRounds = [
   {score:"52Ni", date:"2026-08-08", rating:32.9, slope:110, diff:36.9, course:"Patty Jewett Golf Course", holes:9,
@@ -1198,9 +1199,11 @@ function recompute(){
   chartSegPoints = [];
   for(const r of chrono){
     outingDiffs.push(r.diff);
-    const n = outingDiffs.length;
-    const k = Math.min(8, n);
-    const sorted = [...outingDiffs].sort((a,b)=>a-b);
+    // WHS-style: best 8 of the most recent 20 outings (same window the handicap-spot
+    // badges already use), so a run of bad rounds can push good ones out and raise it.
+    const recent = outingDiffs.slice(-20);
+    const k = Math.min(8, recent.length);
+    const sorted = [...recent].sort((a,b)=>a-b);
     const avg = sorted.slice(0,k).reduce((s,x)=>s+x,0)/k;
     const roundedAvg = Math.round(avg*10)/10;
     chartSegPoints.push({segNum: chartSegPoints.length+1, index: roundedAvg});
@@ -1983,7 +1986,7 @@ function openDetail(idx){
   let body = `<p class="note" style="margin:2px 0 0;">${dateFmt} · ${r.holes}-hole round</p>`;
   // Scorecard and Backyard Open tabs sit above everything; Backyard Open shows only the standings
   const tnEvTab = !!window.tnOpenEventTab; window.tnOpenEventTab = false;
-  body += `<div class="view-toggle tn-tabs" style="display:flex;margin:12px 0 4px;"><button type="button" class="view-toggle-btn${tnEvTab?'':' active'}" data-tn-act="tab" data-tab="card">Scorecard</button><button type="button" class="view-toggle-btn${tnEvTab?' active':''}" data-tn-act="tab" data-tab="event">BGA Tour</button></div>`;
+  body += `<div class="view-toggle tn-tabs" style="display:flex;margin:12px 0 4px;"><button type="button" class="view-toggle-btn${tnEvTab?'':' active'}" data-tn-act="tab" data-tab="card">Scorecard</button><button type="button" class="view-toggle-btn${tnEvTab?' active':''}" data-tn-act="tab" data-tab="event">${r.event && Array.isArray(r.event.board) && r.event.tier!=='club' ? 'BGA Tour' : 'BGA'}</button></div>`;
   body += `<div data-tn-pane="card"${tnEvTab?' hidden':''}>`;
   if(expAtTimeForCard !== null){
     body += `<div class="strip round-detail-strip" style="margin:10px 0 0;">

@@ -18,7 +18,8 @@
   const MAJORS = ['The Mudders','The PBJ Championship','The U.S. Open Gate','The Earl Grey Open'];
   const MAJOR_SHORT = {'The Mudders':'The Mudders','The PBJ Championship':'PBJ Championship','The U.S. Open Gate':'U.S. Open Gate','The Earl Grey Open':'Earl Grey'};
   const SHELF_LBL = {'The PBJ Championship':'PBJ Champ','The Earl Grey Open':'Earl Grey Open'};
-  const MAJOR_ICONS = {'The U.S. Open Gate':'backyard-gate.png', 'The Earl Grey Open':'backyard-earlgrey.png', 'The PBJ Championship':'backyard-pbj.png', 'The Mudders':'backyard-mudders.png'};
+  const CUP = 'ShedEx Cup';
+  const MAJOR_ICONS = {'The U.S. Open Gate':'backyard-gate.png', 'The Earl Grey Open':'backyard-earlgrey.png', 'The PBJ Championship':'backyard-pbj.png', 'The Mudders':'backyard-mudders.png', 'ShedEx Cup':'shedex-cup.png'};
   // Logos: preloaded once into memory at startup (as data URLs) so screens that show them
   // draw instantly instead of blinking in; each <img> also reserves its exact size.
   const MAJOR_ICON_RATIO = {'The U.S. Open Gate':120/101, 'The Earl Grey Open':120/117, 'The PBJ Championship':120/114, 'The Mudders':120/114};
@@ -35,7 +36,34 @@
   let BGA_SRC = 'bga.png';
   try{ fetch(BGA_SRC).then(r => r.ok ? r.blob() : null).then(b => { if(!b) return; const fr = new FileReader(); fr.onload = () => { BGA_SRC = fr.result; }; fr.readAsDataURL(b); }).catch(()=>{}); }catch(e){}
   const bgaImg = px => `<img src="${BGA_SRC}" alt="" class="tn-bga" decoding="sync" style="height:${px}px;width:auto" onerror="this.replaceWith(document.createTextNode('🏆'))">`;
-  const majorIcon = (name, px) => MAJOR_ICONS[name] ? `<img src="${MAJOR_ICONS[name]}" alt="" class="tn-micon" decoding="sync" width="${Math.round(px*(MAJOR_ICON_RATIO[name]||1))}" height="${px}" style="height:${px}px;width:${Math.round(px*(MAJOR_ICON_RATIO[name]||1))}px">` : '';
+  const majorIcon = (name, px) => !MAJOR_ICONS[name] ? '' : !MAJOR_ICON_RATIO[name] ? `<img src="${MAJOR_ICONS[name]}" alt="" class="tn-micon" decoding="sync" height="${px}" style="height:${px}px;width:auto">` : `<img src="${MAJOR_ICONS[name]}" alt="" class="tn-micon" decoding="sync" width="${Math.round(px*(MAJOR_ICON_RATIO[name]||1))}" height="${px}" style="height:${px}px;width:${Math.round(px*(MAJOR_ICON_RATIO[name]||1))}px">`;
+  // ---------- ShedEx Cup: monthly points race ----------
+  // Tour and Major events earn points (Qualifiers don't). Ties share the place's points.
+  const PTS = [15,12,10,9,8,7,6,5,4,3,2,1];
+  const ymOf = d => String(d).slice(0,7);
+  const nowYM = () => { const t = new Date(); return t.getFullYear()+'-'+String(t.getMonth()+1).padStart(2,'0'); };
+  const cupDone = ym => ym < nowYM();
+  const ymLabel = (ym, short) => { const d = new Date(ym+'-01T00:00:00'); return short ? d.toLocaleDateString('en-US',{month:'short'})+" '"+String(d.getFullYear()).slice(2) : d.toLocaleDateString('en-US',{month:'long',year:'numeric'}); };
+  const placePts = pos => PTS[parseInt(String(pos).replace('T',''),10)-1] || 0;
+  const evOrder = (a,b) => new Date(a.date)-new Date(b.date) || (a.event.seed||0)-(b.event.seed||0);
+  function pointEvents(){ return rounds.filter(r=>r.event && Array.isArray(r.event.board) && r.event.tier!=='club').sort(evOrder); }
+  function eventPts(r){ const o = {}; if(!r.event || r.event.tier==='club') return o; rankBoard(r.event).forEach(x=>{ o[x.you?'You':x.n] = placePts(x.pos); }); return o; }
+  function monthTotalThrough(name, r){ const ym = ymOf(r.date); let t = 0;
+    for(const e of pointEvents()){ if(ymOf(e.date)!==ym) continue; t += eventPts(e)[name]||0; if(e===r) break; } return t; }
+  function cupMonths(){ return [...new Set(pointEvents().map(r=>ymOf(r.date)))].sort().reverse(); }
+  // Most points wins; on equal points the higher HC wins (your HC = current index); still level, you win
+  function cupStandings(ym){
+    const evs = pointEvents().filter(r=>ymOf(r.date)===ym), P = {};
+    evs.forEach(r=>{ const pts = eventPts(r); rankBoard(r.event).forEach(x=>{ const n = x.you?'You':x.n;
+      const p = P[n] || (P[n] = {name:n, you:!!x.you, h:x.you?null:x.h, pts:0, ev:0, wins:0});
+      p.pts += pts[n]||0; p.ev++; if(String(x.pos)==='1') p.wins++; }); });
+    const hcOf = p => p.you ? currentIndex() : Number(p.h);
+    const rows = Object.values(P).sort((a,b)=>b.pts-a.pts || hcOf(b)-hcOf(a) || (b.you?1:0)-(a.you?1:0) || a.name.localeCompare(b.name));
+    let pos = 0; rows.forEach((r,i)=>{ if(i===0 || r.pts!==rows[i-1].pts || hcOf(r)!==hcOf(rows[i-1]) || rows[i-1].you) pos = i+1; r.pos = pos; });
+    const c = {}; rows.forEach(r=>c[r.pos]=(c[r.pos]||0)+1); rows.forEach(r=>r.label=(c[r.pos]>1?'T':'')+r.pos);
+    return {rows, evs};
+  }
+  function cupWinsOf(name){ return cupMonths().filter(cupDone).filter(ym=>cupStandings(ym).rows.some(x=>x.name===name && x.pos===1)).length; }
   function majorRounds(){ return rounds.filter(r=>r.event && r.event.tier==='major').sort((a,b)=>new Date(a.date)-new Date(b.date) || (a.event.seed||0)-(b.event.seed||0)); }
   function majorNameFor(r){ const i = majorRounds().indexOf(r); return MAJORS[(i<0 ? 0 : i) % MAJORS.length]; }
   function nextMajorName(){ return MAJORS[majorRounds().length % MAJORS.length]; }
@@ -207,8 +235,8 @@
   function standings(mine, S, F){
     S = S || T; F = F || field;
     const n = S.play.holes.length;
-    const rows = F.map(p=>{ const t=thruFor(S,p.group,mine,n); return {name:p.name, hc:p.hcp, group:p.group, note:'HC '+p.hcp+' · '+p.style, thru:t, gross:sum(p.scores,t), vs:sum(p.scores,t)-sum(S.target,t)}; });
-    rows.push({name:'You', you:true, hc:Number(S.index), group:S.groups||3, note:'Index '+S.index.toFixed(1)+' · target '+sum(S.target,n), thru:mine, gross:sum(S.mine,mine), vs:sum(S.mine,mine)-sum(S.target,mine)});
+    const rows = F.map(p=>{ const t=thruFor(S,p.group,mine,n); return {name:p.name, hc:p.hcp, group:p.group, note:'HC '+p.hcp+' · '+p.style+(t>0 ? ' · Last: '+fmt(p.scores[t-1]-S.target[t-1]) : ''), thru:t, gross:sum(p.scores,t), vs:sum(p.scores,t)-sum(S.target,t)}; });
+    rows.push({name:'You', you:true, hc:Number(S.index), group:S.groups||3, note:'Index '+S.index.toFixed(1)+' · target '+sum(S.target,n)+(mine>0 ? ' · Last: '+fmt(S.mine[mine-1]-S.target[mine-1]) : ''), thru:mine, gross:sum(S.mine,mine), vs:sum(S.mine,mine)-sum(S.target,mine)});
     const live = rankRows(rows.filter(r=>r.thru>0));
     return live.concat(rows.filter(r=>r.thru===0).sort((a,b)=>a.group-b.group).map(r=>({...r,label:'–'})));
   }
@@ -318,12 +346,14 @@
       ${head}${pad}${card}
       <div class="tn-row">
         ${done ? '<button class="btn" id="tnPost" type="button">Post Round to History</button>' : ''}
-        ${mine ? '<button class="btn secondary" id="tnUndo" type="button">Undo last hole</button>' : ''}
-        ${done ? '' : `<button class="btn secondary" id="tnQuit" type="button">${confirmQuit ? 'Tap again to abandon' : 'Abandon event'}</button>`}
       </div>
       <div class="tn-boardwrap"><table class="tn-board">
         <thead><tr><th>Pos</th><th>Player</th><th class="tn-n">Thru</th><th class="tn-n">Today</th><th class="tn-n">Gross</th></tr></thead>
         <tbody>${board}</tbody></table></div>
+      <div class="tn-row">
+        ${mine ? '<button class="btn secondary" id="tnUndo" type="button">Undo last hole</button>' : ''}
+        ${done ? '' : `<button class="btn secondary" id="tnQuit" type="button">${confirmQuit ? 'Tap again to abandon' : 'Abandon event'}</button>`}
+      </div>
 `;
     tnSlide(body, tnBefore);
     body.querySelectorAll('[data-s]').forEach(b=>b.onclick=()=>{ T.mine.push(+b.dataset.s); confirmQuit=false; save(); renderLive(); refreshAddBlock(); try{ triggerHaptic(); }catch(e){} });
@@ -438,9 +468,10 @@
     const board = rankBoard(e);
     const me = board.find(x=>x.you) || {};
     const tl = TIERS[e.tier] ? TIERS[e.tier].label : 'Backyard';
-    const rows = board.map(x=>`<tr class="${x.you?'tn-you':''}"><td>${esc(x.pos)}</td><td class="tn-name"><span class="tn-plink" data-tn-act="player" data-name="${esc(x.you ? 'You' : x.n)}" data-from="round" data-key="${key}">${esc(x.n)}</span><span class="tn-grp">G${x.g}</span><small>${x.you ? 'Index '+Number(e.index).toFixed(1) : 'HC '+x.h+' · '+esc(x.st)}</small></td><td class="tn-n ${cls(x.vs)}">${fmt(x.vs)}</td><td class="tn-n">${x.gross}</td></tr>`).join('');
+    const pts = e.tier!=='club' ? eventPts(r) : null, myTot = pts ? monthTotalThrough('You', r) : 0;
+    const rows = board.map(x=>`<tr class="${x.you?'tn-you':''}"><td>${esc(x.pos)}</td><td class="tn-name"><span class="tn-plink" data-tn-act="player" data-name="${esc(x.you ? 'You' : x.n)}" data-from="round" data-key="${key}">${esc(x.n)}</span><span class="tn-grp">G${x.g}</span><small>${x.you ? 'Index '+Number(e.index).toFixed(1)+(pts ? ' · +'+(pts.You||0)+' pts ('+myTot+' total)' : '') : 'HC '+x.h+' · '+esc(x.st)+(pts ? ' · '+(pts[x.n]||0)+' pts' : '')}</small></td><td class="tn-n ${cls(x.vs)}">${fmt(x.vs)}</td><td class="tn-n">${x.gross}</td></tr>`).join('');
     return `<div class="tn-saved" data-key="${key}">
-      <h4 class="tn-hole" style="margin:10px 0 2px;display:flex;align-items:center;gap:6px;">${bgaImg(24)}<span class="tn-evlink" data-tn-act="eventhist" data-ev="${esc(e.tier==='major' ? majorNameFor(r) : 'series:'+seriesName(r.course))}" data-from="round" data-key="${key}">${e.tier==='major' ? majorIcon(majorNameFor(r), 30)+esc(majorNameFor(r)) : esc(eventName(r))}</span></h4>
+      <h4 class="tn-hole" style="margin:10px 0 2px;display:flex;align-items:center;gap:6px;">${e.tier==='major' ? '' : bgaImg(24)}<span class="tn-evlink" data-tn-act="eventhist" data-ev="${esc(e.tier==='major' ? majorNameFor(r) : 'series:'+seriesName(r.course))}" data-from="round" data-key="${key}">${e.tier==='major' ? majorIcon(majorNameFor(r), 30)+esc(majorNameFor(r)) : esc(eventName(r))}</span></h4>
       <p class="idx-note" style="margin:0 0 8px;">${e.tier==='major' ? 'Major' : e.tier==='club' ? 'Qualifier' : esc(tl)+' event'} · Finished ${esc(ordinal(me.pos))}/${e.board.length} · Par ${e.target}</p>
       <div style="display:flex;gap:8px;flex-wrap:wrap;">${hasCard(r) ? `<button class="modal-edit" type="button" data-tn-act="editevent" data-key="${key}">Edit event</button>` : ''}${editBtn}</div>
       <div class="tn-editor"></div>
@@ -512,6 +543,10 @@
     const E = eloRatings(), elo = E.R[name];
     return `<div class="strip" style="margin:4px 0 12px;"><div class="cell"><div class="num">${txt}</div><div class="lbl">Avg to par</div></div><div class="cell"><div class="num">${ordinal(pos)}</div><div class="lbl">of ${list.length} players</div></div><div class="cell"><div class="num">${elo!=null ? Math.round(elo) : '—'}</div><div class="lbl">Elo${E.peak[name]!=null ? ' · peak '+Math.round(E.peak[name]) : ''}</div></div></div>`;
   }
+  // Finish badge: gold, silver, bronze, teal, green, yellow, orange, red, grey (9-10), black
+  function finBadge(pos){ const p = parseInt(String(pos).replace('T',''),10);
+    const c = p<=8 ? 'f'+p : p<=10 ? 'f9' : 'fx';
+    return `<span class="tn-fin ${c}">${esc(ordinal(pos))}</span>`; }
   function openPlayerDetail(name){
     const rowsData = rounds.filter(r=>r.event && Array.isArray(r.event.board))
       .map(r=>{ const x = rankBoard(r.event).find(b => name==='You' ? b.you : (!b.you && b.n===name)); return x ? {r, x, size:r.event.board.length} : null; })
@@ -522,20 +557,25 @@
     document.getElementById('detailTitle').innerHTML = `<span id="courseTitleText">${esc(name)}</span><span class="crr-rs title-subline">${hc!=null ? 'HC '+hc+' · '+styleOf(name)+' · ' : ''}BGA</span>`;
     document.getElementById('detailTitle').style.marginTop = navStack.length > 0 ? '28px' : '0';
     const wins = t => rowsData.filter(d=>String(d.x.pos)==='1' && (t ? d.r.event.tier===t : d.r.event.tier!=='club')).length;
-    const body = rowsData.map(d=>{
+    const cupRes = cupMonths().filter(cupDone).map(ym=>{ const x = cupStandings(ym).rows.find(q=>q.name===name); return x ? {ym, x} : null; }).filter(Boolean);
+    const cupRows = cupRes.map(c=>({k:c.ym+'-99', html:`<tr class="tn-click${c.x.pos===1 ? ' tn-you' : ''}" data-tn-act="cup" data-ym="${c.ym}" data-from="player" data-name="${esc(name)}"><td class="tn-name tn-rcol">${ymLabel(c.ym, true)}</td><td class="tn-wrap"><span class="tn-evlink">${majorIcon(CUP, 18)}${CUP}</span></td><td class="tn-n">${finBadge(c.x.label)}</td></tr>`}));
+    const evRows = rowsData.map(d=>({k:d.r.date, html:(()=>{
       const dt = new Date(d.r.date+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'2-digit'});
       const pm = d.r.course.match(/^(.*)\s\(([^)]+)\)$/); // "(18)", "(Back 9)" etc. move next to the date
       const nm = (pm ? pm[1] : d.r.course).replace(/\s+\b(golf|country)\b.*$/i, '');
-      return `<tr class="tn-click${String(d.x.pos)==='1' ? ' tn-you' : ''}" data-tn-act="openround" data-key="${esc(roundKey(d.r))}"><td class="tn-name tn-wrap">${esc(nm)}<small>${dt}${pm ? ' · '+esc(pm[2]) : ''}</small></td><td class="tn-wrap"><span class="tn-evlink" data-tn-act="eventhist" data-ev="${esc(d.r.event.tier==='major' ? majorNameFor(d.r) : 'series:'+seriesName(d.r.course))}" data-from="player" data-name="${esc(name)}">${d.r.event.tier==='major' ? majorIcon(majorNameFor(d.r), 18)+esc(MAJOR_SHORT[majorNameFor(d.r)]) : esc(eventName(d.r))}</span></td><td class="tn-n">${esc(ordinal(d.x.pos))}</td></tr>`;
-    }).join('');
+      return `<tr class="tn-click${String(d.x.pos)==='1' ? ' tn-you' : ''}" data-tn-act="openround" data-key="${esc(roundKey(d.r))}"><td class="tn-name tn-rcol">${esc(courseShort(nm))}<small>${dt}</small></td><td class="tn-wrap"><span class="tn-evlink" data-tn-act="eventhist" data-ev="${esc(d.r.event.tier==='major' ? majorNameFor(d.r) : 'series:'+seriesName(d.r.course))}" data-from="player" data-name="${esc(name)}">${d.r.event.tier==='major' ? majorIcon(majorNameFor(d.r), 18)+esc(MAJOR_SHORT[majorNameFor(d.r)]) : esc(eventName(d.r))}</span></td><td class="tn-n">${finBadge(d.x.pos)}</td></tr>`;
+    })()}));
+    const body = evRows.concat(cupRows).map((o,i)=>({...o,i})).sort((a,b)=>a.k<b.k?1:a.k>b.k?-1:a.i-b.i).map(o=>o.html).join('');
+    const cupW = cupRes.filter(c=>c.x.pos===1).length;
     // Trophy shelf: one slot per Major (with how many times won), plus Tour wins
     const wonMajor = {}; rowsData.forEach(d=>{ if(d.r.event.tier==='major' && String(d.x.pos)==='1'){ const m = eventName(d.r); wonMajor[m] = (wonMajor[m]||0)+1; } });
     const shelf = `<div class="tn-shelf">${MAJORS.map(m=>`<div class="tn-tro${wonMajor[m]?' won':''}" data-tn-act="eventhist" data-ev="${esc(m)}" data-from="player" data-name="${esc(name)}">${majorIcon(m, 34)}<b>${wonMajor[m]||0}</b><span>${esc((SHELF_LBL[m]||MAJOR_SHORT[m]).replace(/^The /,''))}</span></div>`).join('')}
-      <div class="tn-tro tn-tour${wins('tour')?' won':''}">${bgaImg(26)}<b>${wins('tour')}</b><span>Tour wins</span></div></div>`;
+      <div class="tn-tro tn-tour${wins('tour')?' won':''}">${bgaImg(26)}<b>${wins('tour')}</b><span>Tour wins</span></div>
+      <div class="tn-tro${cupW?' won':''}" data-tn-act="cup" data-from="player" data-name="${esc(name)}">${majorIcon(CUP, 34)}<b>${cupW}</b><span>ShedEx Cup</span></div></div>`;
     document.getElementById('detailBody').innerHTML = `
       ${avgLine(name)}
       <h4 class="tn-shelf-h">Trophy shelf</h4>${shelf}
-      <p class="note" style="margin:2px 0 12px;">${rowsData.length} appearances · ${wins()} wins (Tour ${wins('tour')}, Major ${wins('major')}) · Qualifier wins ${wins('club')}</p>
+      <p class="note" style="margin:2px 0 12px;">${rowsData.length} appearances · ${wins()} wins (Tour ${wins('tour')}, Major ${wins('major')}) · Qualifier wins ${wins('club')}${cupW ? ' · ShedEx Cups '+cupW : ''}</p>
       <div class="tn-boardwrap"><table class="tn-board">
         <thead><tr><th>Round</th><th>Event</th><th class="tn-n">Finish</th></tr></thead>
         <tbody>${body || '<tr><td colspan="3">No appearances yet.</td></tr>'}</tbody></table></div>
@@ -615,12 +655,18 @@
     document.getElementById('detailMiiRow').style.display = 'none';
     document.getElementById('detailTitle').innerHTML = `<span id="courseTitleText">All Events</span><span class="crr-rs title-subline">BGA</span>`;
     document.getElementById('detailTitle').style.marginTop = navStack.length > 0 ? '28px' : '0';
+    let prevYM = null;
+    const cupRow = ym => { const s = cupStandings(ym); if(!s.rows.length) return ''; const w = s.rows[0], done = cupDone(ym);
+      return `<tr class="tn-click tn-cuprow" data-tn-act="cup" data-ym="${ym}" data-from="allevents">
+        <td class="tn-name tn-wrap"><span class="tn-evlink">${majorIcon(CUP, 18)}${CUP}</span><small>${ymLabel(ym)}${done ? '' : ' · In progress'}</small></td>
+        <td class="tn-name tn-nowrap"><span class="tn-plink" data-tn-act="player" data-name="${esc(w.name)}" data-from="allevents">${w.you ? '<b>You</b>' : esc(shortName(w.name))}</span><small>(${w.pts} pts)</small></td></tr>`; };
     const rows = list.map(r=>{
+      const ym = ymOf(r.date), cup = ym !== prevYM ? cupRow(ym) : ''; prevYM = ym;
       const b = rankBoard(r.event), w = b.find(x=>String(x.pos)==='1') || b[0];
       const isM = r.event.tier === 'major', mn = isM ? majorNameFor(r) : null;
       const pm = r.course.match(/^(.*)\s\(([^)]+)\)$/);
       const dt = new Date(r.date+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'2-digit'});
-      return `<tr class="tn-click" data-tn-act="openround" data-from="allevents" data-key="${esc(roundKey(r))}">
+      return cup + `<tr class="tn-click" data-tn-act="openround" data-from="allevents" data-key="${esc(roundKey(r))}">
         <td class="tn-name tn-wrap"><span class="tn-evlink" data-tn-act="eventhist" data-ev="${esc(isM ? mn : 'series:'+seriesName(r.course))}" data-from="allevents">${isM ? majorIcon(mn, 18) : ''}${esc(eventName(r))}</span><small>${dt}${isM ? ' · '+esc(courseShort(r.course)) : ''}</small></td>
         <td class="tn-name tn-nowrap"><span class="tn-plink" data-tn-act="player" data-name="${esc(w.you ? 'You' : w.n)}" data-from="allevents">${w.you ? '<b>You</b>' : esc(shortName(w.n))}</span><small>HC ${w.you ? Number(r.event.index).toFixed(1) : w.h} (${fmt(w.vs)})</small></td></tr>`;
     }).join('');
@@ -663,6 +709,34 @@
         <thead><tr><th>Event</th><th>Winner</th><th class="tn-n">You</th></tr></thead>
         <tbody>${rows || `<tr><td colspan="3">Not played yet.</td></tr>`}</tbody></table></div>
       <p class="idx-note" style="margin:6px 0 0;">Tap a round to open its card. Your wins are highlighted.</p>${hubLink()}`;
+    detailOverlay.classList.add('open'); detailOverlay.scrollTop = 0;
+    try{ fitCourseTitle(); }catch(e){}
+    updateBackButton();
+  }
+
+  // ShedEx Cup page: one month's standings (current month while it's in progress), its events, every Cup
+  function openCup(ym){
+    const months = cupMonths(); ym = ym || months[0] || nowYM();
+    const {rows, evs} = cupStandings(ym), done = cupDone(ym);
+    document.getElementById('detailMiiRow').innerHTML = '';
+    document.getElementById('detailMiiRow').style.display = 'none';
+    document.getElementById('detailTitle').innerHTML = `<span class="tn-titlelogo">${majorIcon(CUP, 60)}</span><span id="courseTitleText">${CUP}</span><span class="crr-rs title-subline">${ymLabel(ym)} · ${done ? 'Final' : 'In progress'}</span>`;
+    document.getElementById('detailTitle').style.marginTop = navStack.length > 0 ? '28px' : '0';
+    const stand = rows.map(x=>`<tr class="tn-click${x.you?' tn-you':''}" data-tn-act="player" data-name="${esc(x.name)}" data-from="cup" data-ym="${ym}"><td>${esc(x.label)}</td><td class="tn-name">${x.you ? '<b>You</b>' : esc(x.name)}<small>${x.you ? '' : 'HC '+x.h+' · '}${x.ev} event${x.ev===1?'':'s'}${x.wins ? ' · '+x.wins+' win'+(x.wins===1?'':'s') : ''}</small></td><td class="tn-n"><b>${x.pts}</b></td></tr>`).join('');
+    const evList = evs.slice().reverse().map(r=>{ const me = rankBoard(r.event).find(x=>x.you) || {}, isM = r.event.tier==='major';
+      const dt = new Date(r.date+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'});
+      return `<tr class="tn-click" data-tn-act="openround" data-from="cup" data-ym="${ym}" data-key="${esc(roundKey(r))}"><td class="tn-name tn-wrap">${isM ? majorIcon(majorNameFor(r), 18) : ''}${esc(eventName(r))}<small>${dt} · ${esc(courseShort(r.course))}</small></td><td class="tn-n">${esc(ordinal(me.pos))}</td><td class="tn-n">${placePts(me.pos)}</td></tr>`; }).join('');
+    const all = months.map(m=>{ const s = cupStandings(m), w = s.rows[0], me = s.rows.find(x=>x.you);
+      return `<tr class="tn-click${m===ym?' tn-you':''}" data-tn-act="cup" data-ym="${m}" data-from="cuppage"><td class="tn-name">${ymLabel(m)}<small>${cupDone(m) ? 'Final' : 'In progress'}</small></td><td class="tn-name tn-nowrap">${w ? (w.you ? '<b>You</b>' : esc(shortName(w.name))) : '—'}<small>${w ? '('+w.pts+' pts)' : ''}</small></td><td class="tn-n">${me ? esc(ordinal(me.label)) : '—'}</td></tr>`; }).join('');
+    document.getElementById('detailBody').innerHTML = `
+      <p class="note" style="margin:2px 0 8px;">${evs.length} points event${evs.length===1?'':'s'} in ${ymLabel(ym)}${done ? '' : ' so far. The Cup is decided when the month ends.'}</p>
+      <div class="tn-boardwrap"><table class="tn-board">
+        <thead><tr><th>Pos</th><th>Player</th><th class="tn-n">Pts</th></tr></thead>
+        <tbody>${stand || '<tr><td colspan="3">No Tour or Major events this month yet.</td></tr>'}</tbody></table></div>
+      ${evList ? `<h4 class="tn-shelf-h" style="margin-top:16px;">Events</h4><div class="tn-boardwrap"><table class="tn-board"><thead><tr><th>Event</th><th class="tn-n">You</th><th class="tn-n">Pts</th></tr></thead><tbody>${evList}</tbody></table></div>` : ''}
+      <h4 class="tn-shelf-h" style="margin-top:16px;">Every ShedEx Cup</h4>
+      <div class="tn-boardwrap"><table class="tn-board"><thead><tr><th>Month</th><th>Winner</th><th class="tn-n">You</th></tr></thead><tbody>${all || '<tr><td colspan="3">None yet.</td></tr>'}</tbody></table></div>
+      <p class="idx-note" style="margin:6px 0 0;">Tour and Major events earn points (Qualifiers don't): 1st 15, 2nd 12, 3rd 10, then 9 down to 1 for 12th. Ties share the place's points. Level on points goes to the higher HC, and if that's level too, to you.</p>${hubLink()}`;
     detailOverlay.classList.add('open'); detailOverlay.scrollTop = 0;
     try{ fitCourseTitle(); }catch(e){}
     updateBackButton();
@@ -753,8 +827,13 @@
       box.querySelectorAll('[data-tn-act="tab"]').forEach(b=>b.classList.toggle('active', b===btn));
       box.querySelectorAll('[data-tn-pane]').forEach(p=>p.hidden = p.dataset.tnPane !== btn.dataset.tab); return; }
     if(act0 === 'toggleboard'){ tnCardOpen = !tnCardOpen; const bw = btn.closest('.tn-saved').querySelector('[data-tn-board]'); if(bw) bw.hidden = !tnCardOpen; btn.textContent = (tnCardOpen ? 'Hide' : 'Show') + ' leaderboard'; return; }
+    if(act0 === 'cup'){ ev.stopPropagation(); const ym = btn.dataset.ym, from = btn.dataset.from;
+      if(from === 'allevents') navStack.push(()=>openAllEvents());
+      else if(from === 'player'){ const nm = btn.dataset.name; navStack.push(()=>openPlayerDetail(nm)); }
+      openCup(ym); return; }
     if(act0 === 'player'){ ev.stopPropagation(); const name = btn.dataset.name, from = btn.dataset.from;
-      if(from === 'round'){ const rr = findRound(btn.dataset.key); navStack.push(()=>{ window.tnOpenEventTab = true; openDetail(rounds.indexOf(rr)); }); }
+      if(from === 'cup'){ const ym = btn.dataset.ym; navStack.push(()=>openCup(ym)); }
+      else if(from === 'round'){ const rr = findRound(btn.dataset.key); navStack.push(()=>{ window.tnOpenEventTab = true; openDetail(rounds.indexOf(rr)); }); }
       else if(from === 'allevents') navStack.push(()=>openAllEvents());
       else if(from === 'event'){ const e2 = btn.dataset.ev, v2 = btn.dataset.view; navStack.push(()=>openEventHistory(e2, v2)); }
       else navStack.push(()=>openCareerResults());
@@ -777,6 +856,7 @@
       openEventHistory(btn.dataset.ev); return; }
     if(act0 === 'openround'){ const rr = findRound(btn.dataset.key); if(!rr) return;
       if(btn.dataset.from === 'allevents'){ navStack.push(()=>openAllEvents()); window.tnOpenEventTab = true; openDetail(rounds.indexOf(rr)); return; }
+      if(btn.dataset.from === 'cup'){ const ym = btn.dataset.ym; navStack.push(()=>openCup(ym)); window.tnOpenEventTab = true; openDetail(rounds.indexOf(rr)); return; }
       if(btn.dataset.from === 'event'){ const evn = btn.dataset.ev, vw = btn.dataset.view; navStack.push(()=>openEventHistory(evn, vw)); window.tnOpenEventTab = true; openDetail(rounds.indexOf(rr)); return; }
       const name = document.getElementById('courseTitleText').textContent; navStack.push(()=>openPlayerDetail(name)); window.tnOpenEventTab = true; openDetail(rounds.indexOf(rr)); return; }
     const r = findRound(btn.dataset.key); if(!r) return;
@@ -804,6 +884,7 @@
     openAllEvents: () => { navStack = []; openAllEvents(); detailOverlay.scrollTop = 0; },
     openCareer: () => { navStack = []; openCareerResults(); detailOverlay.scrollTop = 0; },
     openSeries: () => { navStack = []; openSeriesList(); detailOverlay.scrollTop = 0; },
+    openCup: (ym) => { navStack = []; openCup(ym); detailOverlay.scrollTop = 0; },
     openMajors: (name) => { navStack = []; openEventHistory(name || MAJORS[0], name ? undefined : 'all'); detailOverlay.scrollTop = 0; },
     openPlayer: (name) => { navStack = []; openPlayerDetail(name); },
     openRound: (key) => { const r = findRound(key); if(r){ navStack = []; window.tnOpenEventTab = true; openDetail(rounds.indexOf(r)); } } };
