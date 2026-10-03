@@ -2,7 +2,7 @@
 <html lang="en" style="color-scheme:light;">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="color-scheme" content="light">
 <title>Ange's Golf</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>%E2%9B%B3</text></svg>">
@@ -139,7 +139,7 @@
   html[data-theme="wii"] thead th{color:#5C86A0;font-weight:700;letter-spacing:0.1em;}
   tbody td{padding:9px 8px;border-bottom:1px solid var(--line);vertical-align:middle;}
   tbody tr{cursor:pointer;}
-  tbody tr:hover{background:var(--paper-tan);}
+  @media (hover:hover){ tbody tr:hover{background:var(--paper-tan);} }
   .score-tag{font-family:var(--font-mono);font-weight:600;}
   .topar{font-size:10px;font-weight:400;color:#8a8368;}
   html[data-theme="wii"] .topar{color:#7C97A8;}
@@ -166,14 +166,14 @@
   /* ===== END REMOVABLE ===== */
   .new-course-badge{color:var(--flag);font-weight:700;font-size:12px;margin-bottom:3px;}
   .hole-num-clickable,.hole-stat-clickable{cursor:pointer;}
-  .hole-num-clickable:hover,.hole-stat-clickable:hover{background:var(--paper-tan);}
+  @media (hover:hover){ .hole-num-clickable:hover,.hole-stat-clickable:hover{background:var(--paper-tan);} }
   .hole-history-list{display:flex;flex-direction:column;gap:2px;}
   .hole-history-row{display:flex;justify-content:space-between;align-items:center;padding:8px 6px;border-bottom:1px solid var(--line);font-size:13.5px;}
   .hole-history-score{width:36px;flex-shrink:0;display:flex;justify-content:center;}
   .hole-history-date{color:#7a7461;}
   html[data-theme="wii"] .hole-history-date{color:#7C97A8;}
   .course-round-row{display:flex;justify-content:space-between;align-items:center;gap:6px;padding:9px 6px;border-bottom:1px solid var(--line);cursor:pointer;font-size:13.5px;}
-  .course-round-row:hover{background:var(--paper-tan);}
+  @media (hover:hover){ .course-round-row:hover{background:var(--paper-tan);} }
   .course-round-row:last-child{border-bottom:none;}
   .crr-date{color:#7a7461;font-size:12px;flex:1 1 auto;min-width:0;}
   .crr-rs{font-family:var(--font-mono);font-size:10px;color:#8a8368;}
@@ -354,8 +354,6 @@
   .tn-career{font-size:12px;}
   .tn-career th,.tn-career td{padding:6px 3px !important;}
   .tn-career th{letter-spacing:0.02em !important;}
-  .tn-sort{cursor:pointer;white-space:nowrap;-webkit-tap-highlight-color:transparent;}
-  .tn-sort.on{color:var(--fairway) !important;}
   .tn-err{color:var(--flag) !important;font-weight:600;}
   /* ===== END BACKYARD OPEN ===== */
   @media (max-width:600px){
@@ -366,8 +364,8 @@
     .chart-box{height:260px;}
   }
 </style>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600;700&display=swap">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600;700;800&display=swap">
 <link rel="stylesheet" href="app.css">
 </head>
 <body>
@@ -445,7 +443,7 @@
     <p class="note" id="courseRecordsSeeMore" style="font-style:italic;cursor:pointer;margin:8px 0 0;display:none;">Show more…</p>
     <p class="note" id="showAllStatsLink" style="font-weight:700;cursor:pointer;margin:10px 0 0;display:none;">📊 Show All Stats</p>
     <p class="note" id="showAllCoursesLink" style="font-weight:700;cursor:pointer;margin:10px 0 0;display:none;">⛳ Show All Courses</p>
-    <p class="note" id="backyardOpenLink" style="font-weight:700;cursor:pointer;margin:10px 0 0;display:flex;align-items:center;gap:6px;"><img src="bga.png" alt="" class="tn-bga" style="height:20px;width:auto" onerror="this.replaceWith(document.createTextNode('🏆'))">BGA</p>
+    <p class="note" id="backyardOpenLink" style="font-weight:700;cursor:pointer;margin:10px 0 0;display:flex;align-items:center;gap:6px;"><img src="bga.png" alt="" class="tn-bga" style="height:16px;width:auto" onerror="this.replaceWith(document.createTextNode('🏆'))">BGA Tour</p>
   </section>
 
 </div>
@@ -521,7 +519,7 @@
         <p class="idx-note" id="f-location-preview" style="margin:4px 0 0;"></p>
       </div>
       <div class="full" id="tnStartBlock">
-        <button class="btn tn-start" id="tnStartBtn" type="button"><img src="bga.png" alt="" class="tn-bga" style="height:20px;width:auto" onerror="this.replaceWith(document.createTextNode('🏆'))"> Play Live as a BGA Event</button>
+        <button class="btn tn-start" id="tnStartBtn" type="button"><img src="bga.png" alt="" class="tn-bga" style="height:16px;width:auto" onerror="this.replaceWith(document.createTextNode('🏆'))"> Play Live as a BGA Tour Event</button>
         <p class="idx-note" id="tnStartHint" style="margin:6px 0 0;"></p>
       </div>
       <div class="full">
@@ -795,12 +793,11 @@
 <div class="overlay" id="tnOverlay">
   <div class="modal" id="tnModal" style="max-width:560px;">
     <button class="modal-close" id="tnClose" aria-label="Close">✕</button>
-    <h3 style="display:flex;align-items:center;gap:8px;"><img src="bga.png" alt="" class="tn-bga" style="height:28px;width:auto" onerror="this.replaceWith(document.createTextNode('🏆'))">BGA</h3>
+    <h3 style="display:flex;align-items:center;gap:8px;"><img src="bga.png" alt="" class="tn-bga" style="height:22px;width:auto" onerror="this.replaceWith(document.createTextNode('🏆'))">BGA Tour</h3>
     <div id="tnBody"></div>
   </div>
 </div>
-<script src="bga.js"></script>
-<script src="app.js"></script>
+<script src="bga.js"></script><script src="app.js"></script>
 <!-- ===== END BACKYARD OPEN ===== -->
 <!-- ===== REMOVABLE: PWA service worker registration ===== -->
 <script>
