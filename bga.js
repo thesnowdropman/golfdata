@@ -16,7 +16,7 @@
   };
   // Majors rotate through four names in order, by date across all Major events.
   const MAJORS = ['The Mudders','The PBJ Championship','The U.S. Open Gate','The Earl Grey Open'];
-  const MAJOR_SHORT = {'The Mudders':'The Mudders','The PBJ Championship':'PBJ Championship','The U.S. Open Gate':'U.S. Open Gate','The Earl Grey Open':'Earl Grey'};
+  const MAJOR_SHORT = {'The Mudders':'The Mudders','The PBJ Championship':'PBJ Championship','The U.S. Open Gate':'U.S. Open Gate','The Earl Grey Open':'Earl Grey Open'};
   const SHELF_LBL = {'The PBJ Championship':'PBJ Champ','The Earl Grey Open':'Earl Grey Open'};
   const CUP = 'ShedEx Cup';
   const MAJOR_ICONS = {'The U.S. Open Gate':'backyard-gate.png', 'The Earl Grey Open':'backyard-earlgrey.png', 'The PBJ Championship':'backyard-pbj.png', 'The Mudders':'backyard-mudders.png', 'ShedEx Cup':'shedex-cup.png'};
@@ -469,7 +469,7 @@
     const me = board.find(x=>x.you) || {};
     const tl = TIERS[e.tier] ? TIERS[e.tier].label : 'Backyard';
     const pts = e.tier!=='club' ? eventPts(r) : null, myTot = pts ? monthTotalThrough('You', r) : 0;
-    const rows = board.map(x=>`<tr class="${x.you?'tn-you':''}"><td>${esc(x.pos)}</td><td class="tn-name"><span class="tn-plink" data-tn-act="player" data-name="${esc(x.you ? 'You' : x.n)}" data-from="round" data-key="${key}">${esc(x.n)}</span><span class="tn-grp">G${x.g}</span><small>${x.you ? 'Index '+Number(e.index).toFixed(1)+(pts ? ' · +'+(pts.You||0)+' pts ('+myTot+' total)' : '') : 'HC '+x.h+' · '+esc(x.st)+(pts ? ' · '+(pts[x.n]||0)+' pts' : '')}</small></td><td class="tn-n ${cls(x.vs)}">${fmt(x.vs)}</td><td class="tn-n">${x.gross}</td></tr>`).join('');
+    const rows = board.map(x=>`<tr class="${x.you?'tn-you':''}"><td>${esc(x.pos)}</td><td class="tn-name"><span class="tn-plink" data-tn-act="player" data-name="${esc(x.you ? 'You' : x.n)}" data-from="round" data-key="${key}">${esc(x.n)}</span><span class="tn-grp">G${x.g}</span><small>${x.you ? 'Index '+Number(e.index).toFixed(1)+(pts ? ' · +'+(pts.You||0)+' pts ('+myTot+' total)' : '') : 'HC '+x.h+' · '+esc(x.st)+(pts ? ' · +'+(pts[x.n]||0)+' pts ('+monthTotalThrough(x.n, r)+' total)' : '')}</small></td><td class="tn-n ${cls(x.vs)}">${fmt(x.vs)}</td><td class="tn-n">${x.gross}</td></tr>`).join('');
     return `<div class="tn-saved" data-key="${key}">
       <h4 class="tn-hole" style="margin:10px 0 2px;display:flex;align-items:center;gap:6px;">${e.tier==='major' ? '' : bgaImg(24)}<span class="tn-evlink" data-tn-act="eventhist" data-ev="${esc(e.tier==='major' ? majorNameFor(r) : 'series:'+seriesName(r.course))}" data-from="round" data-key="${key}">${e.tier==='major' ? majorIcon(majorNameFor(r), 30)+esc(majorNameFor(r)) : esc(eventName(r))}</span></h4>
       <p class="idx-note" style="margin:0 0 8px;">${e.tier==='major' ? 'Major' : e.tier==='club' ? 'Qualifier' : esc(tl)+' event'} · Finished ${esc(ordinal(me.pos))}/${e.board.length} · Par ${e.target}</p>

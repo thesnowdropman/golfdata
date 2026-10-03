@@ -102,7 +102,8 @@ html.app .chart-box{border:0;background:none;padding:0;}
 
 /* Detail modal (round cards, BGA screens) */
 html.app .modal{background:var(--paper);border-radius:20px;}
-html.app #detailTitle, html.app .modal h3{font-family:var(--font-display);font-weight:700;letter-spacing:.01em;}
+/* #detailTitle keeps the cursive course-name font from index.html */
+html.app .modal h3{font-family:var(--font-display);font-weight:700;letter-spacing:.01em;}
 
 /* BGA page */
 .bga-hero{display:flex;align-items:center;gap:14px;background:linear-gradient(160deg,var(--navy),var(--navy2));color:#fff;border-radius:18px;padding:16px;margin-top:14px;}
