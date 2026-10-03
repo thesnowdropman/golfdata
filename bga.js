@@ -43,7 +43,8 @@
   const ymOf = d => String(d).slice(0,7);
   const nowYM = () => { const t = new Date(); return t.getFullYear()+'-'+String(t.getMonth()+1).padStart(2,'0'); };
   const cupDone = ym => ym < nowYM();
-  const ymLabel = (ym, short) => { const d = new Date(ym+'-01T00:00:00'); return short ? d.toLocaleDateString('en-US',{month:'short'})+" '"+String(d.getFullYear()).slice(2) : d.toLocaleDateString('en-US',{month:'long',year:'numeric'}); };
+  const MON = ['Jan','Feb','Mar','Apr','May','June','July','Aug','Sept','Oct','Nov','Dec'];
+  const ymLabel = (ym, short) => { const d = new Date(ym+'-01T00:00:00'); return short ? MON[d.getMonth()]+" ’"+String(d.getFullYear()).slice(2) : d.toLocaleDateString('en-US',{month:'long',year:'numeric'}); };
   const placePts = pos => PTS[parseInt(String(pos).replace('T',''),10)-1] || 0;
   const evOrder = (a,b) => new Date(a.date)-new Date(b.date) || (a.event.seed||0)-(b.event.seed||0);
   function pointEvents(){ return rounds.filter(r=>r.event && Array.isArray(r.event.board) && r.event.tier!=='club').sort(evOrder); }
@@ -543,9 +544,9 @@
     const E = eloRatings(), elo = E.R[name];
     return `<div class="strip" style="margin:4px 0 12px;"><div class="cell"><div class="num">${txt}</div><div class="lbl">Avg to par</div></div><div class="cell"><div class="num">${ordinal(pos)}</div><div class="lbl">of ${list.length} players</div></div><div class="cell"><div class="num">${elo!=null ? Math.round(elo) : '—'}</div><div class="lbl">Elo${E.peak[name]!=null ? ' · peak '+Math.round(E.peak[name]) : ''}</div></div></div>`;
   }
-  // Finish badge: gold, silver, bronze, teal, green, yellow, orange, red, grey (9-10), black
+  // Finish badge: 1 gold, 2 silver, 3 bronze, 4-5 light blue, 6-7 light green, 8-9 orange, 10-12 red, rest black
   function finBadge(pos){ const p = parseInt(String(pos).replace('T',''),10);
-    const c = p<=8 ? 'f'+p : p<=10 ? 'f9' : 'fx';
+    const c = p===1 ? 'f1' : p===2 ? 'f2' : p===3 ? 'f3' : p<=5 ? 'f4' : p<=7 ? 'f6' : p<=9 ? 'f8' : p<=12 ? 'f10' : 'fx';
     return `<span class="tn-fin ${c}">${esc(ordinal(pos))}</span>`; }
   function openPlayerDetail(name){
     const rowsData = rounds.filter(r=>r.event && Array.isArray(r.event.board))
@@ -658,7 +659,7 @@
     let prevYM = null;
     const cupRow = ym => { const s = cupStandings(ym); if(!s.rows.length) return ''; const w = s.rows[0], done = cupDone(ym);
       return `<tr class="tn-click tn-cuprow" data-tn-act="cup" data-ym="${ym}" data-from="allevents">
-        <td class="tn-name tn-wrap"><span class="tn-evlink">${majorIcon(CUP, 18)}${CUP}</span><small>${ymLabel(ym)}${done ? '' : ' · In progress'}</small></td>
+        <td class="tn-name tn-wrap"><span class="tn-evlink">${majorIcon(CUP, 18)}${CUP}</span><small>${ymLabel(ym, true)} Points Title${done ? '' : ' · In progress'}</small></td>
         <td class="tn-name tn-nowrap"><span class="tn-plink" data-tn-act="player" data-name="${esc(w.name)}" data-from="allevents">${w.you ? '<b>You</b>' : esc(shortName(w.name))}</span><small>(${w.pts} pts)</small></td></tr>`; };
     const rows = list.map(r=>{
       const ym = ymOf(r.date), cup = ym !== prevYM ? cupRow(ym) : ''; prevYM = ym;
@@ -699,7 +700,7 @@
       const pm = r.course.match(/^(.*)\s\(([^)]+)\)$/);
       const dt = new Date(r.date+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'2-digit'});
       const mn = all ? majorNameFor(r) : null;
-      return `<tr class="tn-click${w.you ? ' tn-you' : ''}" data-tn-act="openround" data-from="event" data-ev="${esc(ev)}" data-view="${all ? 'all' : 'one'}" data-key="${esc(roundKey(r))}"><td class="tn-name tn-wrap">${r.event.tier==='major' ? majorIcon(majorNameFor(r), 18)+esc(MAJOR_SHORT[majorNameFor(r)]) : esc(eventName(r))}<small>${dt} · ${esc(courseShort(r.course))}</small></td><td class="tn-name tn-wrap"><span class="tn-plink" data-tn-act="player" data-name="${esc(wn)}" data-from="event" data-ev="${esc(ev)}" data-view="${all ? 'all' : 'one'}">${esc(shortName(wn))}</span><small style="white-space:nowrap">HC ${w.you ? Number(r.event.index).toFixed(1) : w.h} (${fmt(w.vs)})</small></td><td class="tn-n">${esc(ordinal(me.pos))}</td></tr>`;
+      return `<tr class="tn-click${w.you ? ' tn-you' : ''}" data-tn-act="openround" data-from="event" data-ev="${esc(ev)}" data-view="${all ? 'all' : 'one'}" data-key="${esc(roundKey(r))}"><td class="tn-name tn-wrap">${r.event.tier==='major' ? majorIcon(majorNameFor(r), 18)+esc(MAJOR_SHORT[majorNameFor(r)]) : esc(eventName(r))}<small>${dt} · ${esc(courseShort(r.course))}</small></td><td class="tn-name tn-wrap"><span class="tn-plink" data-tn-act="player" data-name="${esc(wn)}" data-from="event" data-ev="${esc(ev)}" data-view="${all ? 'all' : 'one'}">${esc(shortName(wn))}</span><small style="white-space:nowrap">HC ${w.you ? Number(r.event.index).toFixed(1) : w.h} (${fmt(w.vs)})</small></td><td class="tn-n">${me.pos ? finBadge(me.pos) : '—'}</td></tr>`;
     }).join('');
     const champs = Object.entries(winsBy).sort((a,b)=>b[1]-a[1]).map(([n,c])=>`${esc(shortName(n))} ${c}`).join(' · ');
     document.getElementById('detailBody').innerHTML = `
