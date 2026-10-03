@@ -181,12 +181,25 @@
         <button class="btn" type="button" id="hiSave">Use this</button>
         ${ov != null ? '<button class="btn secondary" type="button" id="hiClear">Go back to calculated</button>' : ''}
       </div>
-      <p class="idx-note" style="margin:6px 0 0;">Enter your GHIN index to use it everywhere (expected scores, BGA). It stays until you post your next round, then the app goes back to calculating.</p>`;
+      <p class="idx-note" style="margin:6px 0 0;">Enter your GHIN index to use it everywhere (expected scores, BGA). It stays until you post your next round, then the app goes back to calculating.</p>
+      <h4 class="tn-shelf-h" style="margin-top:18px;">Past rounds</h4>
+      <p class="idx-note" style="margin:0 0 8px;">Expected scores, score vs. expected and round badges already follow this calculation. BGA events are saved with the index you had then; this rebuilds each one with its USGA index (same seed and level), which can change fields, targets, finishes and ShedEx points.</p>
+      <button class="btn" type="button" id="hiRecalc">Recalculate BGA events</button>
+      <p class="idx-note" id="hiRecalcMsg" style="margin:6px 0 0;"></p>`;
     detailOverlay.classList.add('open'); detailOverlay.scrollTop = 0;
     navStack = []; try{ updateBackButton(); }catch(e){}
     const refresh = () => { try{ recompute(); }catch(e){} openHandicap(); };
     $('hiSave').onclick = () => { const v = parseFloat($('hiManual').value); if(isNaN(v) || v < 0 || v > 54) return;
       try{ localStorage.setItem(HI_OVERRIDE_KEY, JSON.stringify({value: Math.round(v*10)/10, n: rounds.length})); }catch(e){} refresh(); };
+    const rb = $('hiRecalc');
+    rb.onclick = () => {
+      if(!rb.dataset.armed){ rb.dataset.armed = '1'; rb.textContent = 'Tap again to rebuild every event'; return; }
+      rb.disabled = true;
+      let res = null; try{ res = window.BGA && BGA.recalcEvents(); }catch(e){ console.error(e); }
+      openHandicap();
+      $('hiRecalcMsg').textContent = !res ? 'Something went wrong; nothing was changed.' :
+        `${res.changed} of ${res.total} events updated` + (res.skipped ? `, ${res.skipped} left as is (no hole-by-hole scores, or your first day of rounds).` : '.');
+    };
     const c = $('hiClear'); if(c) c.onclick = () => { try{ localStorage.removeItem(HI_OVERRIDE_KEY); }catch(e){} refresh(); };
   }
   $('hcCard').addEventListener('click', e => { if(!e.target.closest('a,button')) openHandicap(); });

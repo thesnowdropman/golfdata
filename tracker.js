@@ -138,12 +138,10 @@ function expScoreAtTimeOf(r){
   // feature existed) -- only fall back to the dynamic calculation for older rounds that
   // predate it, which carries the theoretical (if unlikely) risk of shifting if an
   // earlier-dated round ever gets logged after the fact.
-  if(r.expAtTime !== undefined) return r.expAtTime;
-  const roundNum = roundNumberOf[roundKey(r)];
-  if(!roundNum || roundNum <= 1) return null;
-  const priorTrend = trend[roundNum - 2];
-  if(!priorTrend || isNaN(r.rating) || isNaN(r.slope)) return null;
-  const idx = priorTrend.index;
+  // Recalculated from the USGA index as of the start of that round's day, so every past
+  // round follows the current handicap rules (older stored snapshots are ignored).
+  const idx = whsHiAt(r);
+  if(idx == null || isNaN(r.rating) || isNaN(r.slope)) return null;
   return r.holes === 9
     ? Math.round((idx/2) * r.slope / 113 + r.rating)
     : Math.round(idx * r.slope / 113 + r.rating);
@@ -159,12 +157,13 @@ function computeHandicapSpotMap(){
   const chronoAll = [...rounds]
     .filter(r => r.diff != null && !isNaN(r.diff))
     .sort((a,b)=> new Date(a.date) - new Date(b.date));
+  const cv = r => whsCountsAs(r);
 
   // Snapshot: given a chronological index, what's the top-8-by-differential among just
   // the 20 most recent outings as of that point (inclusive)?
   function top8AsOfIndex(i){
     const windowRounds = chronoAll.slice(Math.max(0, i - 19), i + 1);
-    return [...windowRounds].sort((a,b)=> a.diff - b.diff).slice(0, 8).map(r => roundKey(r));
+    return [...windowRounds].sort((a,b)=> cv(a) - cv(b)).slice(0, 8).map(r => roundKey(r));
   }
 
   // Walk forward through history one outing at a time, comparing each snapshot to the
@@ -182,7 +181,7 @@ function computeHandicapSpotMap(){
     newEntrants.forEach((enteredKey, idx) => {
       if(dropped[idx] != null){
         const droppedRound = chronoAll.find(x => roundKey(x) === dropped[idx]);
-        if(droppedRound) replacedBy[enteredKey] = droppedRound.diff;
+        if(droppedRound) replacedBy[enteredKey] = cv(droppedRound);
       }
     });
     prevTop8Keys = currentTop8Keys;
@@ -204,7 +203,7 @@ function computeRoundBadges(r){
     const thisKey = roundKey(r);
     if(handicapSpotData.currentTop8Keys.has(thisKey)){
       const replaced = handicapSpotData.replacedBy[thisKey];
-      const replacedText = replaced != null ? ` (${r.diff.toFixed(1)} replacing ${replaced.toFixed(1)})` : '';
+      const replacedText = replaced != null ? ` (${whsCountsAs(r).toFixed(1)} replacing ${replaced.toFixed(1)})` : '';
       badges.push({icon: '♿️', label: `Handicap Spot: Round with a top 8 differential${replacedText}`});
     }
   }
@@ -1185,6 +1184,10 @@ function toParAndExpStr(r){
 // ================= CORE RECOMPUTE =================
 // The last index calculation (for the Handicap screen) and the manual-index key
 var whsCalc = {recent:[], k:0, plus:0, index:null, override:null};
+// Per round (by roundKey): USGA index at the start of its day, and the differential USGA counts
+var whsHiByKey = {}, whsDByKey = {};
+function whsHiAt(r){ const v = whsHiByKey[roundKey(r)]; return v == null ? null : v; }
+function whsCountsAs(r){ const v = whsDByKey[roundKey(r)]; return v == null ? r.diff : v; }
 const HI_OVERRIDE_KEY = 'anges-golf-hi-override';
 function recompute(){
   const chrono = [...rounds].sort((a,b)=> new Date(a.date) - new Date(b.date));
@@ -1206,20 +1209,24 @@ function recompute(){
   //    20 differentials, 10.0+ takes 2.0 off.
   const WHS_TABLE = {3:[1,-2],4:[1,-1],5:[1,0],6:[2,-1],7:[2,0],8:[2,0],9:[3,0],10:[3,0],11:[3,0],12:[4,0],13:[4,0],14:[4,0],15:[5,0],16:[5,0],17:[6,0],18:[6,0],19:[7,0]};
   const outingDiffs = [];
-  let whsIdx = null;
+  let whsIdx = null, dayIdx = null, curDay = null;
+  whsHiByKey = {}; whsDByKey = {};
   trend = [];
   chartSegPoints = [];
   for(const r of chrono){
+    // GHIN uses the index as of the start of the day: two rounds on one day share it
+    if(r.date !== curDay){ curDay = r.date; dayIdx = whsIdx; }
     let d = r.diff, raw9 = null;
     const gross = parseInt(String(r.score), 10);
-    if(r.holes === 9 && whsIdx != null && !isNaN(gross) && r.rating && r.slope){
+    if(r.holes === 9 && dayIdx != null && !isNaN(gross) && r.rating && r.slope){
       raw9 = Math.round((gross - r.rating) * 113 / r.slope * 10) / 10;
-      d = Math.round((raw9 + 0.52*whsIdx + 1.2) * 10) / 10;
+      d = Math.round((raw9 + 0.52*dayIdx + 1.2) * 10) / 10;
     }
     // hi = index going into this round (used for the 9-hole conversion and the exceptional-score check)
-    const e = {d, adj:0, r, raw9, hi:whsIdx, cut:0};
+    const e = {d, adj:0, r, raw9, hi:dayIdx, cut:0};
+    { const k = roundKey(r); whsHiByKey[k] = dayIdx; whsDByKey[k] = d; }
     outingDiffs.push(e);
-    if(whsIdx != null){ const gap = whsIdx - d; const cut = gap >= 10 ? 2 : gap >= 7 ? 1 : 0; if(cut){ e.cut = cut; outingDiffs.slice(-20).forEach(z => z.adj -= cut); } }
+    if(dayIdx != null){ const gap = dayIdx - d; const cut = gap >= 10 ? 2 : gap >= 7 ? 1 : 0; if(cut){ e.cut = cut; outingDiffs.slice(-20).forEach(z => z.adj -= cut); } }
     const recent = outingDiffs.slice(-20), n = recent.length;
     let roundedAvg;
     if(n < 3){

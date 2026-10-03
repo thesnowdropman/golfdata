@@ -743,6 +743,32 @@
     updateBackButton();
   }
 
+  // Rebuild saved BGA events with the USGA index each round was played at: same seed and
+  // level, so the field and targets follow the index. Oldest first, so the Qualifier ladder
+  // sees the updated results of earlier events. Rounds built into the file are saved as
+  // synced copies, the same way editing one works.
+  function recalcEvents(){
+    const list = rounds.filter(r=>r.event && Array.isArray(r.event.board)).sort(evOrder);
+    const changed = []; let skipped = 0;
+    list.forEach(r=>{
+      const hi = typeof whsHiAt === 'function' ? whsHiAt(r) : null;
+      if(hi == null || !hasCard(r)){ skipped++; return; }
+      const ev = makeEvent(r, r.event.tier, r.event.seed != null ? r.event.seed : Math.floor(Math.random()*1e9), hi);
+      if(JSON.stringify(ev) !== JSON.stringify(r.event)){ r.event = ev; changed.push(r); }
+    });
+    if(!changed.length) return {changed:0, skipped, total:list.length};
+    const fromBase = changed.filter(r => addedRounds.indexOf(r) === -1);
+    const keys = fromBase.map(r => [roundKey(r), `${r.date}|${r.course}|${r.score}`, `${r.date}|${r.course}|${r.score}|b${baseRounds.indexOf(r)}`]);
+    fromBase.forEach((r,i)=>{
+      const copy = JSON.parse(JSON.stringify(r));
+      keys[i].forEach(k=>{ if(!deletedKeys.includes(k)) deletedKeys.push(k); });
+      addedRounds.push(copy);
+    });
+    persistAdded(); if(fromBase.length) persistDeleted();
+    rebuildRoundsArray(); try{ recompute(); }catch(e){ console.warn(e); }
+    return {changed:changed.length, skipped, total:list.length};
+  }
+
   function findRound(key){ return rounds.find(x => roundKey(x) === key); }
 
   function eventEditor(box, r){
@@ -885,6 +911,7 @@
     openAllEvents: () => { navStack = []; openAllEvents(); detailOverlay.scrollTop = 0; },
     openCareer: () => { navStack = []; openCareerResults(); detailOverlay.scrollTop = 0; },
     openSeries: () => { navStack = []; openSeriesList(); detailOverlay.scrollTop = 0; },
+    recalcEvents,
     openCup: (ym) => { navStack = []; openCup(ym); detailOverlay.scrollTop = 0; },
     openMajors: (name) => { navStack = []; openEventHistory(name || MAJORS[0], name ? undefined : 'all'); detailOverlay.scrollTop = 0; },
     openPlayer: (name) => { navStack = []; openPlayerDetail(name); },
