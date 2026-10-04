@@ -1656,7 +1656,7 @@ function renderFutureRounds(){
 
     return `
       <tr class="future-round-row" data-id="${f.id}" style="cursor:pointer;">
-        <td class="course-name"><span class="badge ${f.holes===18?'b18':'b9'}">${f.holes===18?'18':'9'}</span>${fDisplayCourse}<br><span class="fr-when"><span class="date-cell">${formatFutureDateTime(f)}</span>${weatherPlaceholder}</span></td>
+        <td class="course-name"><span class="fr-name"><span class="badge ${f.holes===18?'b18':'b9'}">${f.holes===18?'18':'9'}</span>${fDisplayCourse.replace(/\s+[-–]\s+.*$/,'').replace(/\s+\b(golf|country)\b.*$/i,'')}</span><span class="fr-when"><span class="date-cell">${formatFutureDateTime(f)}</span>${weatherPlaceholder}</span></td>
         <td class="diff-cell">${exp !== null ? exp + toParTextFor(exp, par) : '—'}${probLineHtml}</td>
       </tr>`;
   }).join('');
@@ -4016,7 +4016,10 @@ function openFutureRoundDetail(id){
   body += `<p class="note" style="margin:0 0 ${'2px'};">${f.holes} holes · Exp. Score ${exp !== null ? exp : '—'}${exp !== null ? toParTextFor(exp, parForFutureRound(f)) : ''}</p>`;
   { let need = null; try{ need = scoreToBreakIndex(f); }catch(e){}
     if(need && exp !== null){ const dv = need.score - exp;
-      body += `<p class="note" style="margin:0 0 12px;">Need a ${need.score} (${dv === 0 ? 'E' : (dv > 0 ? '+' : '-') + Math.abs(dv)}) to break ${need.goal.toFixed(1)}</p>`; }
+      // Chance from the Scoring Curve: total of every score at or under the one needed
+      let pct = null;
+      try{ const L = computeScoreLikelihoods(f); if(L){ const p = L.filter(x => x.score <= need.score).reduce((t,x)=>t+x.probability, 0); pct = Math.min(99, Math.max(1, Math.round(p*100))); } }catch(e){}
+      body += `<p class="note" style="margin:0 0 12px;">Need a ${need.score} (${dv === 0 ? 'E' : (dv > 0 ? '+' : '-') + Math.abs(dv)}) to break ${need.goal.toFixed(1)}${pct != null ? ` (${pct}%)` : ''}</p>`; }
     else body += `<div style="height:10px"></div>`; }
   if(typeof window.tnFutureEventHtml === 'function') body += window.tnFutureEventHtml(f);
 
