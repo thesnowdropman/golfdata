@@ -3358,6 +3358,16 @@ document.querySelectorAll('.holes-toggle-btn').forEach(btn=>{
   });
 });
 
+// Planning default: after 3pm Eastern, a new planned round starts on tomorrow
+function planDefaultISO(){
+  try{
+    const parts = new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',hour12:false}).formatToParts(new Date());
+    const g = t => parts.find(p => p.type === t).value;
+    const d = new Date(Date.UTC(+g('year'), +g('month')-1, +g('day')));
+    if((+g('hour') % 24) >= 15) d.setUTCDate(d.getUTCDate() + 1);
+    return d.toISOString().slice(0,10);
+  }catch(e){ return todayISO(); }
+}
 function todayISO(){
   const d = new Date();
   const tz = d.getTimezoneOffset();
@@ -3844,7 +3854,7 @@ function openAddFutureModal(){
   document.getElementById('addFutureSave').textContent = 'Save planned round';
   document.getElementById('futureFormError').style.display = 'none';
   document.getElementById('ff-course').value = '';
-  document.getElementById('ff-date').value = todayISO();
+  document.getElementById('ff-date').value = planDefaultISO();
   document.getElementById('ff-holes').value = 18;
   document.getElementById('ff-rating').value = '';
   document.getElementById('ff-slope').value = '';
@@ -4222,8 +4232,8 @@ function openBetaFutureModal(){
   populateHourMinuteSelects('beta-ff-hour', 'beta-ff-minute');
   document.getElementById('beta-quick-minute').value = '';
   document.getElementById('beta-ff-minute').value = '';
-  document.getElementById('beta-quick-date').value = todayISO();
-  document.getElementById('beta-ff-date').value = todayISO();
+  document.getElementById('beta-quick-date').value = planDefaultISO();
+  document.getElementById('beta-ff-date').value = planDefaultISO();
   document.getElementById('beta-ff-course').value = '';
   document.getElementById('beta-ff-rating').value = '';
   document.getElementById('beta-ff-slope').value = '';
