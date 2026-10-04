@@ -1575,8 +1575,9 @@ async function attachFutureRoundsWeather(){
     const totalInches = window.length ? window.reduce((s,h)=> s + h.precipIn, 0) : teeHourData.precipIn;
     const icon = weatherIconFor(teeHourData.code);
     const temp = Math.round(teeHourData.temp);
+    // Same line as the date, after a dot (the date and weather sit in one no-wrap line)
     el.innerHTML = ` · ${icon} ${temp}° ☔️ ${Math.round(worstHour.rain)}% ${formatInches(totalInches)}”`;
-    el.style.display = '';
+    el.style.display = 'inline';
   }
 }
 
@@ -1655,7 +1656,7 @@ function renderFutureRounds(){
 
     return `
       <tr class="future-round-row" data-id="${f.id}" style="cursor:pointer;">
-        <td class="course-name"><span class="badge ${f.holes===18?'b18':'b9'}">${f.holes===18?'18':'9'}</span>${fDisplayCourse}<br><span class="date-cell">${formatFutureDateTime(f)}</span>${weatherPlaceholder}</td>
+        <td class="course-name"><span class="badge ${f.holes===18?'b18':'b9'}">${f.holes===18?'18':'9'}</span>${fDisplayCourse}<br><span class="fr-when"><span class="date-cell">${formatFutureDateTime(f)}</span>${weatherPlaceholder}</span></td>
         <td class="diff-cell">${exp !== null ? exp + toParTextFor(exp, par) : '—'}${probLineHtml}</td>
       </tr>`;
   }).join('');
@@ -3970,6 +3971,30 @@ function enterScoreForFuture(f){
   updateExpectedScoreHint();
 }
 
+// Highest score on a planned round that pulls the calculated index under the next full
+// stroke (e.g. 30.4 -> needs the new index below 29.95 so it shows 29.9). Same USGA math as
+// recompute: the round joins the last 20 (the oldest drops out), a 9-hole score adds the
+// expected 9-hole differential at today's index, and an exceptional score cuts the last 20.
+function scoreToBreakIndex(f){
+  const C = whsCalc; if(!C || C.index == null || !C.recent || C.recent.length < 2) return null;
+  const hi = C.index, goal = Math.floor(hi + 1e-9), limit = goal - 0.05;
+  const TABLE = {3:[1,-2],4:[1,-1],5:[1,0],6:[2,-1],7:[2,0],8:[2,0],9:[3,0],10:[3,0],11:[3,0],12:[4,0],13:[4,0],14:[4,0],15:[5,0],16:[5,0],17:[6,0],18:[6,0],19:[7,0]};
+  const keep = C.recent.slice(-19).map(z => z.d + z.adj);
+  const idxFor = g => {
+    let d;
+    const raw = Math.round((g - f.rating) * 113 / f.slope * 10) / 10;
+    d = f.holes === 9 ? Math.round((raw + 0.52*hi + 1.2) * 10) / 10 : raw;
+    const gap = hi - d, cut = gap >= 10 ? 2 : gap >= 7 ? 1 : 0;
+    const win = keep.map(x => x - cut).concat(d - cut), n = win.length;
+    const [k, plus] = n >= 20 ? [8, 0] : (TABLE[n] || [1, 0]);
+    const best = win.sort((a,b)=>a-b).slice(0, k);
+    return best.reduce((s,x)=>s+x,0)/k + plus;
+  };
+  const top = computeExpScoreFor(f.rating, f.slope, f.holes) + 10;
+  for(let g = top; g >= (f.holes === 9 ? 25 : 50); g--){ if(idxFor(g) < limit) return {score:g, goal}; }
+  return null;
+}
+
 function openFutureRoundDetail(id){
   const f = futureRounds.find(x => x.id === id);
   if(!f) return;
@@ -3988,7 +4013,11 @@ function openFutureRoundDetail(id){
   document.getElementById('detailTitle').style.marginTop = navStack.length > 0 ? '20px' : '0';
 
   let body = `<p class="note" style="margin:2px 0 2px;">${dateFmt}${f.hour != null ? ' · ' + formatTimeLabel(f.hour, f.minute || 0) : ''}</p>`;
-  body += `<p class="note" style="margin:0 0 12px;">${f.holes} holes · Exp. Score ${exp !== null ? exp : '—'}${exp !== null ? toParTextFor(exp, parForFutureRound(f)) : ''}</p>`;
+  body += `<p class="note" style="margin:0 0 ${'2px'};">${f.holes} holes · Exp. Score ${exp !== null ? exp : '—'}${exp !== null ? toParTextFor(exp, parForFutureRound(f)) : ''}</p>`;
+  { let need = null; try{ need = scoreToBreakIndex(f); }catch(e){}
+    if(need && exp !== null){ const dv = need.score - exp;
+      body += `<p class="note" style="margin:0 0 12px;">Need a ${need.score} (${dv === 0 ? 'E' : (dv > 0 ? '+' : '-') + Math.abs(dv)}) to break ${need.goal.toFixed(1)}</p>`; }
+    else body += `<div style="height:10px"></div>`; }
   if(typeof window.tnFutureEventHtml === 'function') body += window.tnFutureEventHtml(f);
 
   const atCourse = rounds.filter(r => r.course.trim().toLowerCase() === f.course.trim().toLowerCase());

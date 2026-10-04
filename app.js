@@ -131,7 +131,7 @@
       if(f){ const e = computeExpScoreFor(f.rating, f.slope, f.holes); if(e != null) next = `<div><span class="app-cap">Next exp.</span><b>${e}</b><small>${esc(courseName(f.course).replace(/\s+\b(golf|country)\b.*$/i,''))}</small></div>`; }
     }catch(e){}
     $('hcCard').innerHTML = `
-      <div class="app-cap">Handicap Index${whsCalc && whsCalc.override != null ? ' · Manual' : ''}<span class="hc-more">How it's figured ›</span></div>
+      <div class="app-cap">Handicap Index${whsCalc && whsCalc.override != null ? ' · Manual' : ''}</div>
       <div class="hc-row"><div class="hc-big">${idx.toFixed(1)}</div>${spark(trend.slice(-30).map(p=>p.index), 140, 56)}</div>
       <div class="hc-sub">
         <div><span class="app-cap">Low HI</span><b>${low.toFixed(1)}</b></div>
@@ -174,33 +174,9 @@
       <div class="tn-boardwrap"><table class="tn-board">
         <thead><tr><th>Round</th><th class="tn-n">Diff</th><th class="tn-n">Counts as</th></tr></thead>
         <tbody>${list}</tbody></table></div>
-      <p class="idx-note" style="margin:6px 0 14px;">Diff is the round's own differential (the chart). Counts as is what USGA uses: a 9-hole round adds your expected 9-hole differential (0.52 × index that day + 1.2), and a round 7+ below your index takes 1.0 (10+ takes 2.0) off your last 20. Highlighted (✓) rounds are the ones averaged. HI is your index going into that round.</p>
-      <h4 class="tn-shelf-h">Manual index</h4>
-      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-        <input id="hiManual" type="number" inputmode="decimal" step="0.1" min="0" max="54" placeholder="e.g. 30.4" value="${ov != null ? ov : ''}" style="width:110px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;font-size:16px;">
-        <button class="btn" type="button" id="hiSave">Use this</button>
-        ${ov != null ? '<button class="btn secondary" type="button" id="hiClear">Go back to calculated</button>' : ''}
-      </div>
-      <p class="idx-note" style="margin:6px 0 0;">Enter your GHIN index to use it everywhere (expected scores, BGA). It stays until you post your next round, then the app goes back to calculating.</p>
-      <h4 class="tn-shelf-h" style="margin-top:18px;">Past rounds</h4>
-      <p class="idx-note" style="margin:0 0 8px;">Expected scores, score vs. expected and round badges already follow this calculation. BGA events are saved with the index you had then; this rebuilds each one with its USGA index (same seed and level), which can change fields, targets, finishes and ShedEx points.</p>
-      <button class="btn" type="button" id="hiRecalc">Recalculate BGA events</button>
-      <p class="idx-note" id="hiRecalcMsg" style="margin:6px 0 0;"></p>`;
+`;
     detailOverlay.classList.add('open'); detailOverlay.scrollTop = 0;
     navStack = []; try{ updateBackButton(); }catch(e){}
-    const refresh = () => { try{ recompute(); }catch(e){} openHandicap(); };
-    $('hiSave').onclick = () => { const v = parseFloat($('hiManual').value); if(isNaN(v) || v < 0 || v > 54) return;
-      try{ localStorage.setItem(HI_OVERRIDE_KEY, JSON.stringify({value: Math.round(v*10)/10, n: rounds.length})); }catch(e){} refresh(); };
-    const rb = $('hiRecalc');
-    rb.onclick = () => {
-      if(!rb.dataset.armed){ rb.dataset.armed = '1'; rb.textContent = 'Tap again to rebuild every event'; return; }
-      rb.disabled = true;
-      let res = null; try{ res = window.BGA && BGA.recalcEvents(); }catch(e){ console.error(e); }
-      openHandicap();
-      $('hiRecalcMsg').textContent = !res ? 'Something went wrong; nothing was changed.' :
-        `${res.changed} of ${res.total} events updated` + (res.skipped ? `, ${res.skipped} left as is (no hole-by-hole scores, or your first day of rounds).` : '.');
-    };
-    const c = $('hiClear'); if(c) c.onclick = () => { try{ localStorage.removeItem(HI_OVERRIDE_KEY); }catch(e){} refresh(); };
   }
   $('hcCard').addEventListener('click', e => { if(!e.target.closest('a,button')) openHandicap(); });
 
