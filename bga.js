@@ -237,7 +237,7 @@
     S = S || T; F = F || field;
     const n = S.play.holes.length;
     const rows = F.map(p=>{ const t=thruFor(S,p.group,mine,n); return {name:p.name, hc:p.hcp, group:p.group, note:'HC '+p.hcp+' · '+p.style+(t>0 ? ' · Last: '+fmt(p.scores[t-1]-S.target[t-1]) : ''), thru:t, gross:sum(p.scores,t), vs:sum(p.scores,t)-sum(S.target,t)}; });
-    rows.push({name:'You', you:true, hc:Number(S.index), group:S.groups||3, note:'Index '+S.index.toFixed(1)+' · target '+sum(S.target,n)+(mine>0 ? ' · Last: '+fmt(S.mine[mine-1]-S.target[mine-1]) : ''), thru:mine, gross:sum(S.mine,mine), vs:sum(S.mine,mine)-sum(S.target,mine)});
+    rows.push({name:'You', you:true, hc:Number(S.index), group:S.groups||3, note:'Index '+S.index.toFixed(1)+' · par '+sum(S.target,n)+(mine>0 ? ' · Last: '+fmt(S.mine[mine-1]-S.target[mine-1]) : ''), thru:mine, gross:sum(S.mine,mine), vs:sum(S.mine,mine)-sum(S.target,mine)});
     const live = rankRows(rows.filter(r=>r.thru>0));
     return live.concat(rows.filter(r=>r.thru===0).sort((a,b)=>a.group-b.group).map(r=>({...r,label:'–'})));
   }
@@ -286,7 +286,7 @@
         ${tier==='club' ? `<span>Qualifier ladder: ${clubWins()} Qualifier win${clubWins()===1?'':'s'} so far. Win to add the next player.</span>` : ''}
         <span>${picks.length} opponent${picks.length===1?'':'s'}, HC ${Math.min(...hs)}${picks.length>1?' to '+Math.max(...hs):''} · your HC ${Math.round(index)} · ${sizes.length} group${sizes.length===1?'':'s'}${sizes.length>1?' ('+sizes.join('-')+')':''}, you're in the last</span></div>
       <div class="tn-readout">
-        <div><span class="tn-big">${sum(target,target.length)}</span><span class="tn-cap">Your target</span></div>
+        <div><span class="tn-big">${sum(target,target.length)}</span><span class="tn-cap">Your par</span></div>
         <p>Rating ${f.rating.toFixed(1)} / slope ${f.slope} · index ${index.toFixed(1)}</p>
         ${!play.hasSI ? '<p class="tn-warn">No stroke index on file for this course, so every hole plays as equally hard.</p>' : ''}
       </div>
@@ -323,9 +323,9 @@
     let head;
     if(done){
       const cnt = rows.filter(r=>r.pos).length;
-      head = `<h4 class="tn-hole">${me.pos===1 ? (me.label.startsWith('T') ? 'Tied for the win!' : 'You win!') : 'Finished '+ordinal(me.label)+' of '+cnt}<small>gross ${me.gross} · target ${sum(T.target,n)}</small></h4>`;
+      head = `<h4 class="tn-hole">${me.pos===1 ? (me.label.startsWith('T') ? 'Tied for the win!' : 'You win!') : 'Finished '+ordinal(me.label)+' of '+cnt}<small>gross ${me.gross} · par ${sum(T.target,n)}</small></h4>`;
     } else {
-      head = `<h4 class="tn-hole">Hole ${h.no}<small>par ${h.par}${h.y?' · '+h.y+' yds':''}${h.si!=null?' · SI '+h.si:''} · target ${T.target[mine]}</small></h4>`;
+      head = `<h4 class="tn-hole">Hole ${h.no}<small>par ${T.target[mine]} (course par ${h.par})${h.y?' · '+h.y+' yds':''}${h.si!=null?' · SI '+h.si:''}</small></h4>`;
     }
     const names = {'-2':'eagle','-1':'birdie','0':'par','1':'bogey','2':'double','3':'triple'};
     const pad = done ? '' : `<div class="tn-pad">${Array.from({length:10},(_,i)=>2+i).map(s=>`<button type="button" data-s="${s}">${s}<em>${names[s-h.par]||''}</em></button>`).join('')}</div>`;
@@ -338,10 +338,10 @@
     const tnBefore = {};
     body.querySelectorAll('tbody tr[data-n]').forEach(tr=>{ tnBefore[tr.dataset.n] = tr.getBoundingClientRect().top; });
     body.innerHTML = `
-      <p class="idx-note" style="margin:0 0 10px;">${esc(T.form.name)} · ${esc(T.majorName || (T.tier==='major' ? nextMajorName() : nextSeriesName(T.form.name, 0, T.tier)))} · par ${T.play.par} · target ${sum(T.target,n)}</p>
+      <p class="idx-note" style="margin:0 0 10px;">${esc(T.form.name)} · ${esc(T.majorName || (T.tier==='major' ? nextMajorName() : nextSeriesName(T.form.name, 0, T.tier)))} · par ${sum(T.target,n)} (course par ${T.play.par})</p>
       <div class="strip" style="margin:0 0 14px;">
         <div class="cell"><div class="num">${mine?me.label:'–'}</div><div class="lbl">Position</div></div>
-        <div class="cell flag"><div class="num">${fmt(me.vs)}</div><div class="lbl">Vs. target</div></div>
+        <div class="cell flag"><div class="num">${fmt(me.vs)}</div><div class="lbl">Vs. par</div></div>
         <div class="cell"><div class="num">${mine?(me.vs===leader.vs?'Lead':'+'+(me.vs-leader.vs)):'–'}</div><div class="lbl">Back of lead</div></div>
       </div>
       ${head}${pad}${card}

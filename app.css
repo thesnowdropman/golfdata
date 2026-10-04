@@ -233,3 +233,16 @@ html.app .future-rounds-table td.course-name{padding-right:4px;}
 .wx-g{background:#d6efda;} .wx-y{background:#fbf1c4;} .wx-o{background:#fbdcb8;} .wx-r{background:#f6cccc;}
 .wx-past{opacity:.4;} .wx-na{color:var(--mute);font-size:11px;}
 .wx-table th.wx-c small{display:block;font:500 10px/1.2 var(--font-body);color:var(--mute);}
+.wx-table td[data-plan]{cursor:pointer;} .wx-table td[data-plan]:active{outline:2px solid var(--green);}
+
+/* No all-caps anywhere: text shows as written (first letter capitalized) */
+html.app *, html.app *::before, html.app *::after{text-transform:none !important;}
+/* Round History: smaller score, thinner date column, course name on one line */
+.rec-row{grid-template-columns:30px 1fr auto 42px;gap:8px;padding:10px 12px;}
+.rec-g{font-size:19px;}
+.rec-d b{font-size:17px;}
+.rec-d{font-size:9.5px;letter-spacing:0;}
+.rec-c{white-space:nowrap;}
+/* Caps-era letter spacing removed now that labels aren't all caps */
+html.app .app-cap, html.app .btn, html.app .app-btn, html.app .app-nav button, html.app th, html.app .lb-cols, html.app .lb-cut,
+html.app .strip .cell .lbl, html.app .bga-tiles span, html.app .app-tabname, html.app .app-brand, html.app h2, html.app .tn-shelf-h{letter-spacing:.01em !important;}

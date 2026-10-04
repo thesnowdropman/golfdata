@@ -248,11 +248,23 @@
         if(!x) return '<td class="wx-na">—</td>';
         const past = wxDay === 0 && h < nowH;
         const rp = Math.round(x.rain), tone = rp < 10 ? 'wx-g' : rp < 30 ? 'wx-y' : rp < 50 ? 'wx-o' : 'wx-r';
-        return `<td class="${tone}${past?' wx-past':''}"><span>${weatherIconFor(x.code)}</span><b>${Math.round(x.temp)}°</b><i>${Math.round(x.rain)}%</i></td>`;
+        return `<td class="${tone}${past?' wx-past':''}"${past ? '' : ` data-plan="${esc(c.name)}" data-h="${h}"`}><span>${weatherIconFor(x.code)}</span><b>${Math.round(x.temp)}°</b><i>${Math.round(x.rain)}%</i></td>`;
       }).join('');
       return `<tr><th class="wx-c">${esc(c.short)}<small>${c.min != null ? c.min+' min' : Math.round(c.mi)+' mi'}</small></th>${cells}</tr>`;
     }).join('');
     grid.innerHTML = `<div class="wx-scroll"><table class="wx-table"><thead>${head}</thead><tbody>${rowsHtml}</tbody></table></div>`;
+    grid.onclick = e => { const td = e.target.closest('[data-plan]'); if(td) wxPlan(td.dataset.plan, date, +td.dataset.h); };
+  }
+  // Tap an hour: open Plan A Future Round on that course with the date and time filled in
+  function wxPlan(course, date, hour){
+    detailOverlay.classList.remove('open');
+    openBetaFutureModal();
+    $('beta-quick-date').value = date;
+    $('beta-quick-hour').value = String(hour);
+    $('beta-quick-minute').value = '00';
+    const base = n => String(n).replace(/\s\([^)]*\)\s*$/, '').trim().toLowerCase();
+    const btn = [...document.querySelectorAll('#betaCourseGrid .beta-course-btn')].find(b => base(b.textContent) === base(course) || base(b.dataset.key) === base(course));
+    if(btn) btn.click();
   }
   // After 3pm Eastern it opens on tomorrow, same as planning a round
   // Lives at the top of the Plan A Future Round card
@@ -281,7 +293,7 @@
       const vsTxt = [toPar != null ? sgn(toPar) : null, ex != null && !isNaN(g) ? sgn(g - ex) : null].filter(x=>x!=null).join('/');
       const tag = courseTag(r.course);
       return `<button type="button" class="rec-row" data-i="${rounds.indexOf(r)}">
-        <span class="rec-d"><b>${d.getDate()}</b>${d.toLocaleDateString('en-US',{month:'short'}).toUpperCase()}${recView!=='recent' ? `<i>${String(d.getFullYear()).slice(2)}</i>` : ''}</span>
+        <span class="rec-d"><b>${d.getDate()}</b>${d.toLocaleDateString('en-US',{month:'short'})}${recView!=='recent' ? `<i>${String(d.getFullYear()).slice(2)}</i>` : ''}</span>
         <span class="rec-c">${esc(courseName(r.course))}<small><span class="rec-h h${r.holes}">${r.holes}</span>${tag ? esc(tag)+' · ' : ''}${Number(r.rating).toFixed(1)}/${r.slope}</small></span>
         <span class="rec-g">${isNaN(g) ? esc(r.score) : g}${vsTxt ? `<small>${vsTxt}</small>` : ''}</span>
         <span class="rec-df${r.diff===best?' best':''}">${r.diff.toFixed(1)}</span>
@@ -331,7 +343,7 @@
       const d = new Date(r.date+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'});
       latest = `<div class="app-sec-h"><h2>Latest Event</h2><span class="app-cap">${d}</span></div>
         <div class="lb">
-          <button type="button" class="lb-head" data-bga="round" data-key="${esc(roundKey(r))}">${r.event.tier==='major' ? B.majorIcon(name, 40) : B.bgaImg(30)}<span><b>${esc(name)}</b><small>${esc(courseName(r.course))} · ${r.event.tier==='major'?'Major':r.event.tier==='club'?'Qualifier':'Tour'} · Target ${r.event.target}</small></span></button>
+          <button type="button" class="lb-head" data-bga="round" data-key="${esc(roundKey(r))}">${r.event.tier==='major' ? B.majorIcon(name, 40) : B.bgaImg(30)}<span><b>${esc(name)}</b><small>${esc(courseName(r.course))} · ${r.event.tier==='major'?'Major':r.event.tier==='club'?'Qualifier':'Tour'} · Par ${r.event.target}</small></span></button>
           <div class="lb-cols"><span>Pos</span><span>Player</span><span>To par</span><span>Tot</span></div>
           ${rowsFor(top)}
           ${me && !top.includes(me) ? `<div class="lb-cut">· · · ${b.indexOf(me) - 5 > 0 ? (b.indexOf(me) - 5)+' more · · ·' : ''}</div>${rowsFor([me])}` : ''}
@@ -370,7 +382,7 @@
         <button type="button" data-bga="cup">ShedEx Cup<span>›</span></button>
       </div>
       ${latest}
-      <div class="app-sec-h"><h2>Majors</h2><span class="app-cap">your wins</span></div>
+      <div class="app-sec-h"><h2>Majors</h2><span class="app-cap">Your wins</span></div>
       <div class="shelf">${majors}</div>
       <div class="app-sec-h"><h2>BGA Rankings</h2><span class="app-cap">Elo</span></div>
       <div class="lb">${ranked.length ? rankRows(showRank) + (!rankOpen && myRank >= 10 ? `<div class="lb-cut">· · ·</div>` + rankRows([ranked[myRank]]) : '') : '<p class="note" style="padding:14px;margin:0;">Play an event to start the rankings.</p>'}</div>
