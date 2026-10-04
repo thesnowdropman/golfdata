@@ -219,7 +219,7 @@ html.app .future-rounds-table td.course-name{padding-right:4px;}
 .fr-when .idx-note, .fr-when .date-cell{font-size:11px;}
 
 /* Course weather screen */
-.wx-open{margin:8px auto 0;}
+.wx-open{display:block;width:100%;margin:0 0 12px;padding:9px 10px;border:1.5px solid var(--green);border-radius:10px;background:#fff;color:var(--green);font:700 13.5px var(--font-body);cursor:pointer;text-align:center;}
 .wx-tabs{display:flex;margin:4px 0 10px;}
 .wx-tabs button{flex:1;font-size:12px;padding:7px 2px;}
 .wx-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:12px;background:#fff;box-shadow:var(--card-shadow);}
@@ -230,5 +230,6 @@ html.app .future-rounds-table td.course-name{padding-right:4px;}
 .wx-table td span{display:block;font-size:14px;}
 .wx-table td b{display:block;font:700 12px/1.1 var(--font-body);}
 .wx-table td i{display:block;font-style:normal;font-size:10px;color:#3b4650;}
-.wx-g{background:#dff1e2;} .wx-y{background:#fbf0c9;} .wx-r{background:#f7d4d4;}
+.wx-g{background:#d6efda;} .wx-y{background:#fbf1c4;} .wx-o{background:#fbdcb8;} .wx-r{background:#f6cccc;}
 .wx-past{opacity:.4;} .wx-na{color:var(--mute);font-size:11px;}
+.wx-table th.wx-c small{display:block;font:500 10px/1.2 var(--font-body);color:var(--mute);}

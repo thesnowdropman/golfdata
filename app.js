@@ -47,7 +47,6 @@
       <button type="button" class="app-btn bga" id="appPlay"><img src="bga.png" alt="" onerror="this.remove()">Play BGA</button>
     </div>
     <div id="homeUpcoming"></div>
-    <button type="button" class="rec-more wx-open" id="wxOpen">☁️ Course weather — find a time to play ›</button>
     <div class="app-sec-h"><h2>Round History</h2><span class="app-cap" id="recCount"></span></div>
     <div class="seg" id="recSeg"><button type="button" data-v="recent" class="on">Recent 20</button><button type="button" data-v="all">All</button><button type="button" data-v="best">Best</button></div>
     <div class="rec-list" id="recList"></div>
@@ -186,7 +185,7 @@
   let wxDay = 0;
   function wxCourses(){
     const L = window.COURSE_LOCATIONS || (typeof COURSE_LOCATIONS !== 'undefined' ? COURSE_LOCATIONS : {});
-    const home = {lat:39.0, lon:-77.02}; // Silver Spring
+    const home = {lat:39.0, lon:-77.02}; // home (Silver Spring)
     const miles = (a,b) => { const R=3959, r=x=>x*Math.PI/180, dl=r(b.lat-a.lat), dn=r(b.lon-a.lon);
       const h = Math.sin(dl/2)**2 + Math.cos(r(a.lat))*Math.cos(r(b.lat))*Math.sin(dn/2)**2; return 2*R*Math.asin(Math.sqrt(h)); };
     const played = n => (typeof rounds !== 'undefined' ? rounds.filter(r => courseName(r.course) === courseName(n)).length : 0);
@@ -198,7 +197,24 @@
       seen.add(key);
       out.push({name, short: courseName(name).replace(/\s+[-–]\s+.*$/,'').replace(/\s+\b(golf|country|cc)\b.*$/i,''), loc, n: played(name)});
     });
-    return out.sort((a,b) => b.n - a.n || a.short.localeCompare(b.short));
+    // Closest first: drive time when known, otherwise straight-line distance
+    out.forEach(c => { c.mi = miles(home, c.loc); });
+    return out.sort((a,b) => a.mi - b.mi);
+  }
+  // Drive times from home (no traffic), from the free OSRM routing service: one request for
+  // every course, saved on the phone for 30 days so it's almost never asked again.
+  const WX_HOME = {lat:39.0, lon:-77.02};
+  async function wxDriveTimes(courses){
+    const key = 'anges-golf-drive-' + courses.map(c => c.loc.lat.toFixed(3)+','+c.loc.lon.toFixed(3)).join(';');
+    try{ const saved = JSON.parse(localStorage.getItem(key) || 'null'); if(saved && Date.now() - saved.t < 30*864e5) return saved.m; }catch(e){}
+    try{
+      const pts = [WX_HOME, ...courses.map(c => c.loc)].map(p => p.lon+','+p.lat).join(';');
+      const res = await fetch(`https://router.project-osrm.org/table/v1/driving/${pts}?sources=0&annotations=duration`);
+      const j = await res.json(); if(!j || !j.durations) return null;
+      const m = j.durations[0].slice(1).map(sec => sec == null ? null : Math.round(sec/60));
+      try{ localStorage.setItem(key, JSON.stringify({t:Date.now(), m})); }catch(e){}
+      return m;
+    }catch(e){ return null; }
   }
   function wxDate(i){ const d = new Date(); d.setDate(d.getDate()+i); return d.toISOString ? new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,10) : ''; }
   async function openWeather(){
@@ -211,12 +227,17 @@
       return `<button type="button" class="view-toggle-btn${i===wxDay?' active':''}" data-wxday="${i}">${lbl}</button>`; }).join('');
     const body = document.getElementById('detailBody');
     body.innerHTML = `<div class="view-toggle wx-tabs">${tabs}</div><div id="wxGrid"><p class="note">Loading forecasts…</p></div>
-      <p class="idx-note" style="margin:8px 0 0;">Each box: sky, temperature and chance of rain that hour. Green is under 20% rain, yellow under 50%, red 50% or more. Swipe sideways for later hours.</p>`;
+      <p class="idx-note" style="margin:8px 0 0;">Each box: sky, temperature and chance of rain that hour. Rain chance: green 0–9%, yellow 10–29%, orange 30–49%, red 50%+. Swipe sideways for later hours.</p>`;
     detailOverlay.classList.add('open'); detailOverlay.scrollTop = 0;
     navStack = []; try{ updateBackButton(); }catch(e){}
     body.querySelectorAll('[data-wxday]').forEach(b => b.onclick = () => { wxDay = +b.dataset.wxday; openWeather(); });
     const date = wxDate(wxDay), nowH = new Date().getHours();
-    const data = await Promise.all(courses.map(c => fetchWeatherFor(c.loc.lat, c.loc.lon).catch(() => null)));
+    const [data, mins] = await Promise.all([
+      Promise.all(courses.map(c => fetchWeatherFor(c.loc.lat, c.loc.lon).catch(() => null))),
+      wxDriveTimes(courses)]);
+    if(mins){ courses.forEach((c,i) => { c.min = mins[i]; });
+      const order = courses.map((c,i) => [c, data[i]]).sort((a,b) => (a[0].min ?? 999) - (b[0].min ?? 999) || a[0].mi - b[0].mi);
+      order.forEach(([c,d], i) => { courses[i] = c; data[i] = d; }); }
     const grid = document.getElementById('wxGrid'); if(!grid) return;
     if(!courses.length){ grid.innerHTML = '<p class="note">No nearby courses with a location saved.</p>'; return; }
     const head = `<tr><th class="wx-c">Course</th>${WX_HOURS.map(h => `<th>${h===12?'12p':h>12?(h-12)+'p':h+'a'}</th>`).join('')}</tr>`;
@@ -226,15 +247,18 @@
         const x = hrs.find(z => z.hour === h);
         if(!x) return '<td class="wx-na">—</td>';
         const past = wxDay === 0 && h < nowH;
-        const tone = x.rain < 20 ? 'wx-g' : x.rain < 50 ? 'wx-y' : 'wx-r';
+        const rp = Math.round(x.rain), tone = rp < 10 ? 'wx-g' : rp < 30 ? 'wx-y' : rp < 50 ? 'wx-o' : 'wx-r';
         return `<td class="${tone}${past?' wx-past':''}"><span>${weatherIconFor(x.code)}</span><b>${Math.round(x.temp)}°</b><i>${Math.round(x.rain)}%</i></td>`;
       }).join('');
-      return `<tr><th class="wx-c">${esc(c.short)}</th>${cells}</tr>`;
+      return `<tr><th class="wx-c">${esc(c.short)}<small>${c.min != null ? c.min+' min' : Math.round(c.mi)+' mi'}</small></th>${cells}</tr>`;
     }).join('');
     grid.innerHTML = `<div class="wx-scroll"><table class="wx-table"><thead>${head}</thead><tbody>${rowsHtml}</tbody></table></div>`;
   }
   // After 3pm Eastern it opens on tomorrow, same as planning a round
-  $('wxOpen').onclick = () => { let d = 0; try{ d = planDefaultISO() !== todayISO() ? 1 : 0; }catch(e){} wxDay = d; openWeather(); };
+  // Lives at the top of the Plan A Future Round card
+  { const m = $('betaFutureModal'), h = m && m.querySelector('h3');
+    if(h) h.insertAdjacentHTML('afterend', `<button type="button" class="wx-open" id="wxOpen">☁️ Course weather — find a time to play ›</button>`); }
+  if($('wxOpen')) $('wxOpen').onclick = () => { $('betaFutureOverlay').classList.remove('open'); let d = 0; try{ d = planDefaultISO() !== todayISO() ? 1 : 0; }catch(e){} wxDay = d; openWeather(); };
 
   // ---------- Home: score record ----------
   let recView = 'recent', recOpen = false;
