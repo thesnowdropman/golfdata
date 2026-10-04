@@ -1402,7 +1402,9 @@ function breakScoreProbability(f, targetScore){
   if(!trend || !trend.length || diffResidualSD == null) return null;
   if(isNaN(f.rating) || isNaN(f.slope)) return null;
   const currentIndex = trend[trend.length-1].index;
-  const rawDiff = (targetScore - f.rating) * 113 / f.slope;
+  // Scores are whole strokes: "shoot X or better" covers everything up to X + 0.5, the
+  // same boundary the Scoring Curve uses for each bar, so the two always agree.
+  const rawDiff = (targetScore + 0.5 - f.rating) * 113 / f.slope;
   // Must mirror computeDiff() exactly, which is the app's real, established formula for
   // what a 9-hole round's differential actually becomes: raw + (currentTrend / 2), not
   // raw doubled. Using anything else produces numbers that don't line up with real stored
@@ -4018,7 +4020,7 @@ function openFutureRoundDetail(id){
     if(need && exp !== null){ const dv = need.score - exp;
       // Chance from the Scoring Curve: total of every score at or under the one needed
       let pct = null;
-      try{ const L = computeScoreLikelihoods(f); if(L){ const p = L.filter(x => x.score <= need.score).reduce((t,x)=>t+x.probability, 0); pct = Math.min(99, Math.max(1, Math.round(p*100))); } }catch(e){}
+      try{ pct = breakScoreProbability(f, need.score); }catch(e){}
       body += `<p class="note" style="margin:0 0 12px;">Need a ${need.score} (${dv === 0 ? 'E' : (dv > 0 ? '+' : '-') + Math.abs(dv)}) to break ${need.goal.toFixed(1)}${pct != null ? ` (${pct}%)` : ''}</p>`; }
     else body += `<div style="height:10px"></div>`; }
   if(typeof window.tnFutureEventHtml === 'function') body += window.tnFutureEventHtml(f);
