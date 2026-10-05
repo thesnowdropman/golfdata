@@ -182,7 +182,8 @@
 
   // ---------- Course weather: hour by hour at each nearby course, next few days ----------
   const WX_HOURS = [7,8,9,10,11,12,13,14,15,16,17,18];
-  let wxDay = 0;
+  let wxDay = 0, wxPick = null; // wxPick: a date chosen from the calendar (YYYY-MM-DD)
+  let wxFromWork = false; // checkbox: drive times from work instead of home
   function wxCourses(){
     const L = window.COURSE_LOCATIONS || (typeof COURSE_LOCATIONS !== 'undefined' ? COURSE_LOCATIONS : {});
     const home = {lat:39.0, lon:-77.02}; // home (Silver Spring)
@@ -204,11 +205,13 @@
   // Drive times from home (no traffic), from the free OSRM routing service: one request for
   // every course, saved on the phone for 30 days so it's almost never asked again.
   const WX_HOME = {lat:39.0, lon:-77.02};
-  async function wxDriveTimes(courses){
-    const key = 'anges-golf-drive-' + courses.map(c => c.loc.lat.toFixed(3)+','+c.loc.lon.toFixed(3)).join(';');
+  const WX_WORK = {lat:39.1515, lon:-76.888}; // 8161 Maple Lawn Blvd, Fulton
+  async function wxDriveTimes(courses, from){
+    from = from || WX_HOME;
+    const key = 'anges-golf-drive-' + (from === WX_HOME ? '' : 'work-') + courses.map(c => c.loc.lat.toFixed(3)+','+c.loc.lon.toFixed(3)).join(';');
     try{ const saved = JSON.parse(localStorage.getItem(key) || 'null'); if(saved && Date.now() - saved.t < 30*864e5) return saved.m; }catch(e){}
     try{
-      const pts = [WX_HOME, ...courses.map(c => c.loc)].map(p => p.lon+','+p.lat).join(';');
+      const pts = [from, ...courses.map(c => c.loc)].map(p => p.lon+','+p.lat).join(';');
       const res = await fetch(`https://router.project-osrm.org/table/v1/driving/${pts}?sources=0&annotations=duration`);
       const j = await res.json(); if(!j || !j.durations) return null;
       const m = j.durations[0].slice(1).map(sec => sec == null ? null : Math.round(sec/60));
@@ -222,19 +225,24 @@
     document.getElementById('detailMiiRow').innerHTML = ''; document.getElementById('detailMiiRow').style.display = 'none';
     document.getElementById('detailTitle').innerHTML = `<span id="courseTitleText">Course Weather</span><span class="crr-rs title-subline">Hour by hour · nearby courses</span>`;
     document.getElementById('detailTitle').style.marginTop = '0';
+    if(wxPick){ const k = [0,1,2,3].findIndex(i => wxDate(i) === wxPick); if(k >= 0){ wxDay = k; wxPick = null; } }
     const tabs = [0,1,2,3].map(i => { const d = new Date(wxDate(i)+'T00:00:00');
       const lbl = i===0 ? 'Today' : i===1 ? 'Tomorrow' : d.toLocaleDateString('en-US',{weekday:'short', month:'short', day:'numeric'});
-      return `<button type="button" class="view-toggle-btn${i===wxDay?' active':''}" data-wxday="${i}">${lbl}</button>`; }).join('');
+      return `<button type="button" class="view-toggle-btn${!wxPick && i===wxDay?' active':''}" data-wxday="${i}">${lbl}</button>`; }).join('')
+      + `<label class="view-toggle-btn wx-cal${wxPick?' active':''}">${wxPick ? new Date(wxPick+'T00:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}) : '📅'}<input type="date" id="wxCalInput" min="${wxDate(0)}" max="${wxDate(15)}" value="${wxPick || wxDate(wxDay)}"></label>`;
     const body = document.getElementById('detailBody');
-    body.innerHTML = `<div class="view-toggle wx-tabs">${tabs}</div><div id="wxGrid"><p class="note">Loading forecasts…</p></div>
+    body.innerHTML = `<div class="view-toggle wx-tabs">${tabs}</div>
+      <label class="wx-work"><input type="checkbox" id="wxWork"${wxFromWork?' checked':''}> Drive times from work (8161 Maple Lawn Blvd)</label><div id="wxGrid"><p class="note">Loading forecasts…</p></div>
       <p class="idx-note" style="margin:8px 0 0;">Each box: sky, temperature and chance of rain that hour. Rain chance: green 0–9%, yellow 10–29%, orange 30–49%, red 50%+. Swipe sideways for later hours.</p>`;
     detailOverlay.classList.add('open'); detailOverlay.scrollTop = 0;
     navStack = []; try{ updateBackButton(); }catch(e){}
-    body.querySelectorAll('[data-wxday]').forEach(b => b.onclick = () => { wxDay = +b.dataset.wxday; openWeather(); });
-    const date = wxDate(wxDay), nowH = new Date().getHours();
+    body.querySelectorAll('[data-wxday]').forEach(b => b.onclick = () => { wxDay = +b.dataset.wxday; wxPick = null; openWeather(); });
+    $('wxCalInput').onchange = e => { const v = e.target.value; if(v && v >= wxDate(0) && v <= wxDate(15)){ wxPick = v; openWeather(); } };
+    $('wxWork').onchange = e => { wxFromWork = e.target.checked; openWeather(); };
+    const date = wxPick || wxDate(wxDay), nowH = new Date().getHours();
     const [data, mins] = await Promise.all([
       Promise.all(courses.map(c => fetchWeatherFor(c.loc.lat, c.loc.lon).catch(() => null))),
-      wxDriveTimes(courses)]);
+      wxDriveTimes(courses, wxFromWork ? WX_WORK : WX_HOME)]);
     if(mins){ courses.forEach((c,i) => { c.min = mins[i]; });
       const order = courses.map((c,i) => [c, data[i]]).sort((a,b) => (a[0].min ?? 999) - (b[0].min ?? 999) || a[0].mi - b[0].mi);
       order.forEach(([c,d], i) => { courses[i] = c; data[i] = d; }); }
@@ -246,7 +254,7 @@
       const cells = WX_HOURS.map(h => {
         const x = hrs.find(z => z.hour === h);
         if(!x) return '<td class="wx-na">—</td>';
-        const past = wxDay === 0 && h < nowH;
+        const past = date === wxDate(0) && h < nowH;
         const rp = Math.round(x.rain), tone = rp < 10 ? 'wx-g' : rp < 30 ? 'wx-y' : rp < 50 ? 'wx-o' : 'wx-r';
         return `<td class="${tone}${past?' wx-past':''}"${past ? '' : ` data-plan="${esc(c.name)}" data-h="${h}"`}><span>${weatherIconFor(x.code)}</span><b>${Math.round(x.temp)}°</b><i>${Math.round(x.rain)}%</i></td>`;
       }).join('');
@@ -270,7 +278,7 @@
   // Lives at the top of the Plan A Future Round card
   { const m = $('betaFutureModal'), h = m && m.querySelector('h3');
     if(h) h.insertAdjacentHTML('afterend', `<button type="button" class="wx-open" id="wxOpen">☁️ Course weather — find a time to play ›</button>`); }
-  if($('wxOpen')) $('wxOpen').onclick = () => { $('betaFutureOverlay').classList.remove('open'); let d = 0; try{ d = planDefaultISO() !== todayISO() ? 1 : 0; }catch(e){} wxDay = d; openWeather(); };
+  if($('wxOpen')) $('wxOpen').onclick = () => { $('betaFutureOverlay').classList.remove('open'); wxPick = null; let d = 0; try{ d = planDefaultISO() !== todayISO() ? 1 : 0; }catch(e){} wxDay = d; openWeather(); };
 
   // ---------- Home: score record ----------
   let recView = 'recent', recOpen = false;
@@ -283,7 +291,9 @@
     $('recSeg').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.v === recView));
     const cap = 10, more = list.length > cap && !recOpen;
     const shown = more ? list.slice(0, cap) : list;
-    const best = Math.min(...rounds.map(r=>r.diff));
+    // The rounds currently counted in the handicap (USGA lowest of the last 20)
+    const usedHC = new Set();
+    try{ const C = window.whsCalc; if(C && C.recent) [...C.recent].sort((a,b)=>(a.d+a.adj)-(b.d+b.adj)).slice(0, C.k).forEach(z => usedHC.add(z.r)); }catch(e){}
     $('recList').innerHTML = shown.map(r => {
       const d = new Date(r.date+'T00:00:00');
       const par = (typeof PAR_BY_COURSE !== 'undefined') ? PAR_BY_COURSE[r.course] : null;
@@ -296,7 +306,7 @@
         <span class="rec-d"><b>${d.getDate()}</b>${d.toLocaleDateString('en-US',{month:'short'})}${recView!=='recent' ? `<i>${String(d.getFullYear()).slice(2)}</i>` : ''}</span>
         <span class="rec-c">${esc(courseName(r.course))}<small><span class="rec-h h${r.holes}">${r.holes}</span>${tag ? esc(tag)+' · ' : ''}${Number(r.rating).toFixed(1)}/${r.slope}</small></span>
         <span class="rec-g">${isNaN(g) ? esc(r.score) : g}${vsTxt ? `<small>${vsTxt}</small>` : ''}</span>
-        <span class="rec-df${r.diff===best?' best':''}">${r.diff.toFixed(1)}</span>
+        <span class="rec-df${usedHC.has(r)?' best':''}">${r.diff.toFixed(1)}</span>
       </button>`;
     }).join('') || '<p class="note" style="padding:14px;margin:0;">No rounds yet.</p>';
     $('recMore').hidden = !(list.length > cap);

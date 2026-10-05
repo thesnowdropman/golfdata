@@ -246,3 +246,9 @@ html.app *, html.app *::before, html.app *::after{text-transform:none !important
 /* Caps-era letter spacing removed now that labels aren't all caps */
 html.app .app-cap, html.app .btn, html.app .app-btn, html.app .app-nav button, html.app th, html.app .lb-cols, html.app .lb-cut,
 html.app .strip .cell .lbl, html.app .bga-tiles span, html.app .app-tabname, html.app .app-brand, html.app h2, html.app .tn-shelf-h{letter-spacing:.01em !important;}
+
+/* Weather: calendar tab + work checkbox */
+.wx-cal{position:relative;flex:0 0 auto !important;min-width:44px;display:flex;align-items:center;justify-content:center;cursor:pointer;}
+.wx-cal input{position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer;}
+.wx-work{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--ink);margin:0 2px 10px;}
+.wx-work input{width:18px;height:18px;accent-color:var(--green);}

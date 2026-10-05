@@ -4234,6 +4234,11 @@ function openBetaFutureModal(){
   document.getElementById('beta-ff-minute').value = '';
   document.getElementById('beta-quick-date').value = planDefaultISO();
   document.getElementById('beta-ff-date').value = planDefaultISO();
+  // Planning for today: start at the next hour, on the hour (within the 7am-7pm choices)
+  { const nextH = new Date().getHours() + 1;
+    const hr = planDefaultISO() === todayISO() ? Math.min(19, Math.max(7, nextH)) : 9;
+    ['beta-quick-hour','beta-ff-hour'].forEach(id => { const el = document.getElementById(id); if(el) el.value = String(hr); });
+    ['beta-quick-minute','beta-ff-minute'].forEach(id => { const el = document.getElementById(id); if(el) el.value = '00'; }); }
   document.getElementById('beta-ff-course').value = '';
   document.getElementById('beta-ff-rating').value = '';
   document.getElementById('beta-ff-slope').value = '';
