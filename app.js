@@ -304,7 +304,7 @@
       const tag = courseTag(r.course);
       return `<button type="button" class="rec-row" data-i="${rounds.indexOf(r)}">
         <span class="rec-d"><b>${d.getDate()}</b>${d.toLocaleDateString('en-US',{month:'short'})}${recView!=='recent' ? `<i>${String(d.getFullYear()).slice(2)}</i>` : ''}</span>
-        <span class="rec-c">${esc(courseName(r.course))}<small><span class="rec-h h${r.holes}">${r.holes}</span>${tag ? esc(tag)+' · ' : ''}${Number(r.rating).toFixed(1)}/${r.slope}</small></span>
+        <span class="rec-c">${esc(courseName(r.course))}<small><span class="rec-h h${r.holes}">${r.holes}</span>${Number(r.rating).toFixed(1)}/${r.slope}${tag ? ' · '+esc(tag) : ''}</small></span>
         <span class="rec-g">${isNaN(g) ? esc(r.score) : g}${vsTxt ? `<small>${vsTxt}</small>` : ''}</span>
         <span class="rec-df${usedHC.has(r)?' best':''}">${r.diff.toFixed(1)}</span>
       </button>`;
