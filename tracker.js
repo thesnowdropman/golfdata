@@ -1634,18 +1634,18 @@ function renderFutureRounds(){
     const par = parForFutureRound(f);
 
     let probLineHtml = '';
-    if(f.holes === 18){
+    // Played here before: odds of beating your best score. First time: an 18 shows odds of
+    // breaking 100, a 9 shows "New!"
+    const priorRoundsAtCourse = rounds.filter(r => r.course.trim().toLowerCase() === f.course.trim().toLowerCase());
+    if(priorRoundsAtCourse.length > 0){
+      const courseRecord = Math.min(...priorRoundsAtCourse.map(scoreOf));
+      const beatRecordProb = breakScoreProbability(f, courseRecord - 1);
+      if(beatRecordProb !== null) probLineHtml = `<div class="idx-note" style="margin:2px 0 0;">${beatRecordProb}% &lt;${courseRecord}</div>`;
+    } else if(f.holes === 18){
       const break100 = breakScoreProbability(f, 99);
       if(break100 !== null) probLineHtml = `<div class="idx-note" style="margin:2px 0 0;">${break100}% &lt;100</div>`;
     } else {
-      const priorRoundsAtCourse = rounds.filter(r => r.course.trim().toLowerCase() === f.course.trim().toLowerCase());
-      if(priorRoundsAtCourse.length > 0){
-        const courseRecord = Math.min(...priorRoundsAtCourse.map(scoreOf));
-        const beatRecordProb = breakScoreProbability(f, courseRecord - 1);
-        if(beatRecordProb !== null) probLineHtml = `<div class="idx-note" style="margin:2px 0 0;">${beatRecordProb}% &lt;${courseRecord}</div>`;
-      } else {
-        probLineHtml = `<div class="idx-note" style="margin:2px 0 0;">New!</div>`;
-      }
+      probLineHtml = `<div class="idx-note" style="margin:2px 0 0;">New!</div>`;
     }
 
     const loc = COURSE_LOCATIONS[f.course];
@@ -2306,30 +2306,34 @@ function projectHcMilestones(){
   const slope = sxx ? sxy/sxx : 0, icept = my - slope*mx;
   const TABLE = {3:[1,-2],4:[1,-1],5:[1,0],6:[2,-1],7:[2,0],8:[2,0],9:[3,0],10:[3,0],11:[3,0],12:[4,0],13:[4,0],14:[4,0],15:[5,0],16:[5,0],17:[6,0],18:[6,0],19:[7,0]};
   let win = C.recent.map(z => z.d + z.adj), idx = C.index;
+  // Goals end in .9: the first is just under the current whole number (34.4 or 34.0 -> 33.9)
   const goals = [];
-  // first goal: the next whole number below the current index (34.4 -> 34, 30.0 -> 29)
-  const first = idx % 1 === 0 ? idx - 1 : Math.floor(idx);
-  goals.length = 0; for(let t = first; goals.length < 8 && t >= 0; t--) goals.push(t);
-  const hits = {}; let gi = 0;
+  for(let t = Math.floor(idx + 1e-9) - 0.1; goals.length < 8 && t >= 0; t -= 1) goals.push(Math.round(t*10)/10);
+  // Future rounds mix 9s and 18s in the same share you've played them. Each round joins the
+  // last 20 and the oldest drops out, so old good differentials leave the count over time.
+  const share18 = chrono.length ? chrono.filter(r => r.holes === 18).length / chrono.length : 0;
+  const hits = {}; let gi = 0, x = n, acc = 0;
+  const line = xx => icept + slope*xx;
   for(let k = 1; k <= 400 && gi < goals.length; k++){
-    const raw9 = icept + slope*(n + k);
-    const d = Math.round((raw9 + 0.52*idx + 1.2)*10)/10;
+    acc += share18; const is18 = acc >= 1 - 1e-9; if(is18) acc -= 1;
+    let d;
+    if(is18){ d = Math.round((line(x+1) + line(x+2))*10)/10; x += 2; }
+    else { d = Math.round((line(x+1) + 0.52*idx + 1.2)*10)/10; x += 1; }
     const gap = idx - d, cut = gap >= 10 ? 2 : gap >= 7 ? 1 : 0;
     if(cut) win = win.map(v => v - cut);
     win = win.concat(d - cut).slice(-20);
     const m = win.length, [kk, plus] = m >= 20 ? [8,0] : (TABLE[m] || [1,0]);
     const best = [...win].sort((a,b)=>a-b).slice(0, kk);
     idx = Math.round((best.reduce((s,x)=>s+x,0)/kk + plus)*10)/10;
-    while(gi < goals.length && idx <= goals[gi]){ hits[goals[gi]] = k; gi++; }
+    while(gi < goals.length && idx <= goals[gi] + 1e-9){ hits[goals[gi]] = k; gi++; }
   }
   // Pace: 9-hole segments per golf-season day over the last 60 season days (Apr 1 - Oct 31)
   const inSeason = d => { const m = d.getMonth(); return m >= 3 && m <= 9; };
   const day0 = new Date(); day0.setHours(0,0,0,0);
   let cutoff = new Date(day0), counted = 0;
   for(let guard = 0; counted < 60 && guard < 800; guard++){ cutoff.setDate(cutoff.getDate() - 1); if(inSeason(cutoff)) counted++; }
-  const recentSegs = chrono.filter(r => new Date(r.date+'T00:00:00') >= cutoff).reduce((s,r)=> s + (r.holes===18 ? 2 : 1), 0);
-  const perDay = recentSegs / 60;
-  return {goals, hits, slope, perDay, index: C.index};
+  const perDay = chrono.filter(r => new Date(r.date+'T00:00:00') >= cutoff).length / 60; // rounds per season day
+  return {goals, hits, slope, perDay, share18, index: C.index};
 }
 function projectHcMilestonesHtml(){
   let P = null; try{ P = projectHcMilestones(); }catch(e){}
@@ -2348,8 +2352,8 @@ function projectHcMilestonesHtml(){
   const trend = P.slope < 0 ? `improving ${Math.abs(P.slope*10).toFixed(2)} strokes per 10 nines` : `not improving (${(P.slope*10).toFixed(2)} per 10 nines)`;
   return `
     <h3 style="margin:22px 0 4px;">Road to lower handicaps</h3>
-    <p class="note" style="margin:0 0 8px;">9-hole rounds needed, from today's ${P.index.toFixed(1)}, if your 9-hole differential keeps following its trend line (${trend}). An 18 counts as two 9s. Dates use your pace of ${perWeek.toFixed(1)} nines a week over the last 60 golf days, and only count the season (Apr 1 – Oct 31).</p>
-    <div class="tn-boardwrap"><table class="tn-board"><thead><tr><th>Index</th><th class="tn-n">9s needed</th><th class="tn-n">Around</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+    <p class="note" style="margin:0 0 8px;">Rounds needed from today's ${P.index.toFixed(1)} if your 9-hole differential keeps following its trend line (${trend}). Rounds are ${100-Math.round(P.share18*100)}% 9s and ${Math.round(P.share18*100)}% 18s, as you've played them, and each one pushes your oldest score out of the last 20, so old good rounds stop counting. Dates use your pace of ${perWeek.toFixed(1)} rounds a week over the last 60 golf days, and only count the season (Apr 1 – Oct 31).</p>
+    <div class="tn-boardwrap"><table class="tn-board"><thead><tr><th>Index</th><th class="tn-n">Rounds</th><th class="tn-n">Around</th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 
 function openAllStatsDetail(){
