@@ -1658,7 +1658,7 @@ function renderFutureRounds(){
 
     return `
       <tr class="future-round-row" data-id="${f.id}" style="cursor:pointer;">
-        <td class="course-name"><span class="fr-name"><span class="badge ${f.holes===18?'b18':'b9'}">${f.holes===18?'18':'9'}</span>${fDisplayCourse.replace(/\s+[-–]\s+.*$/,'').replace(/\s+\b(golf|country)\b.*$/i,'')}</span><span class="fr-when"><span class="date-cell">${formatFutureDateTime(f)}</span>${weatherPlaceholder}</span></td>
+        <td class="course-name"><span class="fr-name"><span class="badge ${f.holes===18?'b18':'b9'}">${f.holes===18?'18':'9'}</span>${fDisplayCourse}</span><span class="fr-when"><span class="date-cell">${formatFutureDateTime(f)}</span>${weatherPlaceholder}</span></td>
         <td class="diff-cell">${exp !== null ? exp + toParTextFor(exp, par) : '—'}${probLineHtml}</td>
       </tr>`;
   }).join('');
@@ -2285,6 +2285,73 @@ function formatTinyPercent(p){
   return `${pct.toExponential(2)}%`;
 }
 
+// Projected 9-hole segments to reach each lower whole-number index. Fits a straight line to
+// your 9-hole differential over every 9 holes played (an 18 counts as two halves), then plays
+// future 9-hole rounds on that line through the same USGA math as the real index: each adds
+// the expected 9-hole differential at the index of the moment, joins the last 20, and the
+// lowest ones are averaged. Pace (9s per week over the last 60 days) turns it into a date.
+function projectHcMilestones(){
+  const C = whsCalc; if(!C || C.index == null || !C.recent || C.recent.length < 3) return null;
+  const chrono = [...rounds].sort((a,b)=> new Date(a.date) - new Date(b.date));
+  const segs = []; // [x, raw 9-hole differential]
+  chrono.forEach(r => {
+    const g = parseInt(String(r.score), 10); if(isNaN(g) || !r.rating || !r.slope) return;
+    const raw = (g - r.rating) * 113 / r.slope;
+    if(r.holes === 18){ segs.push(raw/2, raw/2); } else segs.push(raw);
+  });
+  if(segs.length < 5) return null;
+  const n = segs.length, xs = segs.map((_,i)=>i+1);
+  const mx = xs.reduce((a,b)=>a+b,0)/n, my = segs.reduce((a,b)=>a+b,0)/n;
+  let sxy = 0, sxx = 0; xs.forEach((x,i)=>{ sxy += (x-mx)*(segs[i]-my); sxx += (x-mx)*(x-mx); });
+  const slope = sxx ? sxy/sxx : 0, icept = my - slope*mx;
+  const TABLE = {3:[1,-2],4:[1,-1],5:[1,0],6:[2,-1],7:[2,0],8:[2,0],9:[3,0],10:[3,0],11:[3,0],12:[4,0],13:[4,0],14:[4,0],15:[5,0],16:[5,0],17:[6,0],18:[6,0],19:[7,0]};
+  let win = C.recent.map(z => z.d + z.adj), idx = C.index;
+  const goals = [];
+  // first goal: the next whole number below the current index (34.4 -> 34, 30.0 -> 29)
+  const first = idx % 1 === 0 ? idx - 1 : Math.floor(idx);
+  goals.length = 0; for(let t = first; goals.length < 8 && t >= 0; t--) goals.push(t);
+  const hits = {}; let gi = 0;
+  for(let k = 1; k <= 400 && gi < goals.length; k++){
+    const raw9 = icept + slope*(n + k);
+    const d = Math.round((raw9 + 0.52*idx + 1.2)*10)/10;
+    const gap = idx - d, cut = gap >= 10 ? 2 : gap >= 7 ? 1 : 0;
+    if(cut) win = win.map(v => v - cut);
+    win = win.concat(d - cut).slice(-20);
+    const m = win.length, [kk, plus] = m >= 20 ? [8,0] : (TABLE[m] || [1,0]);
+    const best = [...win].sort((a,b)=>a-b).slice(0, kk);
+    idx = Math.round((best.reduce((s,x)=>s+x,0)/kk + plus)*10)/10;
+    while(gi < goals.length && idx <= goals[gi]){ hits[goals[gi]] = k; gi++; }
+  }
+  // Pace: 9-hole segments per golf-season day over the last 60 season days (Apr 1 - Oct 31)
+  const inSeason = d => { const m = d.getMonth(); return m >= 3 && m <= 9; };
+  const day0 = new Date(); day0.setHours(0,0,0,0);
+  let cutoff = new Date(day0), counted = 0;
+  for(let guard = 0; counted < 60 && guard < 800; guard++){ cutoff.setDate(cutoff.getDate() - 1); if(inSeason(cutoff)) counted++; }
+  const recentSegs = chrono.filter(r => new Date(r.date+'T00:00:00') >= cutoff).reduce((s,r)=> s + (r.holes===18 ? 2 : 1), 0);
+  const perDay = recentSegs / 60;
+  return {goals, hits, slope, perDay, index: C.index};
+}
+function projectHcMilestonesHtml(){
+  let P = null; try{ P = projectHcMilestones(); }catch(e){}
+  if(!P) return '';
+  const perWeek = P.perDay * 7;
+  const rows = P.goals.map(t => {
+    const k = P.hits[t];
+    let when = '—';
+    if(k && P.perDay > 0){
+      // Count forward only through season days (Apr 1 - Oct 31); winters are skipped
+      const d = new Date(); d.setHours(0,0,0,0); let need = k / P.perDay;
+      for(let guard = 0; need > 0 && guard < 20000; guard++){ d.setDate(d.getDate() + 1); const m = d.getMonth(); if(m >= 3 && m <= 9) need--; }
+      when = d.toLocaleDateString('en-US',{month:'short', day:'numeric'}) + (d.getFullYear() !== new Date().getFullYear() ? " ’" + String(d.getFullYear()).slice(2) : ''); }
+    return `<tr><td>${t.toFixed(1)}</td><td class="tn-n">${k ? k : '—'}</td><td class="tn-n">${k ? when : 'Not on this trend'}</td></tr>`;
+  }).join('');
+  const trend = P.slope < 0 ? `improving ${Math.abs(P.slope*10).toFixed(2)} strokes per 10 nines` : `not improving (${(P.slope*10).toFixed(2)} per 10 nines)`;
+  return `
+    <h3 style="margin:22px 0 4px;">Road to lower handicaps</h3>
+    <p class="note" style="margin:0 0 8px;">9-hole rounds needed, from today's ${P.index.toFixed(1)}, if your 9-hole differential keeps following its trend line (${trend}). An 18 counts as two 9s. Dates use your pace of ${perWeek.toFixed(1)} nines a week over the last 60 golf days, and only count the season (Apr 1 – Oct 31).</p>
+    <div class="tn-boardwrap"><table class="tn-board"><thead><tr><th>Index</th><th class="tn-n">9s needed</th><th class="tn-n">Around</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+
 function openAllStatsDetail(){
   const s = computeAllStatsSummary();
 
@@ -2307,7 +2374,7 @@ function openAllStatsDetail(){
   const distHtml = distList.map(([label,count]) => `<p class="note" style="margin:2px 0;">${label}: <strong>${count}</strong></p>`).join('');
   const otherLine = s.dist.other > 0 ? `<p class="note" style="margin:2px 0;">Other (eagle or better / worse than quintuple): <strong>${s.dist.other}</strong></p>` : '';
 
-  const body = `
+  let body = `
     <p class="note" style="margin:2px 0 12px;">A hypothetical composite round: your best-ever score at each hole position, regardless of which course it came from.</p>
     ${scorecardHtml}
     <p class="note" style="margin:16px 0 2px;"><strong>Total holes played:</strong> ${s.totalHolesPlayed}</p>
@@ -2320,6 +2387,7 @@ function openAllStatsDetail(){
     <p class="note" style="margin:0 0 2px;"><strong>Odds of zero birdies (career, ${s.totalHolesWithDetail} holes):</strong> ${formatTinyPercent(s.oddsZeroBirdiesCareer)}</p>
   `;
 
+  body += projectHcMilestonesHtml();
   document.getElementById('detailBody').innerHTML = body;
   detailOverlay.classList.add('open');
   updateBackButton();

@@ -101,12 +101,20 @@
   const courseName = c => c.replace(/\s\(([^)]*)\)\s*$/, '');
   const courseTag = c => { const m = c.match(/\s\(([^)]*)\)\s*$/); return m && m[1] !== '9' && m[1] !== '18' ? m[1] : ''; };
 
+  // Mini handicap chart with a light guide line and label at every 10 strokes (30, 40...)
   function spark(points, w, h){
     if(points.length < 2) return '';
-    const lo = Math.min(...points), hi = Math.max(...points), span = (hi - lo) || 1;
-    const xy = points.map((v,i) => [ (i/(points.length-1))*(w-8)+4, 4 + (1-(v-lo)/span)*(h-8) ]);
+    let lo = Math.min(...points), hi = Math.max(...points);
+    // Make sure at least one multiple of 10 is in view
+    if(Math.floor(hi/10)*10 < lo) lo = Math.floor(lo/10)*10;
+    const span = (hi - lo) || 1, L = 20; // left space for labels
+    const yOf = v => 4 + (1-(v-lo)/span)*(h-8);
+    const xy = points.map((v,i) => [ L + (i/(points.length-1))*(w-L-4), yOf(v) ]);
     const last = xy[xy.length-1];
-    return `<svg class="hc-spark" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" aria-hidden="true">
+    let grid = '';
+    for(let g = Math.ceil(lo/10)*10; g <= hi; g += 10){ const y = yOf(g).toFixed(1);
+      grid += `<line x1="${L}" x2="${w}" y1="${y}" y2="${y}" class="hc-grid"/><text x="${L-4}" y="${y}" class="hc-tick">${g}</text>`; }
+    return `<svg class="hc-spark" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" aria-hidden="true">${grid}
       <polyline fill="none" points="${xy.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ')}"/>
       <circle cx="${last[0].toFixed(1)}" cy="${last[1].toFixed(1)}" r="4"/></svg>`;
   }
@@ -132,7 +140,7 @@
     }catch(e){}
     $('hcCard').innerHTML = `
       <div class="app-cap">Handicap Index${whsCalc && whsCalc.override != null ? ' · Manual' : ''}</div>
-      <div class="hc-row"><div class="hc-big">${idx.toFixed(1)}</div>${spark(trend.slice(-30).map(p=>p.index), 140, 56)}</div>
+      <div class="hc-row"><div class="hc-big">${idx.toFixed(1)}</div>${spark(trend.slice(-30).map(p=>p.index), 160, 60)}</div>
       <div class="hc-sub">
         <div><span class="app-cap">Low HI</span><b>${low.toFixed(1)}</b></div>
         <div><span class="app-cap">30 days</span><b class="hc-${dir}">${dir==='down'?'▼ ':dir==='up'?'▲ ':''}${Math.abs(per30).toFixed(1)}</b></div>
