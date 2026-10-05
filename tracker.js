@@ -1280,9 +1280,10 @@ function recompute(){
   }
 
   const currentIndex = trend[trend.length-1].index;
-  // "Proj Next Diff." box: your next round's differential from a straight line fit to every
-  // round's differential (USGA counts-as value). Shown only there; nothing else uses it.
-  { const ds = chrono.map(r => whsCountsAs(r)).filter(v => v != null && !isNaN(v)), n = ds.length;
+  // "Proj Next Diff." box: the Differential chart's trend line, one round past your latest.
+  // Shown only there; nothing else uses it.
+  // Same data and line as the Differential chart's dashed trend (each round's own differential)
+  { const ds = chrono.map(r => r.diff).filter(v => v != null && !isNaN(v)), n = ds.length;
     let nextDiff = currentIndex;
     if(n >= 2){ const mx = (n+1)/2, my = ds.reduce((a,b)=>a+b,0)/n; let sxy = 0, sxx = 0;
       ds.forEach((v,i)=>{ sxy += (i+1-mx)*(v-my); sxx += (i+1-mx)**2; });

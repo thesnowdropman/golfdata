@@ -140,7 +140,7 @@
     }catch(e){}
     $('hcCard').innerHTML = `
       <div class="app-cap">Handicap Index${whsCalc && whsCalc.override != null ? ' · Manual' : ''}</div>
-      <div class="hc-row"><div class="hc-big">${idx.toFixed(1)}</div>${spark(trend.slice(-30).map(p=>p.index), 160, 60)}</div>
+      <div class="hc-row"><div class="hc-big">${idx.toFixed(1)}</div>${spark(trend.map(p=>p.index), 160, 60)}</div>
       <div class="hc-sub">
         <div><span class="app-cap">Low HI</span><b>${low.toFixed(1)}</b></div>
         <div><span class="app-cap">30 days</span><b class="hc-${dir}">${dir==='down'?'▼ ':dir==='up'?'▲ ':''}${Math.abs(per30).toFixed(1)}</b></div>
