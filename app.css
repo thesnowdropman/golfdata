@@ -254,5 +254,5 @@ html.app .strip .cell .lbl, html.app .bga-tiles span, html.app .app-tabname, htm
 .wx-work input{width:18px;height:18px;accent-color:var(--green);}
 /* No double-tap zoom */
 html.app, html.app body, html.app button, html.app a, html.app input, html.app select, html.app td{touch-action:manipulation;}
-.hc-spark .hc-grid{stroke:var(--line);stroke-width:1;stroke-dasharray:3 3;}
+.hc-spark .hc-grid{stroke:#b4b0a6;stroke-width:1;}
 .hc-spark .hc-tick{font:600 10px var(--font-body);fill:var(--mute);text-anchor:end;dominant-baseline:middle;}

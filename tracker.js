@@ -1280,7 +1280,14 @@ function recompute(){
   }
 
   const currentIndex = trend[trend.length-1].index;
-  document.getElementById('stat-index').textContent = currentIndex.toFixed(1);
+  // "Proj Next Diff." box: your next round's differential from a straight line fit to every
+  // round's differential (USGA counts-as value). Shown only there; nothing else uses it.
+  { const ds = chrono.map(r => whsCountsAs(r)).filter(v => v != null && !isNaN(v)), n = ds.length;
+    let nextDiff = currentIndex;
+    if(n >= 2){ const mx = (n+1)/2, my = ds.reduce((a,b)=>a+b,0)/n; let sxy = 0, sxx = 0;
+      ds.forEach((v,i)=>{ sxy += (i+1-mx)*(v-my); sxx += (i+1-mx)**2; });
+      const b = sxx ? sxy/sxx : 0; nextDiff = my + b*(n+1-mx); }
+    document.getElementById('stat-index').textContent = nextDiff.toFixed(1); }
   const per30 = reg.slope*30;
   const arrow = per30 < -0.05 ? '▼' : (per30 > 0.05 ? '▲' : '—');
   document.getElementById('stat-trend').innerHTML = (per30>=0?'+':'')+per30.toFixed(1)+' <span class="trend-arrow">'+arrow+'</span>';
