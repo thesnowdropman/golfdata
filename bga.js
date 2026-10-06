@@ -237,7 +237,7 @@
     S = S || T; F = F || field;
     const n = S.play.holes.length;
     const rows = F.map(p=>{ const t=thruFor(S,p.group,mine,n); return {name:p.name, hc:p.hcp, group:p.group, note:'HC '+p.hcp+' · '+p.style+(t>0 ? ' · Last: '+fmt(p.scores[t-1]-S.target[t-1]) : ''), thru:t, gross:sum(p.scores,t), vs:sum(p.scores,t)-sum(S.target,t)}; });
-    rows.push({name:'You', you:true, hc:Number(S.index), group:S.groups||3, note:'Index '+S.index.toFixed(1)+' · par '+sum(S.target,n)+(mine>0 ? ' · Last: '+fmt(S.mine[mine-1]-S.target[mine-1]) : ''), thru:mine, gross:sum(S.mine,mine), vs:sum(S.mine,mine)-sum(S.target,mine)});
+    rows.push({name:'You', you:true, hc:Number(S.index), group:S.groups||3, note:'Index '+S.index.toFixed(1)+' · Par '+sum(S.target,n)+(mine>0 ? ' · Last: '+fmt(S.mine[mine-1]-S.target[mine-1]) : ''), thru:mine, gross:sum(S.mine,mine), vs:sum(S.mine,mine)-sum(S.target,mine)});
     const live = rankRows(rows.filter(r=>r.thru>0));
     return live.concat(rows.filter(r=>r.thru===0).sort((a,b)=>a.group-b.group).map(r=>({...r,label:'–'})));
   }
@@ -281,12 +281,12 @@
     const hs = picks.map(n=>KIDS.find(k=>k.name===n).hcp);
     const sizes = groupSizes(picks.length+1);
     body.innerHTML = `
-      <p class="idx-note" style="margin:0 0 12px;">${esc(f.name)} · ${f.holes} holes · par ${play.par}</p>
+      <p class="idx-note" style="margin:0 0 12px;">${esc(f.name)} · ${f.holes} holes · Par ${play.par}</p>
       <div class="tn-event"><b>${esc(tier==='major' ? eventTitle(tier) : nextSeriesName(f.name, 0, tier))}</b><span>${tier==='major' ? 'Major' : tier==='club' ? 'Qualifier' : TIERS[tier].label+' event'} · ${TIERS[tier].why}</span>
         ${tier==='club' ? `<span>Qualifier ladder: ${clubWins()} Qualifier win${clubWins()===1?'':'s'} so far. Win to add the next player.</span>` : ''}
         <span>${picks.length} opponent${picks.length===1?'':'s'}, HC ${Math.min(...hs)}${picks.length>1?' to '+Math.max(...hs):''} · your HC ${Math.round(index)} · ${sizes.length} group${sizes.length===1?'':'s'}${sizes.length>1?' ('+sizes.join('-')+')':''}, you're in the last</span></div>
       <div class="tn-readout">
-        <div><span class="tn-big">${sum(target,target.length)}</span><span class="tn-cap">Your par</span></div>
+        <div><span class="tn-big">${sum(target,target.length)}</span><span class="tn-cap">Your Par</span></div>
         <p>Rating ${f.rating.toFixed(1)} / slope ${f.slope} · index ${index.toFixed(1)}</p>
         ${!play.hasSI ? '<p class="tn-warn">No stroke index on file for this course, so every hole plays as equally hard.</p>' : ''}
       </div>
@@ -323,25 +323,25 @@
     let head;
     if(done){
       const cnt = rows.filter(r=>r.pos).length;
-      head = `<h4 class="tn-hole">${me.pos===1 ? (me.label.startsWith('T') ? 'Tied for the win!' : 'You win!') : 'Finished '+ordinal(me.label)+' of '+cnt}<small>gross ${me.gross} · par ${sum(T.target,n)}</small></h4>`;
+      head = `<h4 class="tn-hole">${me.pos===1 ? (me.label.startsWith('T') ? 'Tied for the win!' : 'You win!') : 'Finished '+ordinal(me.label)+' of '+cnt}<small>gross ${me.gross} · Par ${sum(T.target,n)}</small></h4>`;
     } else {
-      head = `<h4 class="tn-hole">Hole ${h.no}<small>par ${T.target[mine]} (course par ${h.par})${h.y?' · '+h.y+' yds':''}${h.si!=null?' · SI '+h.si:''}</small></h4>`;
+      head = `<h4 class="tn-hole">Hole ${h.no}<small>Par ${T.target[mine]} (Course Par ${h.par})${h.y?' · '+h.y+' yds':''}${h.si!=null?' · SI '+h.si:''}</small></h4>`;
     }
-    const names = {'-2':'eagle','-1':'birdie','0':'par','1':'bogey','2':'double','3':'triple'};
+    const names = {'-2':'eagle','-1':'birdie','0':'Par','1':'bogey','2':'double','3':'triple'};
     const pad = done ? '' : `<div class="tn-pad">${Array.from({length:10},(_,i)=>2+i).map(s=>`<button type="button" data-s="${s}">${s}<em>${names[s-h.par]||''}</em></button>`).join('')}</div>`;
     const card = `<div class="tn-card">${holes.map((hh,i)=>`<div class="${i===mine?'cur':''}"><i>${hh.no}</i>${T.mine[i]??'·'}<s>${T.target[i]}</s></div>`).join('')}</div>`;
     const board = rows.map(r=>{
       let mv=''; if(r.pos && prevPos[r.name]){ const d=prevPos[r.name]-r.pos; if(d>0) mv=` <span class="tn-mv">▲${d}</span>`; else if(d<0) mv=` <span class="tn-mv">▼${-d}</span>`; }
-      return `<tr data-n="${esc(r.name)}" class="${r.you?'tn-you':''}${r.thru?'':' tn-wait'}"><td>${r.label}</td><td class="tn-name">${esc(r.name)}<span class="tn-grp">G${r.group}</span>${mv}<small>${esc(r.note)}</small></td><td class="tn-n">${r.thru===n?'F':(r.thru||'–')}</td><td class="tn-n ${r.thru?cls(r.vs):''}">${r.thru?fmt(r.vs):'–'}</td><td class="tn-n">${r.thru?r.gross:'–'}</td></tr>`;
+      return `<tr data-n="${esc(r.name)}" class="${r.you?'tn-you':''}${r.thru?'':' tn-wait'}"><td>${String(r.label).replace(/^T/,'T-')}</td><td class="tn-name tn-live">${esc(r.you ? r.name : shortName(r.name))}<span class="tn-grp">G${r.group}</span>${mv}<small>${esc(r.note)}</small></td><td class="tn-n">${r.thru===n?'F':(r.thru||'–')}</td><td class="tn-n ${r.thru?cls(r.vs):''}">${r.thru?fmt(r.vs):'–'}</td><td class="tn-n">${r.thru?r.gross:'–'}</td></tr>`;
     }).join('');
     // Remember where each row sat so the board can slide rows to their new places
     const tnBefore = {};
     body.querySelectorAll('tbody tr[data-n]').forEach(tr=>{ tnBefore[tr.dataset.n] = tr.getBoundingClientRect().top; });
     body.innerHTML = `
-      <p class="idx-note" style="margin:0 0 10px;">${esc(T.form.name)} · ${esc(T.majorName || (T.tier==='major' ? nextMajorName() : nextSeriesName(T.form.name, 0, T.tier)))} · par ${sum(T.target,n)} (course par ${T.play.par})</p>
+      <p class="idx-note" style="margin:0 0 10px;">${esc(T.form.name)} · ${esc(T.majorName || (T.tier==='major' ? nextMajorName() : nextSeriesName(T.form.name, 0, T.tier)))} · Par ${sum(T.target,n)} (Course Par ${T.play.par})</p>
       <div class="strip" style="margin:0 0 14px;">
-        <div class="cell"><div class="num">${mine?me.label:'–'}</div><div class="lbl">Position</div></div>
-        <div class="cell flag"><div class="num">${fmt(me.vs)}</div><div class="lbl">Vs. par</div></div>
+        <div class="cell"><div class="num">${mine?ordinal(me.label).replace(/^T/,'T-'):'–'}</div><div class="lbl">Position</div></div>
+        <div class="cell flag"><div class="num">${fmt(me.vs)}</div><div class="lbl">To Par</div></div>
         <div class="cell"><div class="num">${mine?(me.vs===leader.vs?'Lead':'+'+(me.vs-leader.vs)):'–'}</div><div class="lbl">Back of lead</div></div>
       </div>
       ${head}${pad}${card}
@@ -532,17 +532,16 @@
 
   let tnStatsOpen = false, tnCardOpen = true;
   const TIER_LBL = t => TIERS[t] ? TIERS[t].label : '—';
-  // Average score to par (your target = par in every event) and its rank among everyone who has played
+  // ShedEx points per event (Tour and Major events; Qualifiers earn none) and its rank among everyone
   function avgLine(name){
     const T = {};
-    rounds.filter(r=>r.event && Array.isArray(r.event.board)).forEach(r=>rankBoard(r.event).forEach(x=>{ const n = x.you ? 'You' : x.n; (T[n] = T[n] || []).push(x.vs); }));
+    pointEvents().forEach(r => { const pts = eventPts(r); rankBoard(r.event).forEach(x => { const n = x.you ? 'You' : x.n; (T[n] = T[n] || []).push(pts[n] || 0); }); });
     const avg = a => a.reduce((p,c)=>p+c,0)/a.length;
-    const list = Object.entries(T).map(([n,a])=>({n, a:avg(a)})).sort((p,q)=>p.a-q.a);
+    const list = Object.entries(T).map(([n,a])=>({n, a:avg(a)})).sort((p,q)=>q.a-p.a);
     const me = list.find(x=>x.n===name); if(!me) return '';
     const pos = list.findIndex(x=>x.n===name)+1;
-    const v = Math.round(me.a*10)/10, txt = v===0 ? 'E' : (v>0 ? '+'+v.toFixed(1) : v.toFixed(1));
     const E = eloRatings(), elo = E.R[name];
-    return `<div class="strip" style="margin:4px 0 12px;"><div class="cell"><div class="num">${txt}</div><div class="lbl">Avg to par</div></div><div class="cell"><div class="num">${ordinal(pos)}</div><div class="lbl">of ${list.length} players</div></div><div class="cell"><div class="num">${elo!=null ? Math.round(elo) : '—'}</div><div class="lbl">Elo${E.peak[name]!=null ? ' · peak '+Math.round(E.peak[name]) : ''}</div></div></div>`;
+    return `<div class="strip" style="margin:4px 0 12px;"><div class="cell"><div class="num">${me.a.toFixed(1)}</div><div class="lbl">Points Per Event</div></div><div class="cell"><div class="num">${ordinal(pos)}</div><div class="lbl">of ${list.length} players</div></div><div class="cell"><div class="num">${elo!=null ? Math.round(elo) : '—'}</div><div class="lbl">Elo${E.peak[name]!=null ? ' · peak '+Math.round(E.peak[name]) : ''}</div></div></div>`;
   }
   // Finish badge: 1 gold, 2 silver, 3 bronze, 4-5 light blue, 6-7 light green, 8-9 orange, 10-12 red, rest black
   function finBadge(pos){ const p = parseInt(String(pos).replace('T',''),10);
@@ -820,7 +819,7 @@
       <label class="tn-lbl" for="tnEditDate">Date</label>
       <input id="tnEditDate" type="date" value="${esc(r.date)}">
       ${card ? `<label class="tn-lbl">Hole scores</label>
-      <div class="tn-edit-holes">${r.holeDetail.scores.map((s,i)=>`<label><i>${i+1}</i><small>par ${r.holeDetail.pars[i]}</small><input type="number" inputmode="numeric" min="1" max="15" data-h="${i}" value="${s}"></label>`).join('')}</div>` : '<p class="idx-note" style="margin:0;">No hole-by-hole scores on this round, so only the date can change.</p>'}
+      <div class="tn-edit-holes">${r.holeDetail.scores.map((s,i)=>`<label><i>${i+1}</i><small>Par ${r.holeDetail.pars[i]}</small><input type="number" inputmode="numeric" min="1" max="15" data-h="${i}" value="${s}"></label>`).join('')}</div>` : '<p class="idx-note" style="margin:0;">No hole-by-hole scores on this round, so only the date can change.</p>'}
       ${r.event ? '<p class="idx-note" style="margin:0;">Changing scores updates your line on the BGA leaderboard. The field stays the same.</p>' : ''}
       <p class="idx-note" id="tnRoundMsg" style="margin:0;"></p>
       <div class="tn-row" style="margin:0;"><button class="btn" type="button" id="tnRoundSave">Save changes</button><button class="btn secondary" type="button" id="tnRoundCancel">Cancel</button></div></div>`;

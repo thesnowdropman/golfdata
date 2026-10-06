@@ -256,3 +256,8 @@ html.app .strip .cell .lbl, html.app .bga-tiles span, html.app .app-tabname, htm
 html.app, html.app body, html.app button, html.app a, html.app input, html.app select, html.app td{touch-action:manipulation;}
 .hc-spark .hc-grid{stroke:#b4b0a6;stroke-width:1;}
 .hc-spark .hc-tick{font:600 10px var(--font-body);fill:var(--mute);text-anchor:end;dominant-baseline:middle;}
+
+/* Live scorecard: thinner name column so Gross fits without scrolling */
+#tnBody .tn-board td.tn-live{white-space:normal;max-width:132px;line-height:1.2;}
+#tnBody .tn-board td.tn-live small{white-space:normal;}
+#tnBody .tn-board th, #tnBody .tn-board td{padding-left:4px;padding-right:4px;}

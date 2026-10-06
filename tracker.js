@@ -154,16 +154,21 @@ function expScoreAtTimeOf(r){
 // evolution in chronological order so each currently-qualifying round's label can show
 // what differential it displaced, if anything, at the moment it entered.
 function computeHandicapSpotMap(){
+  if(hcSpotCache && hcSpotCache.n === rounds.length) return hcSpotCache.v;
+  const v = computeHandicapSpotMapFresh(); hcSpotCache = {n: rounds.length, v}; return v;
+}
+function computeHandicapSpotMapFresh(){
   const chronoAll = [...rounds]
     .filter(r => r.diff != null && !isNaN(r.diff))
     .sort((a,b)=> new Date(a.date) - new Date(b.date));
   const cv = r => whsCountsAs(r);
+  const keyOf = new Map(chronoAll.map(r => [r, roundKey(r)]));
 
   // Snapshot: given a chronological index, what's the top-8-by-differential among just
   // the 20 most recent outings as of that point (inclusive)?
   function top8AsOfIndex(i){
     const windowRounds = chronoAll.slice(Math.max(0, i - 19), i + 1);
-    return [...windowRounds].sort((a,b)=> cv(a) - cv(b)).slice(0, 8).map(r => roundKey(r));
+    return [...windowRounds].sort((a,b)=> cv(a) - cv(b)).slice(0, 8).map(r => keyOf.get(r));
   }
 
   // Walk forward through history one outing at a time, comparing each snapshot to the
@@ -180,7 +185,7 @@ function computeHandicapSpotMap(){
     const dropped = prevTop8Keys.filter(k => !currentTop8Keys.includes(k));
     newEntrants.forEach((enteredKey, idx) => {
       if(dropped[idx] != null){
-        const droppedRound = chronoAll.find(x => roundKey(x) === dropped[idx]);
+        const droppedRound = chronoAll.find(x => keyOf.get(x) === dropped[idx]);
         if(droppedRound) replacedBy[enteredKey] = cv(droppedRound);
       }
     });
@@ -309,7 +314,7 @@ function computeRoundBadges(r){
     const par3Indices = r.holeDetail.pars.reduce((acc,p,i)=>{ if(p===3) acc.push(i); return acc; }, []);
     const qualifyingPar3Count = par3Indices.filter(i => r.holeDetail.scores[i] <= 3).length;
     if(qualifyingPar3Count >= 3){
-      badges.push({icon: '👌', label: '3 Goggles: 3+ par-3s at 3 or better'});
+      badges.push({icon: '👌', label: '3 Goggles: 3+ Par-3s at 3 or better'});
     }
   }
 
@@ -575,10 +580,10 @@ const BADGE_CATALOG = [
   {icon: '🔥', name: 'On Fire!', desc: '3+ (9-hole) or 5+ (18-hole) strokes better than expected'},
   {icon: '🪞', name: 'Mirror Image', desc: 'Front and back 9 within 1 stroke of each other'},
   {icon: '🙏🏻', name: 'Amen Corner', desc: 'Holes 10-12 each at bogey or better'},
-  {icon: '👌', name: '3 Goggles', desc: '3+ par-3s at 3 or better'},
+  {icon: '👌', name: '3 Goggles', desc: '3+ Par-3s at 3 or better'},
   {icon: '💯', name: '99 Club', desc: 'Break 100 over 18 holes'},
   {icon: '😈', name: 'Nemesis System', desc: 'Beat your best-ever score on a hole by 2+ strokes (min. 3 plays)'},
-  {icon: '🌈', name: 'Triple Rainbow', desc: 'Par or better on a par-3, par-4, and par-5 in the same round'},
+  {icon: '🌈', name: 'Triple Rainbow', desc: 'Par or better on a Par-3, Par-4, and Par-5 in the same round'},
   {icon: '☃️', name: 'Let It Snow!', desc: 'Score 2+ 8s in a round'},
   {icon: '⛄️', name: 'Snowman', desc: 'Score exactly one 8 in a round'},
   {icon: '🎰', name: 'Jackpot!', desc: 'Score exactly 3 7s in a round'},
@@ -1185,9 +1190,9 @@ function toParAndExpStr(r){
 // The last index calculation (for the Handicap screen) and the manual-index key
 var whsCalc = {recent:[], k:0, plus:0, index:null, override:null};
 // Per round (by roundKey): USGA index at the start of its day, and the differential USGA counts
-var whsHiByKey = {}, whsDByKey = {};
-function whsHiAt(r){ const v = whsHiByKey[roundKey(r)]; return v == null ? null : v; }
-function whsCountsAs(r){ const v = whsDByKey[roundKey(r)]; return v == null ? r.diff : v; }
+var whsHiByKey = {}, whsDByKey = {}, whsHiByObj = new Map(), whsDByObj = new Map(), hcSpotCache = null;
+function whsHiAt(r){ if(whsHiByObj.has(r)) return whsHiByObj.get(r); const v = whsHiByKey[roundKey(r)]; return v == null ? null : v; }
+function whsCountsAs(r){ if(whsDByObj.has(r)) return whsDByObj.get(r); const v = whsDByKey[roundKey(r)]; return v == null ? r.diff : v; }
 const HI_OVERRIDE_KEY = 'anges-golf-hi-override';
 function recompute(){
   const chrono = [...rounds].sort((a,b)=> new Date(a.date) - new Date(b.date));
@@ -1210,7 +1215,7 @@ function recompute(){
   const WHS_TABLE = {3:[1,-2],4:[1,-1],5:[1,0],6:[2,-1],7:[2,0],8:[2,0],9:[3,0],10:[3,0],11:[3,0],12:[4,0],13:[4,0],14:[4,0],15:[5,0],16:[5,0],17:[6,0],18:[6,0],19:[7,0]};
   const outingDiffs = [];
   let whsIdx = null, dayIdx = null, curDay = null;
-  whsHiByKey = {}; whsDByKey = {};
+  whsHiByKey = {}; whsDByKey = {}; whsHiByObj = new Map(); whsDByObj = new Map(); hcSpotCache = null;
   trend = [];
   chartSegPoints = [];
   for(const r of chrono){
@@ -1224,7 +1229,7 @@ function recompute(){
     }
     // hi = index going into this round (used for the 9-hole conversion and the exceptional-score check)
     const e = {d, adj:0, r, raw9, hi:dayIdx, cut:0};
-    { const k = roundKey(r); whsHiByKey[k] = dayIdx; whsDByKey[k] = d; }
+    { const k = roundKey(r); whsHiByKey[k] = dayIdx; whsDByKey[k] = d; whsHiByObj.set(r, dayIdx); whsDByObj.set(r, d); }
     outingDiffs.push(e);
     if(dayIdx != null){ const gap = dayIdx - d; const cut = gap >= 10 ? 2 : gap >= 7 ? 1 : 0; if(cut){ e.cut = cut; outingDiffs.slice(-20).forEach(z => z.adj -= cut); } }
     const recent = outingDiffs.slice(-20), n = recent.length;
@@ -2394,7 +2399,7 @@ function openAllStatsDetail(){
     <p class="note" style="margin:16px 0 2px;color:var(--fairway);font-weight:700;">Score distribution (${s.totalHolesWithDetail} holes with detail on file)</p>
     ${distHtml}
     ${otherLine}
-    <p class="note" style="margin:16px 0 2px;font-style:italic;color:#8a8368;">Projected from a curve fit to your actual score-to-par spread (avg ${s.diffMean.toFixed(2)}, spread ${s.diffSD.toFixed(2)}) -- not just your raw birdie count, which is ${s.dist.birdie}.</p>
+    <p class="note" style="margin:16px 0 2px;font-style:italic;color:#8a8368;">Projected from a curve fit to your actual score-to-Par spread (avg ${s.diffMean.toFixed(2)}, spread ${s.diffSD.toFixed(2)}) -- not just your raw birdie count, which is ${s.dist.birdie}.</p>
     <p class="note" style="margin:0 0 2px;"><strong>Expected birdies (career, ${s.totalHolesWithDetail} holes):</strong> ${s.expectedBirdiesCareer.toFixed(2)}</p>
     <p class="note" style="margin:0 0 2px;"><strong>Odds of zero birdies (career, ${s.totalHolesWithDetail} holes):</strong> ${formatTinyPercent(s.oddsZeroBirdiesCareer)}</p>
   `;
@@ -4121,9 +4126,9 @@ function openFutureRoundDetail(id){
     scorecardHtml = buildHoleStatsHtml(atCourse);
   } else if(f.pars){
     const rows = [{label:'Par', rawFn:(h)=>f.pars[h], isPar:true}];
-    scorecardHtml = `<p class="note" style="margin:16px 0 6px;">Planned par (no rounds played here yet)</p>${renderScorecardChunks(f.holes, f.pars, rows)}`;
+    scorecardHtml = `<p class="note" style="margin:16px 0 6px;">Planned Par (no rounds played here yet)</p>${renderScorecardChunks(f.holes, f.pars, rows)}`;
   } else {
-    scorecardHtml = `<p class="note" style="margin:16px 0 6px;">No par entered yet — you can add it when you log this round.</p>`;
+    scorecardHtml = `<p class="note" style="margin:16px 0 6px;">No Par entered yet — you can add it when you log this round.</p>`;
   }
 
   // Score-outcome picker: lets you try scores from 7 under to 4 over your expected
