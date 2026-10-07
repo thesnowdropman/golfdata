@@ -161,7 +161,7 @@
       const parts = [];
       if(z.raw9 != null && z.hi != null){
         const exp = Math.round((0.52*z.hi + 1.2)*10)/10;
-        parts.push(`9-hole diff ${z.raw9.toFixed(1)} + expected ${exp.toFixed(1)}<br>(HI ${z.hi.toFixed(1)} × 0.52 + 1.2) = ${z.d.toFixed(1)}`);
+        parts.push(`9-hole diff ${z.raw9.toFixed(1)} + expected ${exp.toFixed(1)}`);
       } else if(r.holes===9) parts.push('first rounds: own diff');
       if(z.cut) parts.push(`exceptional: ${(z.hi - z.d).toFixed(1)} below HI ${z.hi.toFixed(1)} → −${z.cut}.0 to last 20`);
       if(z.adj) parts.push(`${z.d.toFixed(1)} − ${Math.abs(z.adj).toFixed(1)} exceptional = ${z.v.toFixed(1)}`);
@@ -178,6 +178,7 @@
         <div class="cell"><div class="num">${C.index.toFixed(1)}</div><div class="lbl">Calculated</div></div>
         <div class="cell"><div class="num">${C.k} of ${C.recent.length}</div><div class="lbl">Rounds counted</div></div>
       </div>
+      <p class="note" style="margin:0 0 6px;">9-hole expected = HI × 0.52 + 1.2</p>
       <p class="note" style="margin:0 0 10px;">Average of your ${C.k} lowest of the last ${C.recent.length}: ${sumUsed.toFixed(1)} ÷ ${C.k} = ${(sumUsed/C.k).toFixed(2)}${C.plus ? ` ${C.plus>0?'+':'−'} ${Math.abs(C.plus).toFixed(1)} (USGA adjustment for under 20 rounds)` : ''} → <b>${C.index.toFixed(1)}</b></p>
       <div class="tn-boardwrap"><table class="tn-board">
         <thead><tr><th>Round</th><th class="tn-n">Diff</th><th class="tn-n">Counts as</th></tr></thead>
@@ -355,14 +356,14 @@
       const top = b.slice(0, 5), me = b.find(x=>x.you);
       const rowsFor = list => list.map(x => `<button type="button" class="lb-row${x.you?' me':''}" data-bga="${x.you ? 'round' : 'player'}" data-name="${esc(x.you?'You':x.n)}" data-key="${esc(roundKey(r))}">
           <span class="lb-pos">${esc(x.pos)}</span>
-          <span class="lb-nm">${x.you ? '<b>You</b>' : esc(x.n)}<small>${x.you ? 'Index '+Number(r.event.index).toFixed(1) : 'HC '+x.h}${E.R[x.you?'You':x.n]!=null ? ' · Elo '+Math.round(E.R[x.you?'You':x.n]) : ''}</small></span>
+          <span class="lb-nm">${x.you ? '<b>'+esc(B.ME_NAME)+'</b>' : esc(x.n)}<small>${x.you ? 'Index '+Number(r.event.index).toFixed(1) : 'HC '+x.h}${E.R[x.you?'You':x.n]!=null ? ' · Elo '+Math.round(E.R[x.you?'You':x.n]) : ''}</small></span>
           <span class="lb-tp${x.vs<0?' u':''}">${x.vs===0?'E':(x.vs>0?'+':'')+x.vs}</span>
           <span class="lb-tot">${x.gross}</span></button>`).join('');
       const d = new Date(r.date+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'});
       latest = `<div class="app-sec-h"><h2>Latest Event</h2><span class="app-cap">${d}</span></div>
         <div class="lb">
           <button type="button" class="lb-head" data-bga="round" data-key="${esc(roundKey(r))}">${r.event.tier==='major' ? B.majorIcon(name, 40) : B.bgaImg(30)}<span><b>${esc(name)}</b><small>${esc(courseName(r.course))} · ${r.event.tier==='major'?'Major':r.event.tier==='club'?'Qualifier':'Tour'} · Par ${r.event.target}</small></span></button>
-          <div class="lb-cols"><span>Pos</span><span>Player</span><span>To par</span><span>Tot</span></div>
+          <div class="lb-cols"><span>Pos</span><span>Player</span><span>To Par</span><span>Tot</span></div>
           ${rowsFor(top)}
           ${me && !top.includes(me) ? `<div class="lb-cut">· · · ${b.indexOf(me) - 5 > 0 ? (b.indexOf(me) - 5)+' more · · ·' : ''}</div>${rowsFor([me])}` : ''}
           ${b.length > 5 && (!me || top.includes(me)) ? `<div class="lb-cut">· · · ${b.length-5} more · · ·</div>` : ''}
@@ -383,7 +384,7 @@
     const showRank = rankOpen ? ranked : ranked.slice(0, 10);
     const rankRows = list => list.map(([n, v]) => { const i = ranked.findIndex(x=>x[0]===n);
       const kid = B.KIDS.find(k=>k.name===n);
-      return `<button type="button" class="rk-row${n==='You'?' me':''}" data-bga="player" data-name="${esc(n)}"><span class="lb-pos">${i+1}</span><span class="lb-nm">${n==='You' ? '<b>You</b>' : esc(n)}<small>${kid ? 'HC '+kid.hcp+' · '+B.styleOf(n) : 'Index '+trend[trend.length-1].index.toFixed(1)}</small></span><span class="rk-elo">${Math.round(v)}</span></button>`; }).join('');
+      return `<button type="button" class="rk-row${n==='You'?' me':''}" data-bga="player" data-name="${esc(n)}"><span class="lb-pos">${i+1}</span><span class="lb-nm">${n==='You' ? '<b>'+esc(B.ME_NAME)+'</b>' : esc(n)}<small>${kid ? 'HC '+kid.hcp+' · '+B.styleOf(n) : 'Index '+trend[trend.length-1].index.toFixed(1)}</small></span><span class="rk-elo">${Math.round(v)}</span></button>`; }).join('');
 
     page.innerHTML = `
       <div class="bga-hero"><img src="bga.png" alt="Backyard Golf Association" onerror="this.remove()"></div>
