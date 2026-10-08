@@ -4161,7 +4161,7 @@ function openFutureRoundDetail(id){
       const hcDelta = exp != null ? s - exp : null;
       const hcLabel = hcDelta == null ? '—' : (hcDelta === 0 ? 'E' : (hcDelta > 0 ? `+${hcDelta}` : `${hcDelta}`));
       let newHC = null; try{ newHC = indexAfterScore(f, s); }catch(e){}
-      options.push(`<option value="${s}"${s === exp ? ' selected' : ''}>${s} (${toParLabel}, ${hcLabel}) \u2192 ${diffForScore.toFixed(1)}${newHC != null ? ` \u2192 HC ${newHC.toFixed(1)}` : ''}</option>`);
+      options.push(`<option value="${s}"${s === exp ? ' selected' : ''}>${s} (${toParLabel}, ${hcLabel})\u2192${diffForScore.toFixed(1)}${newHC != null ? `\u2192HC ${newHC.toFixed(1)}` : ''}</option>`);
     }
     scoreSelectorHtml = `
       <div style="margin:12px 0 16px;">
