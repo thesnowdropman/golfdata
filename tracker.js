@@ -2381,7 +2381,6 @@ function openAllStatsDetail(){
     {label:'Par', rawFn:(h)=> s.bestPars[h] != null ? s.bestPars[h] : '—', isPar:true},
     {label:'Score', rawFn:(h)=> s.bestScores[h] != null ? s.bestScores[h] : '—', isPar:false, clickable:false},
   ];
-  const scorecardHtml = renderScorecardChunks(18, s.bestPars.map(p => p != null ? p : 0), rows);
 
   const distList = [
     ['Birdies', s.dist.birdie], ['Pars', s.dist.par], ['Bogeys', s.dist.bogey],
@@ -2392,16 +2391,11 @@ function openAllStatsDetail(){
   const otherLine = s.dist.other > 0 ? `<p class="note" style="margin:2px 0;">Other (eagle or better / worse than quintuple): <strong>${s.dist.other}</strong></p>` : '';
 
   let body = `
-    <p class="note" style="margin:2px 0 12px;">A hypothetical composite round: your best-ever score at each hole position, regardless of which course it came from.</p>
-    ${scorecardHtml}
-    <p class="note" style="margin:16px 0 2px;"><strong>Total holes played:</strong> ${s.totalHolesPlayed}</p>
+    <p class="note" style="margin:2px 0 2px;"><strong>Total holes played:</strong> ${s.totalHolesPlayed}</p>
     <p class="note" style="margin:0 0 12px;"><strong>Total strokes taken:</strong> ${s.totalStrokes}</p>
     <p class="note" style="margin:16px 0 2px;color:var(--fairway);font-weight:700;">Score distribution (${s.totalHolesWithDetail} holes with detail on file)</p>
     ${distHtml}
     ${otherLine}
-    <p class="note" style="margin:16px 0 2px;font-style:italic;color:#8a8368;">Projected from a curve fit to your actual score-to-Par spread (avg ${s.diffMean.toFixed(2)}, spread ${s.diffSD.toFixed(2)}) -- not just your raw birdie count, which is ${s.dist.birdie}.</p>
-    <p class="note" style="margin:0 0 2px;"><strong>Expected birdies (career, ${s.totalHolesWithDetail} holes):</strong> ${s.expectedBirdiesCareer.toFixed(2)}</p>
-    <p class="note" style="margin:0 0 2px;"><strong>Odds of zero birdies (career, ${s.totalHolesWithDetail} holes):</strong> ${formatTinyPercent(s.oddsZeroBirdiesCareer)}</p>
   `;
 
   body += projectHcMilestonesHtml();

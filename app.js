@@ -303,6 +303,7 @@
     // The rounds currently counted in the handicap (USGA lowest of the last 20)
     const usedHC = new Set();
     try{ const C = window.whsCalc; if(C && C.recent) [...C.recent].sort((a,b)=>(a.d+a.adj)-(b.d+b.adj)).slice(0, C.k).forEach(z => usedHC.add(z.r)); }catch(e){}
+    $('recList').classList.toggle('rec-yr', recView !== 'recent');
     $('recList').innerHTML = shown.map(r => {
       const d = new Date(r.date+'T00:00:00');
       const par = (typeof PAR_BY_COURSE !== 'undefined') ? PAR_BY_COURSE[r.course] : null;
@@ -312,7 +313,7 @@
       const vsTxt = [toPar != null ? sgn(toPar) : null, ex != null && !isNaN(g) ? sgn(g - ex) : null].filter(x=>x!=null).join('/');
       const tag = courseTag(r.course);
       return `<button type="button" class="rec-row" data-i="${rounds.indexOf(r)}">
-        <span class="rec-d"><b>${d.getDate()}</b>${d.toLocaleDateString('en-US',{month:'short'})}${recView!=='recent' ? `<i>${String(d.getFullYear()).slice(2)}</i>` : ''}</span>
+        <span class="rec-d"><b>${d.getDate()}</b>${d.toLocaleDateString('en-US',{month:'short'})}${recView!=='recent' ? ` ’${String(d.getFullYear()).slice(2)}` : ''}</span>
         <span class="rec-c">${esc(courseName(r.course))}<small><span class="rec-h h${r.holes}">${r.holes}</span>${Number(r.rating).toFixed(1)}/${r.slope}${tag ? ' · '+esc(tag) : ''}</small></span>
         <span class="rec-g">${isNaN(g) ? esc(r.score) : g}${vsTxt ? `<small>${vsTxt}</small>` : ''}</span>
         <span class="rec-df${usedHC.has(r)?' best':''}">${r.diff.toFixed(1)}</span>
@@ -330,13 +331,18 @@
     if(typeof rounds === 'undefined' || !rounds.length) return;
     const last20 = [...rounds].sort((a,b)=>new Date(b.date)-new Date(a.date)).slice(0,20);
     const avg = last20.reduce((s,r)=>s+r.diff,0)/last20.length;
-    const best9 = rounds.filter(r=>r.holes===9).map(gross).filter(n=>!isNaN(n));
-    const best18 = rounds.filter(r=>r.holes===18).map(gross).filter(n=>!isNaN(n));
+    // Best 9 / Best 18 by score to the course's real par (lowest over par wins)
+    const bestToPar = holes => { let best = null;
+      rounds.filter(r=>r.holes===holes).forEach(r => { const g = gross(r), par = (typeof PAR_BY_COURSE !== 'undefined') ? PAR_BY_COURSE[r.course] : null;
+        if(isNaN(g) || par == null) return; const tp = g - par; if(!best || tp < best.tp || (tp === best.tp && g < best.g)) best = {tp, g}; });
+      return best; };
+    const fmtTP = b => !b ? '—' : (b.tp === 0 ? 'E' : (b.tp > 0 ? '+' : '') + b.tp);
+    const best9 = bestToPar(9), best18 = bestToPar(18);
     const courses = new Set(rounds.map(r=>courseName(r.course).trim().toLowerCase())).size;
     const tile = (n, l) => `<div class="cell"><div class="num">${n}</div><div class="lbl">${l}</div></div>`;
     $('seasonCard').innerHTML = `<div class="app-sec-h"><h2>Scoring</h2></div>
       <div class="strip app-tiles">${tile(Math.min(...rounds.map(r=>r.diff)).toFixed(1), 'Best diff')}${tile(avg.toFixed(1), 'Avg diff, last 20')}${tile(rounds.length, 'Rounds')}</div>
-      <div class="strip app-tiles">${tile(best9.length ? Math.min(...best9) : '—', 'Best 9')}${tile(best18.length ? Math.min(...best18) : '—', 'Best 18')}${tile(courses, 'Courses')}</div>`;
+      <div class="strip app-tiles">${tile(fmtTP(best9), best9 ? 'Best 9 · '+best9.g : 'Best 9')}${tile(fmtTP(best18), best18 ? 'Best 18 · '+best18.g : 'Best 18')}${tile(courses, 'Courses')}</div>`;
   }
 
   // ---------- BGA page ----------
@@ -396,9 +402,9 @@
       </div>
       <div class="bga-menu">
         <button type="button" data-bga="allevents">All Events<span>›</span></button>
-        <button type="button" data-bga="career">Career Results<span>›</span></button>
         <button type="button" data-bga="majors">All Majors<span>›</span></button>
         <button type="button" data-bga="cup">ShedEx Cup<span>›</span></button>
+        <button type="button" data-bga="career">Career Results<span>›</span></button>
       </div>
       ${latest}
       <div class="app-sec-h"><h2>Majors</h2><span class="app-cap">Your wins</span></div>

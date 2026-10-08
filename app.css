@@ -261,3 +261,7 @@ html.app, html.app body, html.app button, html.app a, html.app input, html.app s
 #tnBody .tn-board td.tn-live{white-space:normal;max-width:132px;line-height:1.2;}
 #tnBody .tn-board td.tn-live small{white-space:normal;}
 #tnBody .tn-board th, #tnBody .tn-board td{padding-left:4px;padding-right:4px;}
+/* Round History: month and year on one line (All / Best) */
+.rec-row{grid-template-columns:30px 1fr auto 42px;}
+.rec-yr .rec-row{grid-template-columns:42px 1fr auto 42px;}
+.rec-d{white-space:nowrap;}
