@@ -4066,6 +4066,24 @@ function enterScoreForFuture(f){
 // stroke (e.g. 30.4 -> needs the new index below 29.95 so it shows 29.9). Same USGA math as
 // recompute: the round joins the last 20 (the oldest drops out), a 9-hole score adds the
 // expected 9-hole differential at today's index, and an exceptional score cuts the last 20.
+// Handicap Index after posting score g on planned round f (same USGA math as recompute):
+// joins the last 20 (oldest drops out), 9s add the expected 9-hole differential at today's
+// index, exceptional scores cut the last 20. Rounded to a tenth like the real index.
+function indexAfterScore(f, g){
+  const C = whsCalc; if(!C || C.index == null || !C.recent || !C.recent.length) return null;
+  const hi = C.index;
+  const TABLE = {3:[1,-2],4:[1,-1],5:[1,0],6:[2,-1],7:[2,0],8:[2,0],9:[3,0],10:[3,0],11:[3,0],12:[4,0],13:[4,0],14:[4,0],15:[5,0],16:[5,0],17:[6,0],18:[6,0],19:[7,0]};
+  const keep = C.recent.slice(-19).map(z => z.d + z.adj);
+  const raw = Math.round((g - f.rating) * 113 / f.slope * 10) / 10;
+  const d = f.holes === 9 ? Math.round((raw + 0.52*hi + 1.2) * 10) / 10 : raw;
+  const gap = hi - d, cut = gap >= 10 ? 2 : gap >= 7 ? 1 : 0;
+  const win = keep.map(x => x - cut).concat(d - cut), n = win.length;
+  if(n < 3) return null;
+  const [k, plus] = n >= 20 ? [8, 0] : (TABLE[n] || [1, 0]);
+  const best = win.sort((a,b)=>a-b).slice(0, k);
+  return Math.round((best.reduce((s,x)=>s+x,0)/k + plus) * 10) / 10;
+}
+
 function scoreToBreakIndex(f){
   const C = whsCalc; if(!C || C.index == null || !C.recent || C.recent.length < 2) return null;
   const hi = C.index, goal = Math.floor(hi + 1e-9), limit = goal - 0.05;
@@ -4139,9 +4157,11 @@ function openFutureRoundDetail(id){
       const toParDelta = parForPicker != null ? (s - parForPicker) : null;
       const toParLabel = toParDelta == null ? '—' : (toParDelta === 0 ? 'E' : (toParDelta > 0 ? `+${toParDelta}` : `${toParDelta}`));
       const diffForScore = computeDiff(s, f.rating, f.slope, f.holes);
-      const hcDelta = currentHC != null ? Math.round(diffForScore - currentHC) : null;
+      // Versus the Expected Score (your par for the day), one stroke per stroke -- no rounding repeats
+      const hcDelta = exp != null ? s - exp : null;
       const hcLabel = hcDelta == null ? '—' : (hcDelta === 0 ? 'E' : (hcDelta > 0 ? `+${hcDelta}` : `${hcDelta}`));
-      options.push(`<option value="${s}"${s === exp ? ' selected' : ''}>${s} (${toParLabel}, ${hcLabel}) \u2192 ${diffForScore.toFixed(1)}</option>`);
+      let newHC = null; try{ newHC = indexAfterScore(f, s); }catch(e){}
+      options.push(`<option value="${s}"${s === exp ? ' selected' : ''}>${s} (${toParLabel}, ${hcLabel}) \u2192 ${diffForScore.toFixed(1)}${newHC != null ? ` \u2192 HC ${newHC.toFixed(1)}` : ''}</option>`);
     }
     scoreSelectorHtml = `
       <div style="margin:12px 0 16px;">
