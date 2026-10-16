@@ -1975,6 +1975,7 @@ function updateProjection(){
 
 // ================= ROUND DETAIL MODAL =================
 const detailOverlay = document.getElementById('detailOverlay');
+let roundCardHideBiz = false; // round card "Hide Business" checkbox (starts unchecked each time the app opens)
 const detailModal = document.getElementById('detailModal');
 let navStack = [];
 function updateBackButton(){
@@ -2044,13 +2045,19 @@ function openDetail(idx){
   let body = `<p class="note" style="margin:2px 0 0;">${dateFmt} · ${r.holes}-hole round</p>`;
   // Scorecard and Backyard Open tabs sit above everything; Backyard Open shows only the standings
   const tnEvTab = !!window.tnOpenEventTab; window.tnOpenEventTab = false;
-  body += `<div class="view-toggle tn-tabs" style="display:flex;margin:12px 0 4px;"><button type="button" class="view-toggle-btn${tnEvTab?'':' active'}" data-tn-act="tab" data-tab="card">Scorecard</button><button type="button" class="view-toggle-btn${tnEvTab?' active':''}" data-tn-act="tab" data-tab="event">${r.event && Array.isArray(r.event.board) && r.event.tier!=='club' ? 'BGA Tour' : 'BGA'}</button></div>`;
+  body += `<div class="view-toggle tn-tabs rc-biz" style="display:flex;margin:12px 0 4px;"><button type="button" class="view-toggle-btn${tnEvTab?'':' active'}" data-tn-act="tab" data-tab="card">Scorecard</button><button type="button" class="view-toggle-btn${tnEvTab?' active':''}" data-tn-act="tab" data-tab="event">${r.event && Array.isArray(r.event.board) && r.event.tier!=='club' ? 'BGA Tour' : 'BGA'}</button></div>`;
   body += `<div data-tn-pane="card"${tnEvTab?' hidden':''}>`;
+  // Rank of this round's differential among all rounds (1st = lowest = best); ties share a place
+  const diffRankHtml = (() => { const all = rounds.map(x => x.diff).filter(v => v != null && !isNaN(v));
+    if(!all.length || r.diff == null) return '';
+    const better = all.filter(v => v < r.diff).length, same = all.filter(v => v === r.diff).length;
+    const p = better + 1, n = p % 100 >= 11 && p % 100 <= 13 ? 'th' : ({1:'st',2:'nd',3:'rd'}[p % 10] || 'th');
+    return `<div class="rc-rank">${same > 1 ? 'T-' : ''}${p}${n} of ${all.length}</div>`; })();
   if(expAtTimeForCard !== null){
     body += `<div class="strip round-detail-strip" style="margin:10px 0 0;">
       <div class="cell"><div class="icon-row">🎯</div><div class="num">${expAtTimeForCard}</div><div class="lbl">Exp. Score</div></div>
       <div class="cell flag"><div class="icon-row">🏌️</div><div class="num">${actualScoreForCard}${scoreVsExpTextForCard}</div><div class="lbl">Actual Score</div></div>
-      <div class="cell flag"><div class="icon-row">⛳</div><div class="num">${r.diff.toFixed(1)}</div><div class="lbl">Differential</div></div>
+      <div class="cell flag"><div class="icon-row">⛳</div><div class="num">${r.diff.toFixed(1)}</div><div class="lbl">Differential</div>${diffRankHtml}</div>
     </div>`;
   } else {
     body += `<p class="note" style="margin:10px 0 0;">Differential ${r.diff.toFixed(1)}</p>`;
@@ -2058,11 +2065,11 @@ function openDetail(idx){
 
   const badgesForCard = computeRoundBadges(r);
   const ovalLabel = badgesForCard.length === 0 ? 'Round Badges: No badges earned this round.' : 'Round Badges:';
-  body += `<div style="margin:10px 0 0;display:flex;align-items:center;flex-wrap:wrap;gap:8px;">
+  body += `<div class="rc-biz" style="margin:10px 0 0;display:flex;align-items:center;flex-wrap:wrap;gap:8px;">
     <button type="button" id="roundBadgesOvalBtn" style="display:inline-flex;align-items:center;font-size:12px;font-weight:700;color:var(--fairway);background:none;border:1.5px solid var(--fairway);border-radius:20px;padding:4px 10px;cursor:pointer;">${ovalLabel}</button>
     ${renderRoundBadgesHtml(r)}
   </div>`;
-  body += `<p class="idx-note" id="roundBadgeExplain" style="display:none;margin:8px 0 0;font-size:12px;"></p>`;
+  body += `<div class="rc-biz"><p class="idx-note" id="roundBadgeExplain" style="display:none;margin:8px 0 0;font-size:12px;"></p></div>`;
 
   body += buildSingleRoundScorecardHtml(r) + `</div>`;
   body += `<div data-tn-pane="event"${tnEvTab?'':' hidden'}>` + (typeof window.tnEventHtml === 'function' ? window.tnEventHtml(r) : '') + `</div>`;
@@ -2070,9 +2077,17 @@ function openDetail(idx){
   body += `<div style="text-align:center;margin-top:14px;display:flex;gap:10px;justify-content:center;">
     <button class="btn" id="roundCourseRecordBtn" type="button">Course Record</button>
     <button class="btn danger" id="deleteRoundBtn" type="button">Delete this round</button>
-  </div>`;
+  </div>
+  <label class="rc-hidebiz"><input type="checkbox" id="rcHideBiz"${roundCardHideBiz ? ' checked' : ''}> Hide Business</label>`;
 
   document.getElementById('detailBody').innerHTML = body;
+  // Hide Business: hides the Scorecard/BGA switcher and Round badges (stays on the scorecard)
+  { const db = document.getElementById('detailBody'), cb = document.getElementById('rcHideBiz');
+    const apply = () => { db.classList.toggle('hide-biz', roundCardHideBiz);
+      if(roundCardHideBiz){ db.querySelectorAll('[data-tn-pane]').forEach(p => p.hidden = p.dataset.tnPane !== 'card');
+        db.querySelectorAll('[data-tn-act="tab"]').forEach(b => b.classList.toggle('active', b.dataset.tab === 'card')); } };
+    cb.onchange = () => { roundCardHideBiz = cb.checked; apply(); };
+    apply(); }
   detailOverlay.classList.add('open');
   fitCourseTitle();
   updateBackButton();
@@ -4161,7 +4176,7 @@ function openFutureRoundDetail(id){
       const hcDelta = exp != null ? s - exp : null;
       const hcLabel = hcDelta == null ? '—' : (hcDelta === 0 ? 'E' : (hcDelta > 0 ? `+${hcDelta}` : `${hcDelta}`));
       let newHC = null; try{ newHC = indexAfterScore(f, s); }catch(e){}
-      options.push(`<option value="${s}"${s === exp ? ' selected' : ''}>${s} (${toParLabel}, ${hcLabel})\u2192${diffForScore.toFixed(1)}${newHC != null ? `\u2192HC ${newHC.toFixed(1)}` : ''}</option>`);
+      options.push(`<option value="${s}"${s === exp ? ' selected' : ''}>${s} (${toParLabel}, ${hcLabel})\u2192${diffForScore.toFixed(1)}${newHC != null ? `\u2192${newHC.toFixed(1)}` : ''}</option>`);
     }
     scoreSelectorHtml = `
       <div style="margin:12px 0 16px;">

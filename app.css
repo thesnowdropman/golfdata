@@ -265,3 +265,10 @@ html.app, html.app body, html.app button, html.app a, html.app input, html.app s
 .rec-row{grid-template-columns:30px 1fr auto 42px;}
 .rec-yr .rec-row{grid-template-columns:42px 1fr auto 42px;}
 .rec-d{white-space:nowrap;}
+
+/* Round card: black Actual Score and Differential, differential rank, Hide Business */
+html.app .round-detail-strip .cell .num{color:var(--ink) !important;}
+.rc-rank{font-size:10px;color:var(--mute);margin-top:2px;}
+.rc-hidebiz{display:flex;align-items:center;justify-content:center;gap:8px;margin:12px 0 0;font-size:13px;color:var(--ink);}
+.rc-hidebiz input{width:18px;height:18px;accent-color:var(--green);}
+#detailBody.hide-biz .rc-biz{display:none !important;}
