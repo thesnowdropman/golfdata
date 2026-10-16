@@ -2047,17 +2047,11 @@ function openDetail(idx){
   const tnEvTab = !!window.tnOpenEventTab; window.tnOpenEventTab = false;
   body += `<div class="view-toggle tn-tabs rc-biz" style="display:flex;margin:12px 0 4px;"><button type="button" class="view-toggle-btn${tnEvTab?'':' active'}" data-tn-act="tab" data-tab="card">Scorecard</button><button type="button" class="view-toggle-btn${tnEvTab?' active':''}" data-tn-act="tab" data-tab="event">${r.event && Array.isArray(r.event.board) && r.event.tier!=='club' ? 'BGA Tour' : 'BGA'}</button></div>`;
   body += `<div data-tn-pane="card"${tnEvTab?' hidden':''}>`;
-  // Rank of this round's differential among all rounds (1st = lowest = best); ties share a place
-  const diffRankHtml = (() => { const all = rounds.map(x => x.diff).filter(v => v != null && !isNaN(v));
-    if(!all.length || r.diff == null) return '';
-    const better = all.filter(v => v < r.diff).length, same = all.filter(v => v === r.diff).length;
-    const p = better + 1, n = p % 100 >= 11 && p % 100 <= 13 ? 'th' : ({1:'st',2:'nd',3:'rd'}[p % 10] || 'th');
-    return `<div class="rc-rank">${same > 1 ? 'T-' : ''}${p}${n} of ${all.length}</div>`; })();
   if(expAtTimeForCard !== null){
     body += `<div class="strip round-detail-strip" style="margin:10px 0 0;">
       <div class="cell"><div class="icon-row">🎯</div><div class="num">${expAtTimeForCard}</div><div class="lbl">Exp. Score</div></div>
       <div class="cell flag"><div class="icon-row">🏌️</div><div class="num">${actualScoreForCard}${scoreVsExpTextForCard}</div><div class="lbl">Actual Score</div></div>
-      <div class="cell flag"><div class="icon-row">⛳</div><div class="num">${r.diff.toFixed(1)}</div><div class="lbl">Differential</div>${diffRankHtml}</div>
+      <div class="cell flag"><div class="icon-row">⛳</div><div class="num">${r.diff.toFixed(1)}</div><div class="lbl">Differential</div></div>
     </div>`;
   } else {
     body += `<p class="note" style="margin:10px 0 0;">Differential ${r.diff.toFixed(1)}</p>`;
