@@ -136,7 +136,8 @@
     sinceJul = `<div><span class="app-cap">Since Jul '26</span><b class="hc-${sDir}">${sDir==='down'?'▼ ':sDir==='up'?'▲ ':''}${Math.abs(chg).toFixed(1)}</b></div>`;
     try{
       const f = [...futureRounds].sort((a,b)=>futureSortKey(a)-futureSortKey(b))[0];
-      if(f){ const e = computeExpScoreFor(f.rating, f.slope, f.holes); if(e != null) next = `<div><span class="app-cap">Next exp.</span><b>${e}</b><small>${esc(courseName(f.course).replace(/\s+\b(golf|country)\b.*$/i,''))}</small></div>`; }
+      if(f){ const e = computeExpScoreFor(f.rating, f.slope, f.holes); if(e != null){ let tp = ''; try{ const par = parForFutureRound(f); if(par != null){ const d = e - par; tp = ` <span class="hc-tp">(${d === 0 ? 'E' : (d > 0 ? '+' : '') + d})</span>`; } }catch(err){}
+        next = `<div><span class="app-cap">Next exp.</span><b>${e}${tp}</b><small>${esc(courseName(f.course).replace(/\s+\b(golf|country)\b.*$/i,''))}</small></div>`; } }
     }catch(e){}
     $('hcCard').innerHTML = `
       <div class="app-cap">Handicap Index${whsCalc && whsCalc.override != null ? ' · Manual' : ''}</div>

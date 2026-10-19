@@ -272,3 +272,4 @@ html.app .round-detail-strip .cell .num{color:var(--ink) !important;}
 .rc-hidebiz{display:flex;align-items:center;justify-content:center;gap:8px;margin:12px 0 0;font-size:13px;color:var(--ink);}
 .rc-hidebiz input{width:18px;height:18px;accent-color:var(--green);}
 #detailBody.hide-biz .rc-biz{display:none !important;}
+.hc-tp{font:500 12px var(--font-body);color:var(--mute);}

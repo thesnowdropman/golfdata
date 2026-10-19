@@ -281,6 +281,7 @@
     overlay.classList.add('open');
   }
   function renderSetup(){
+    { const h = overlay.querySelector('h3'); if(h) h.innerHTML = bgaImg(22) + 'BGA Tour'; }
     const {form:f, play, index, target, tier, picks} = draft;
     const hs = picks.map(n=>KIDS.find(k=>k.name===n).hcp);
     const sizes = groupSizes(picks.length+1);
@@ -319,6 +320,9 @@
     });
   }
   function renderLive(){
+    // Title: BGA logo, plus the Major's logo during a Major
+    { const h = overlay.querySelector('h3'); if(h){ const mn = T.tier === 'major' ? (T.majorName || nextMajorName()) : null;
+      h.innerHTML = bgaImg(22) + (mn && MAJOR_ICONS[mn] ? majorIcon(mn, 26) : '') + 'BGA Tour'; } }
     const holes = T.play.holes, n = holes.length, mine = T.mine.length, done = mine===n;
     const rows = standings(mine), prevPos = {};
     if(mine>0) standings(mine-1).forEach(r=>{ if(r.pos) prevPos[r.name]=r.pos; });
