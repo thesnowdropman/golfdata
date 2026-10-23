@@ -295,7 +295,7 @@
   try{ const v = localStorage.getItem('anges-golf-rec'); if(v) recView = v; }catch(e){}
   function renderRecord(){
     if(typeof rounds === 'undefined') return;
-    const byDate = [...rounds].sort((a,b)=>new Date(b.date)-new Date(a.date));
+    const byDate = [...rounds].sort((a,b)=>chronoCmp(b,a));
     let list = recView === 'recent' ? byDate.slice(0, 20) : recView === 'best' ? [...rounds].sort((a,b)=>a.diff-b.diff) : byDate;
     $('recCount').textContent = `${rounds.length} rounds posted`;
     $('recSeg').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.v === recView));
@@ -330,7 +330,7 @@
   // ---------- Stats: season card ----------
   function renderSeason(){
     if(typeof rounds === 'undefined' || !rounds.length) return;
-    const last20 = [...rounds].sort((a,b)=>new Date(b.date)-new Date(a.date)).slice(0,20);
+    const last20 = [...rounds].sort((a,b)=>chronoCmp(b,a)).slice(0,20);
     const avg = last20.reduce((s,r)=>s+r.diff,0)/last20.length;
     // Best 9 / Best 18 by score to the course's real par (lowest over par wins)
     const bestToPar = holes => { let best = null;
@@ -351,7 +351,7 @@
   function renderBga(){
     const B = window.BGA, page = $('bgaPage');
     if(!B || !page || typeof rounds === 'undefined') return;
-    const evs = rounds.filter(r=>r.event && Array.isArray(r.event.board)).sort((a,b)=>new Date(b.date)-new Date(a.date) || (b.event.seed||0)-(a.event.seed||0));
+    const evs = rounds.filter(r=>r.event && Array.isArray(r.event.board)).sort((a,b)=>chronoCmp(b,a));
     const pos = r => String((B.rankBoard(r.event).find(x=>x.you)||{}).pos);
     const won = t => evs.filter(r=>r.event.tier===t && pos(r)==='1').length;
     const E = B.eloRatings();

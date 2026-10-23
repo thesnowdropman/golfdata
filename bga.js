@@ -46,7 +46,7 @@
   const MON = ['Jan','Feb','Mar','Apr','May','June','July','Aug','Sept','Oct','Nov','Dec'];
   const ymLabel = (ym, short) => { const d = new Date(ym+'-01T00:00:00'); return short ? MON[d.getMonth()]+" ’"+String(d.getFullYear()).slice(2) : d.toLocaleDateString('en-US',{month:'long',year:'numeric'}); };
   const placePts = pos => PTS[parseInt(String(pos).replace('T',''),10)-1] || 0;
-  const evOrder = (a,b) => new Date(a.date)-new Date(b.date) || (a.event.seed||0)-(b.event.seed||0);
+  const evOrder = (a,b) => (typeof chronoCmp === 'function' ? chronoCmp(a,b) : new Date(a.date)-new Date(b.date)) || (a.event.seed||0)-(b.event.seed||0);
   function pointEvents(){ return rounds.filter(r=>r.event && Array.isArray(r.event.board) && r.event.tier!=='club').sort(evOrder); }
   function eventPts(r){ const o = {}; if(!r.event || r.event.tier==='club') return o; rankBoard(r.event).forEach(x=>{ o[x.you?'You':x.n] = placePts(x.pos); }); return o; }
   function monthTotalThrough(name, r){ const ym = ymOf(r.date); let t = 0;
@@ -90,10 +90,17 @@
     const nm = seriesName(r.course); const i = tourRounds(nm).indexOf(r); return nm+' '+roman((i<0?0:i)+1); }
   function nextSeriesName(course, extra, tier){ if(tier==='club') return qualifierName(course); const nm = seriesName(course); return nm+' '+roman(tourRounds(nm).length + 1 + (extra||0)); }
   function eventTitle(tier, r){ return tier==='major' ? (r ? majorNameFor(r) : nextMajorName()) : (TIERS[tier] ? TIERS[tier].label+' event' : 'BGA'); }
+  // An 18 on a short course (par 59 or under) is always a Tour event: never a Major and never
+  // a Qualifier (only 9s are Qualifiers), named as a numbered Open/Invitational
+  const sumPars = a => Array.isArray(a) && a.length && a.every(p => p != null && !isNaN(p)) ? a.reduce((s,p)=>s+Number(p),0) : null;
+  function parOfRound(r){ const p = r.holeDetail ? sumPars(r.holeDetail.pars) : null; return p != null ? p : (typeof PAR_BY_COURSE !== 'undefined' ? PAR_BY_COURSE[r.course] : null); }
+  function parOfFuture(f){ try{ const p = parForFutureRound(f); if(p != null) return p; }catch(e){} return sumPars(f.pars); }
+  const isMajor = (holes, par) => holes === 18 && !(par != null && par < 60);
   function tierFor(f){
-    if(f.holes===18) return 'major';
+    if(isMajor(f.holes, sumPars(f.pars))) return 'major';
+    if(f.holes === 18) return 'tour';
     const key = f.name.trim().toLowerCase();
-    return rounds.some(r=>r.holes===9 && r.course.trim().toLowerCase()===key) ? 'tour' : 'club';
+    return rounds.some(r=>r.holes===f.holes && r.course.trim().toLowerCase()===key) ? 'tour' : 'club';
   }
   // Club is a ladder: it starts with only the worst player (HC 42), and each Club win
   // adds the next-worst player to later Club fields. A loss keeps the field the same.
@@ -178,15 +185,30 @@
   function targetFor(play, index){
     const total = Math.round(expected(index, play)), n = play.holes.length;
     const extra = total - play.par, base = Math.floor(extra/n), rem = extra - base*n;
-    const order = play.hasSI ? [...play.holes].sort((a,b)=>a.rank-b.rank) : [...play.holes].sort((a,b)=>b.par-a.par || a.no-b.no);
-    const bonus = new Set(order.slice(0,rem).map(h=>h.no));
+    let bonus;
+    if(play.hasSI){ bonus = new Set([...play.holes].sort((a,b)=>a.rank-b.rank).slice(0,rem).map(h=>h.no)); }
+    else {
+      // No stroke index: spread the extra strokes evenly through the round (one per stretch
+      // of holes, on that stretch's longest par) instead of piling them on the first holes
+      bonus = new Set();
+      for(let j = 0; j < rem; j++){
+        const lo = Math.floor(j*n/rem), hi = Math.floor((j+1)*n/rem);
+        const seg = play.holes.slice(lo, Math.max(hi, lo+1));
+        const pick = seg.reduce((b,h)=> h.par > b.par ? h : b, seg[Math.floor((seg.length-1)/2)]);
+        bonus.add(pick.no);
+      }
+    }
     return play.holes.map(h=>h.par + base + (bonus.has(h.no)?1:0));
   }
-  function simulate(kid, play, r){
+  function simulate(kid, play, r, target){
     const st = STYLES[styleOf(kid.name)], n = play.holes.length;
     const over = expected(kid.hcp, play) - play.par + gauss(r)*st.form*Math.sqrt(n/9);
-    return play.holes.map(h=>{
-      let x = Math.round(over/n*h.w + gauss(r)*.85*st.sd);
+    // Kids' extra strokes land on the same holes as the par for the day (the target), so
+    // a hole's par and the field's scoring on it line up hole by hole, not just in total
+    const tExtra = target ? target.reduce((s,t,i)=>s + t - play.holes[i].par, 0) : 0;
+    return play.holes.map((h,i)=>{
+      const share = target && tExtra > 0 ? (target[i] - h.par) / tExtra : h.w / n;
+      let x = Math.round(over*share + gauss(r)*.85*st.sd);
       if(r() < st.blow) x += 2;
       x = Math.max(-1, Math.min(6, x));
       if(x===-1 && r()>.4) x = 0;
@@ -204,7 +226,7 @@
     state.groups = sizes.length;
     let g = 0, left = sizes[0];
     return picks.map(k=>{ while(left===0){ g++; left = sizes[g]; } left--;
-      return {...k, style:styleOf(k.name), group:g+1, scores:simulate(k, state.play, r)}; });
+      return {...k, style:styleOf(k.name), group:g+1, scores:simulate(k, state.play, r, state.target)}; });
   }
 
   // ---------- Saved progress (this device only) ----------
@@ -450,9 +472,10 @@
     return currentIndex();
   }
   function tierAt(r){
-    if(r.holes === 18) return 'major';
+    if(isMajor(r.holes, parOfRound(r))) return 'major';
+    if(r.holes === 18) return 'tour';
     const key = r.course.trim().toLowerCase(), d = new Date(r.date);
-    return rounds.some(x => x !== r && x.holes === 9 && x.course.trim().toLowerCase() === key && new Date(x.date) < d) ? 'tour' : 'club';
+    return rounds.some(x => x !== r && x.holes === r.holes && x.course.trim().toLowerCase() === key && new Date(x.date) < d) ? 'tour' : 'club';
   }
   const hasCard = r => r.holeDetail && Array.isArray(r.holeDetail.scores) && r.holeDetail.scores.length === r.holes && Array.isArray(r.holeDetail.pars);
   function makeEvent(r, tier, seed, index){
@@ -598,12 +621,16 @@
     const futures = [...futureRounds].sort((a,b)=>futureSortKey(a)-futureSortKey(b)), i = futures.indexOf(f);
     const key = f.course.trim().toLowerCase();
     let name, evKey;
-    if(f.holes === 18){
-      const prior = futures.slice(0, i).filter(x=>x.holes===18).length;
+    const maj = x => isMajor(x.holes, parOfFuture(x));
+    if(maj(f)){
+      const prior = futures.slice(0, i).filter(maj).length;
       name = MAJORS[(majorRounds().length + prior) % MAJORS.length]; evKey = name;
     } else {
-      const played = rounds.some(r=>r.holes===9 && r.course.trim().toLowerCase()===key) || futures.slice(0,i).some(x=>x.holes===9 && x.course.trim().toLowerCase()===key);
-      const earlier = futures.slice(0,i).filter(x=>x.holes===9 && seriesName(x.course)===seriesName(f.course)).length - (rounds.some(r=>r.holes===9 && r.course.trim().toLowerCase()===key) ? 0 : 1);
+      const played = f.holes === 18 || rounds.some(r=>r.holes===f.holes && r.course.trim().toLowerCase()===key) || futures.slice(0,i).some(x=>!maj(x) && x.course.trim().toLowerCase()===key);
+      // Earlier planned rounds in this series that will be Tour events (not the course's Qualifier)
+      const willQualify = x => x.holes === 9 && !rounds.some(r=>r.holes===9 && r.course.trim().toLowerCase()===x.course.trim().toLowerCase())
+        && !futures.slice(0, futures.indexOf(x)).some(y=>y.holes===9 && y.course.trim().toLowerCase()===x.course.trim().toLowerCase());
+      const earlier = futures.slice(0,i).filter(x=>!maj(x) && seriesName(x.course)===seriesName(f.course) && !willQualify(x)).length;
       name = played ? nextSeriesName(f.course, Math.max(0, earlier), 'tour') : qualifierName(f.course); evKey = 'series:'+seriesName(f.course);
     }
     return `<p class="note" style="margin:-8px 0 12px;display:flex;align-items:center;gap:6px;"><span class="tn-evlink" data-tn-act="eventhist" data-ev="${esc(evKey)}" data-from="future" data-fid="${esc(f.id)}">${majorIcon(name, 22)}<span>BGA: <strong>${esc(name)}</strong></span></span></p>`;

@@ -115,6 +115,15 @@ let rounds = [...baseRounds];
 // disambiguator -- each round's position within its own source array -- when a genuine
 // collision is actually detected (e.g. two 9-hole rounds at the same course on the same
 // day that happened to score the same), which the plain format alone can't tell apart.
+// Oldest first; rounds on the same day keep the order you posted them (new rounds carry a
+// posting time; older ones fall back to their place in the saved lists, newest-first)
+function postSeq(r){
+  if(r.posted) return r.posted;
+  const ai = addedRounds.indexOf(r); if(ai >= 0) return 1e12 + (addedRounds.length - ai);
+  const bi = baseRounds.indexOf(r); return bi >= 0 ? baseRounds.length - bi : 0;
+}
+function chronoCmp(a,b){ return (new Date(a.date) - new Date(b.date)) || (postSeq(a) - postSeq(b)); }
+
 function roundKey(r){
   const baseKeyStr = `${r.date}|${r.course}|${r.score}`;
   const collidingCount = [...baseRounds, ...addedRounds].filter(x => `${x.date}|${x.course}|${x.score}` === baseKeyStr).length;
@@ -160,7 +169,7 @@ function computeHandicapSpotMap(){
 function computeHandicapSpotMapFresh(){
   const chronoAll = [...rounds]
     .filter(r => r.diff != null && !isNaN(r.diff))
-    .sort((a,b)=> new Date(a.date) - new Date(b.date));
+    .sort(chronoCmp);
   const cv = r => whsCountsAs(r);
   const keyOf = new Map(chronoAll.map(r => [r, roundKey(r)]));
 
@@ -209,7 +218,9 @@ function computeRoundBadges(r){
     if(handicapSpotData.currentTop8Keys.has(thisKey)){
       const replaced = handicapSpotData.replacedBy[thisKey];
       const replacedText = replaced != null ? ` (${whsCountsAs(r).toFixed(1)} replacing ${replaced.toFixed(1)})` : '';
-      badges.push({icon: '♿️', label: `Handicap Spot: Round with a top 8 differential${replacedText}`});
+      const hb = whsBeforeByObj.get(r), ha = whsAfterByObj.get(r);
+      const hcText = hb != null && ha != null ? ` · HC ${hb.toFixed(1)} → ${ha.toFixed(1)}` : '';
+      badges.push({icon: '♿️', label: `Handicap Spot: Round with a top 8 differential${replacedText}${hcText}`});
     }
   }
 
@@ -217,7 +228,7 @@ function computeRoundBadges(r){
   const loc = COURSE_LOCATIONS[r.course];
   if(loc && loc.label){
     const state = loc.label.split(',').pop().trim();
-    const chrono = [...rounds].sort((a,b)=> new Date(a.date) - new Date(b.date));
+    const chrono = [...rounds].sort(chronoCmp);
     const firstInState = chrono.find(x => {
       const xLoc = COURSE_LOCATIONS[x.course];
       return xLoc && xLoc.label && xLoc.label.split(',').pop().trim() === state;
@@ -610,7 +621,7 @@ function computeAllBadgeCounts(){
 // page or "#N all-time" on a single round's Round Badges page.
 function openBadgeRoundsList(icon){
   const catalogEntry = BADGE_CATALOG.find(b => b.icon === icon);
-  const chrono = [...rounds].sort((a,b)=> new Date(a.date) - new Date(b.date));
+  const chrono = [...rounds].sort(chronoCmp);
   const matchingRounds = chrono.filter(r => computeRoundBadges(r).some(b => b.icon === icon));
 
   document.getElementById('detailTitle').innerHTML = `${icon} ${catalogEntry ? catalogEntry.name : ''}`;
@@ -1019,7 +1030,7 @@ let courseLookup = {}; // normalized course name -> {name, rating, slope, holes}
 function refreshCourseLookup(){
   courseLookup = {};
   // sort oldest -> newest so the most recent round at each course wins
-  const chrono = [...rounds].sort((a,b)=> new Date(a.date) - new Date(b.date));
+  const chrono = [...rounds].sort(chronoCmp);
   chrono.forEach(r=>{
     const key = r.course.trim().toLowerCase();
     courseLookup[key] = {name:r.course, rating:r.rating, slope:r.slope, holes:r.holes};
@@ -1191,11 +1202,12 @@ function toParAndExpStr(r){
 var whsCalc = {recent:[], k:0, plus:0, index:null, override:null};
 // Per round (by roundKey): USGA index at the start of its day, and the differential USGA counts
 var whsHiByKey = {}, whsDByKey = {}, whsHiByObj = new Map(), whsDByObj = new Map(), hcSpotCache = null;
+var whsBeforeByObj = new Map(), whsAfterByObj = new Map(); // index just before / just after each round
 function whsHiAt(r){ if(whsHiByObj.has(r)) return whsHiByObj.get(r); const v = whsHiByKey[roundKey(r)]; return v == null ? null : v; }
 function whsCountsAs(r){ if(whsDByObj.has(r)) return whsDByObj.get(r); const v = whsDByKey[roundKey(r)]; return v == null ? r.diff : v; }
 const HI_OVERRIDE_KEY = 'anges-golf-hi-override';
 function recompute(){
-  const chrono = [...rounds].sort((a,b)=> new Date(a.date) - new Date(b.date));
+  const chrono = [...rounds].sort(chronoCmp);
   t0 = dayNum(chrono[0].date);
 
   roundNumberOf = {};
@@ -1215,7 +1227,7 @@ function recompute(){
   const WHS_TABLE = {3:[1,-2],4:[1,-1],5:[1,0],6:[2,-1],7:[2,0],8:[2,0],9:[3,0],10:[3,0],11:[3,0],12:[4,0],13:[4,0],14:[4,0],15:[5,0],16:[5,0],17:[6,0],18:[6,0],19:[7,0]};
   const outingDiffs = [];
   let whsIdx = null, dayIdx = null, curDay = null;
-  whsHiByKey = {}; whsDByKey = {}; whsHiByObj = new Map(); whsDByObj = new Map(); hcSpotCache = null;
+  whsHiByKey = {}; whsDByKey = {}; whsHiByObj = new Map(); whsDByObj = new Map(); hcSpotCache = null; whsBeforeByObj = new Map(); whsAfterByObj = new Map();
   trend = [];
   chartSegPoints = [];
   for(const r of chrono){
@@ -1247,6 +1259,7 @@ function recompute(){
     }
     if(n >= 3) whsIdx = roundedAvg;
     chartSegPoints.push({segNum: chartSegPoints.length+1, index: roundedAvg});
+    whsBeforeByObj.set(r, trend.length ? trend[trend.length-1].index : null); whsAfterByObj.set(r, roundedAvg);
     trend.push({date:r.date, day:dayNum(r.date)-t0, index:roundedAvg, diff:r.diff});
   }
   // Manual index (e.g. from GHIN): replaces the current index until the next round is posted
@@ -1891,7 +1904,7 @@ function regressionCrossDate(){
   // projected date further out, since the pace keeps dropping while the calendar keeps moving.
   if(!rounds || rounds.length === 0) return null;
 
-  const chrono = [...rounds].sort((a,b)=> new Date(a.date) - new Date(b.date));
+  const chrono = [...rounds].sort(chronoCmp);
   const totalOutings = chrono.length;
   const outingPoints = chrono.map((r, i) => ({ x: i + 1, y: r.diff }));
   const n = outingPoints.length;
@@ -1933,7 +1946,7 @@ function regressionCrossDate(){
 // match what this specific date now represents.
 function fiftiethRoundDate(){
   if(!rounds || rounds.length === 0) return null;
-  const chrono = [...rounds].sort((a,b)=> new Date(a.date) - new Date(b.date));
+  const chrono = [...rounds].sort(chronoCmp);
   const totalOutings = chrono.length;
 
   if(totalOutings >= 50){
@@ -2314,7 +2327,7 @@ function formatTinyPercent(p){
 // lowest ones are averaged. Pace (9s per week over the last 60 days) turns it into a date.
 function projectHcMilestones(){
   const C = whsCalc; if(!C || C.index == null || !C.recent || C.recent.length < 3) return null;
-  const chrono = [...rounds].sort((a,b)=> new Date(a.date) - new Date(b.date));
+  const chrono = [...rounds].sort(chronoCmp);
   const segs = []; // [x, raw 9-hole differential]
   chrono.forEach(r => {
     const g = parseInt(String(r.score), 10); if(isNaN(g) || !r.rating || !r.slope) return;
@@ -2672,7 +2685,7 @@ function openHoleDetail(courseName, holeIndex){
   };
   const baseCourseNameForHoleDetail = stripHoleSuffixForHoleDetail(courseName);
   const atCourse = rounds.filter(r => stripHoleSuffixForHoleDetail(r.course) === baseCourseNameForHoleDetail && r.holeDetail && r.holeDetail.scores.length > holeIndex);
-  const chronoAtCourse = [...atCourse].sort((a,b)=> new Date(a.date) - new Date(b.date));
+  const chronoAtCourse = [...atCourse].sort(chronoCmp);
   if(chronoAtCourse.length === 0) return;
 
   const par = chronoAtCourse[chronoAtCourse.length-1].holeDetail.pars[holeIndex];
@@ -3686,7 +3699,8 @@ document.getElementById('addSave').addEventListener('click', ()=>{
     score: gross + (holes===9?'Ni':'A'),
     date, rating, slope, diff, course, holes,
     holeDetail: { pars, scores },
-    expAtTime
+    expAtTime,
+    posted: Date.now()
   };
 
   PAR_BY_COURSE[course] = parTotal;
