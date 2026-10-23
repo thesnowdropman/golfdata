@@ -65,7 +65,7 @@
     return {rows, evs};
   }
   function cupWinsOf(name){ return cupMonths().filter(cupDone).filter(ym=>cupStandings(ym).rows.some(x=>x.name===name && x.pos===1)).length; }
-  function majorRounds(){ return rounds.filter(r=>r.event && r.event.tier==='major').sort((a,b)=>new Date(a.date)-new Date(b.date) || (a.event.seed||0)-(b.event.seed||0)); }
+  function majorRounds(){ return rounds.filter(r=>r.event && r.event.tier==='major').sort(evOrder); }
   function majorNameFor(r){ const i = majorRounds().indexOf(r); return MAJORS[(i<0 ? 0 : i) % MAJORS.length]; }
   function nextMajorName(){ return MAJORS[majorRounds().length % MAJORS.length]; }
   // Club/Tour events are named after the course: "Country Club"/"CC" -> "Invitational",
@@ -82,7 +82,7 @@
     return n + ' Open';
   }
   function seriesRounds(name){ return rounds.filter(r=>r.event && r.event.tier!=='major' && Array.isArray(r.event.board) && seriesName(r.course)===name)
-    .sort((a,b)=>new Date(a.date)-new Date(b.date) || (a.event.seed||0)-(b.event.seed||0)); }
+    .sort(evOrder); }
   // Club events are the course's Qualifier (no numeral); Tour events are numbered among Tour events only
   function qualifierName(course){ return seriesName(course).replace(/\s+(Open|Invitational)$/, '') + ' Qualifier'; }
   function tourRounds(nm){ return seriesRounds(nm).filter(r=>r.event.tier==='tour'); }
@@ -519,7 +519,7 @@
   function eloRatings(){
     const R = {}, peak = {};
     const evs = rounds.filter(r=>r.event && Array.isArray(r.event.board))
-      .sort((a,b)=>new Date(a.date)-new Date(b.date) || (a.event.seed||0)-(b.event.seed||0));
+      .sort(evOrder);
     evs.forEach(r=>{
       const b = rankBoard(r.event).map(x=>({n: x.you ? 'You' : x.n, p: parseInt(String(x.pos).replace('T',''),10)}));
       const N = b.length; if(N < 2) return;
@@ -581,7 +581,7 @@
   function openPlayerDetail(name){
     const rowsData = rounds.filter(r=>r.event && Array.isArray(r.event.board))
       .map(r=>{ const x = rankBoard(r.event).find(b => name==='You' ? b.you : (!b.you && b.n===name)); return x ? {r, x, size:r.event.board.length} : null; })
-      .filter(Boolean).sort((a,b)=>new Date(b.r.date)-new Date(a.r.date));
+      .filter(Boolean).sort((a,b)=>evOrder(b.r,a.r));
     const hc = name==='You' ? null : (KIDS.find(k=>k.name===name)||{}).hcp;
     document.getElementById('detailMiiRow').innerHTML = '';
     document.getElementById('detailMiiRow').style.display = 'none';
@@ -685,7 +685,7 @@
 
   // Every Backyard Open event, newest first
   function openAllEvents(){
-    const list = rounds.filter(r=>r.event && Array.isArray(r.event.board)).sort((a,b)=>new Date(b.date)-new Date(a.date));
+    const list = rounds.filter(r=>r.event && Array.isArray(r.event.board)).sort((a,b)=>evOrder(b,a));
     document.getElementById('detailMiiRow').innerHTML = '';
     document.getElementById('detailMiiRow').style.display = 'none';
     document.getElementById('detailTitle').innerHTML = `<span id="courseTitleText">All Events</span><span class="crr-rs title-subline">BGA</span>`;
@@ -720,7 +720,7 @@
   function openEventHistory(ev, view){
     const isMajor = MAJORS.includes(ev), all = isMajor && view === 'all', series = ev.startsWith('series:') ? ev.slice(7) : null;
     const list = (all ? majorRounds() : isMajor ? majorRounds().filter(r=>majorNameFor(r)===ev) : series ? seriesRounds(series) : rounds.filter(r=>r.event && r.event.tier===ev && Array.isArray(r.event.board)))
-      .slice().sort((a,b)=>new Date(b.date)-new Date(a.date));
+      .slice().sort((a,b)=>evOrder(b,a));
     const title = all ? 'All Majors' : isMajor ? ev : series ? series : ev==='club' ? 'Qualifiers' : (TIERS[ev] ? TIERS[ev].label+' events' : 'BGA');
     document.getElementById('detailMiiRow').innerHTML = '';
     document.getElementById('detailMiiRow').style.display = 'none';
