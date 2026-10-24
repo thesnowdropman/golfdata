@@ -363,7 +363,7 @@
       const top = b.slice(0, 5), me = b.find(x=>x.you);
       const rowsFor = list => list.map(x => `<button type="button" class="lb-row${x.you?' me':''}" data-bga="${x.you ? 'round' : 'player'}" data-name="${esc(x.you?'You':x.n)}" data-key="${esc(roundKey(r))}">
           <span class="lb-pos">${esc(x.pos)}</span>
-          <span class="lb-nm">${x.you ? '<b>'+esc(B.ME_NAME)+'</b>' : esc(x.n)}<small>${x.you ? 'Index '+Number(r.event.index).toFixed(1) : 'HC '+x.h}${E.R[x.you?'You':x.n]!=null ? ' · Elo '+Math.round(E.R[x.you?'You':x.n]) : ''}</small></span>
+          <span class="lb-nm">${x.you ? '<b>'+esc(B.ME_NAME)+'</b>' : esc(x.n)}<small>${x.you ? 'HC '+Number(r.event.index).toFixed(1) : 'HC '+x.h}${E.R[x.you?'You':x.n]!=null ? ' · Elo '+Math.round(E.R[x.you?'You':x.n]) : ''}</small></span>
           <span class="lb-tp${x.vs<0?' u':''}">${x.vs===0?'E':(x.vs>0?'+':'')+x.vs}</span>
           <span class="lb-tot">${x.gross}</span></button>`).join('');
       const d = new Date(r.date+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'});
@@ -391,7 +391,7 @@
     const showRank = rankOpen ? ranked : ranked.slice(0, 10);
     const rankRows = list => list.map(([n, v]) => { const i = ranked.findIndex(x=>x[0]===n);
       const kid = B.KIDS.find(k=>k.name===n);
-      return `<button type="button" class="rk-row${n==='You'?' me':''}" data-bga="player" data-name="${esc(n)}"><span class="lb-pos">${i+1}</span><span class="lb-nm">${n==='You' ? '<b>'+esc(B.ME_NAME)+'</b>' : esc(n)}<small>${kid ? 'HC '+kid.hcp+' · '+B.styleOf(n) : 'Index '+trend[trend.length-1].index.toFixed(1)}</small></span><span class="rk-elo">${Math.round(v)}</span></button>`; }).join('');
+      return `<button type="button" class="rk-row${n==='You'?' me':''}" data-bga="player" data-name="${esc(n)}"><span class="lb-pos">${i+1}</span><span class="lb-nm">${n==='You' ? '<b>'+esc(B.ME_NAME)+'</b>' : esc(n)}<small>${kid ? 'HC '+kid.hcp+' · '+B.styleOf(n) : 'HC '+trend[trend.length-1].index.toFixed(1)}</small></span><span class="rk-elo">${Math.round(v)}</span></button>`; }).join('');
 
     page.innerHTML = `
       <div class="bga-hero"><img src="bga.png" alt="Backyard Golf Association" onerror="this.remove()"></div>

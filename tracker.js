@@ -303,25 +303,26 @@ function computeRoundBadges(r){
       badges.push({icon: '🪞', label: 'Mirror Image: Front and back within 1 stroke'});
     }
 
-    // Finishing stretch (holes 16-18), also 18-hole only
+    // Finishing stretch (holes 16-18), also 18-hole only. Trackstar and Amen Corner need a
+    // full-length course (par 60+), so a short par-3 course can't earn them.
     const finishToPar = r.holeDetail.scores.slice(15,18).reduce((s,v,i)=>s+v-r.holeDetail.pars[i+15], 0);
     if(finishToPar >= 7){
       badges.push({icon: '🥱', label: 'Siesta: Finish holes 16-18 at +7 or worse'});
-    } else if(finishToPar <= 3){
+    } else if(finishToPar <= 3 && fullLengthCourse(r)){
       badges.push({icon: '🏃‍♂️', label: 'Trackstar: Finish holes 16-18 at +3 or better'});
     }
 
     // Amen Corner -- holes 10-12 (indices 9-11) EACH individually at bogey or better,
     // not a cumulative/combined total across the three.
     const amenCornerAllBogeyOrBetter = [9,10,11].every(i => r.holeDetail.scores[i] - r.holeDetail.pars[i] <= 1);
-    if(amenCornerAllBogeyOrBetter){
+    if(amenCornerAllBogeyOrBetter && fullLengthCourse(r)){
       badges.push({icon: '🙏🏻', label: 'Amen Corner: Holes 10-12 each at bogey or better'});
     }
   }
 
   // 3 Goggles -- at least 3 individual par-3 holes each scored at par (3) or better.
-  // Naturally requires the course to have 3+ par-3s in the first place.
-  if(r.holeDetail){
+  // Only on a full-length course (par 60+; a 9 counts at double its par), not a par-3 course.
+  if(r.holeDetail && fullLengthCourse(r)){
     const par3Indices = r.holeDetail.pars.reduce((acc,p,i)=>{ if(p===3) acc.push(i); return acc; }, []);
     const qualifyingPar3Count = par3Indices.filter(i => r.holeDetail.scores[i] <= 3).length;
     if(qualifyingPar3Count >= 3){
@@ -590,8 +591,8 @@ const BADGE_CATALOG = [
   {icon: '🫠', name: 'Meltdown', desc: '3+ (9-hole) or 5+ (18-hole) strokes worse than expected'},
   {icon: '🔥', name: 'On Fire!', desc: '3+ (9-hole) or 5+ (18-hole) strokes better than expected'},
   {icon: '🪞', name: 'Mirror Image', desc: 'Front and back 9 within 1 stroke of each other'},
-  {icon: '🙏🏻', name: 'Amen Corner', desc: 'Holes 10-12 each at bogey or better'},
-  {icon: '👌', name: '3 Goggles', desc: '3+ Par-3s at 3 or better'},
+  {icon: '🙏🏻', name: 'Amen Corner', desc: 'Holes 10-12 each at bogey or better (course par 60+)'},
+  {icon: '👌', name: '3 Goggles', desc: '3+ Par-3s at 3 or better (course par 60+)'},
   {icon: '💯', name: '99 Club', desc: 'Break 100 over 18 holes'},
   {icon: '😈', name: 'Nemesis System', desc: 'Beat your best-ever score on a hole by 2+ strokes (min. 3 plays)'},
   {icon: '🌈', name: 'Triple Rainbow', desc: 'Par or better on a Par-3, Par-4, and Par-5 in the same round'},
@@ -604,8 +605,17 @@ const BADGE_CATALOG = [
   {icon: '🐣', name: 'Hatched', desc: 'Debut round at a new course that beat the expected score'},
   {icon: '🧭', name: 'Explorer', desc: 'Your 5th, 10th, 15th... distinct course played'},
   {icon: '🥱', name: 'Siesta', desc: 'Finish holes 16-18 at +7 or worse'},
-  {icon: '🏃‍♂️', name: 'Trackstar', desc: 'Finish holes 16-18 at +3 or better'},
+  {icon: '🏃‍♂️', name: 'Trackstar', desc: 'Finish holes 16-18 at +3 or better (course par 60+)'},
 ];
+
+// Course par 60 or more (a 9-hole round counts at double its par, so a 30+ nine qualifies)
+function fullLengthCourse(r){
+  const pars = r.holeDetail && Array.isArray(r.holeDetail.pars) ? r.holeDetail.pars : null;
+  let par = pars && pars.every(p => p != null && !isNaN(p)) ? pars.reduce((t,p)=>t+Number(p),0) : (typeof PAR_BY_COURSE !== 'undefined' ? PAR_BY_COURSE[r.course] : null);
+  if(par == null) return false;
+  if(r.holes === 9) par *= 2;
+  return par >= 60;
+}
 
 function computeAllBadgeCounts(){
   const counts = {};

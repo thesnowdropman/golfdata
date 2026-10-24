@@ -73,12 +73,12 @@
   function roman(n){ const t=[[1000,'M'],[900,'CM'],[500,'D'],[400,'CD'],[100,'C'],[90,'XC'],[50,'L'],[40,'XL'],[10,'X'],[9,'IX'],[5,'V'],[4,'IV'],[1,'I']]; let o=''; t.forEach(([v,sy])=>{ while(n>=v){ o+=sy; n-=v; } }); return o; }
   // Short course label for event tables: no tee info, nothing after a dash, and "Golf ..." / "Country ..." dropped
   function courseShort(course){
-    return course.replace(/\s\([^)]*\)\s*$/, '').replace(/\s+[-–]\s+.*$/, '').replace(/\s+\b(golf|country)\b.*$/i, '').trim();
+    return course.replace(/\s\([^)]*\)\s*$/, '').replace(/\s+[-–]\s+.*$/, '').replace(/\s+\b(golf|country|par\s*3)\b.*$/i, '').trim();
   }
   function seriesName(course){
     let n = course.replace(/\s\([^)]*\)\s*$/, '').replace(/\s+[-–]\s+.*$/, '').trim();
     if(/\b(country club|cc)\b/i.test(n)) return n.replace(/\s*\b(country club|cc)\b.*$/i, '').trim() + ' Invitational';
-    if(/\bgolf\b/i.test(n)) return n.replace(/\s*\bgolf\b.*$/i, '').trim() + ' Open';
+    if(/\b(golf|par\s*3)\b/i.test(n)) return n.replace(/\s*\b(golf|par\s*3)\b.*$/i, '').trim() + ' Open';
     return n + ' Open';
   }
   function seriesRounds(name){ return rounds.filter(r=>r.event && r.event.tier!=='major' && Array.isArray(r.event.board) && seriesName(r.course)===name)
@@ -86,8 +86,8 @@
   // Tour events are numbered among Tour events only
   function tourRounds(nm){ return seriesRounds(nm).filter(r=>r.event.tier==='tour'); }
   function eventName(r){ if(r.event.tier==='major') return majorNameFor(r); 
-    const nm = seriesName(r.course); const i = tourRounds(nm).indexOf(r); return nm+' '+roman((i<0?0:i)+1); }
-  function nextSeriesName(course, extra, tier){ const nm = seriesName(course); return nm+' '+roman(tourRounds(nm).length + 1 + (extra||0)); }
+    const nm = seriesName(r.course); const i = Math.max(0, tourRounds(nm).indexOf(r)); return i === 0 ? nm : nm+' '+roman(i+1); }
+  function nextSeriesName(course, extra, tier){ const nm = seriesName(course), k = tourRounds(nm).length + 1 + (extra||0); return k === 1 ? nm : nm+' '+roman(k); }
   function eventTitle(tier, r){ return tier==='major' ? (r ? majorNameFor(r) : nextMajorName()) : (TIERS[tier] ? TIERS[tier].label+' event' : 'BGA'); }
   // An 18 on a short course (par 59 or under) is always a Tour event: never a Major and never
   // a numbered Open/Invitational
@@ -193,7 +193,7 @@
     return play.holes.map(h=>h.par + base + (bonus.has(h.no)?1:0));
   }
   function simulate(kid, play, r, target){
-    const st = STYLES[styleOf(kid.name)], n = play.holes.length;
+    const st = STYLES[kid.style || styleOf(kid.name)], n = play.holes.length;
     const over = expected(kid.hcp, play) - play.par + gauss(r)*st.form*Math.sqrt(n/9);
     // Kids' extra strokes land on the same holes as the par for the day (the target), so
     // a hole's par and the field's scoring on it line up hole by hole, not just in total
@@ -258,7 +258,7 @@
     S = S || T; F = F || field;
     const n = S.play.holes.length;
     const rows = F.map(p=>{ const t=thruFor(S,p.group,mine,n); return {name:p.name, hc:p.hcp, group:p.group, note:'HC '+p.hcp+' · '+p.style+(t>0 ? ' · Last: '+fmt(p.scores[t-1]-S.target[t-1]) : ''), thru:t, gross:sum(p.scores,t), vs:sum(p.scores,t)-sum(S.target,t)}; });
-    rows.push({name:'You', you:true, hc:Number(S.index), group:S.groups||3, note:'Index '+S.index.toFixed(1)+' · Par '+sum(S.target,n)+(mine>0 ? ' · Last: '+fmt(S.mine[mine-1]-S.target[mine-1]) : ''), thru:mine, gross:sum(S.mine,mine), vs:sum(S.mine,mine)-sum(S.target,mine)});
+    rows.push({name:'You', you:true, hc:Number(S.index), group:S.groups||3, note:'HC '+S.index.toFixed(1)+' · Par '+sum(S.target,n)+(mine>0 ? ' · Last: '+fmt(S.mine[mine-1]-S.target[mine-1]) : ''), thru:mine, gross:sum(S.mine,mine), vs:sum(S.mine,mine)-sum(S.target,mine)});
     const live = rankRows(rows.filter(r=>r.thru>0));
     return live.concat(rows.filter(r=>r.thru===0).sort((a,b)=>a.group-b.group).map(r=>({...r,label:'–'})));
   }
@@ -505,7 +505,7 @@
     const me = board.find(x=>x.you) || {};
     const tl = TIERS[e.tier] ? TIERS[e.tier].label : 'Backyard';
     const pts = eventPts(r), myTot = monthTotalThrough('You', r);
-    const rows = board.map(x=>`<tr class="${x.you?'tn-you':''}"><td>${esc(x.pos)}</td><td class="tn-name"><span class="tn-plink" data-tn-act="player" data-name="${esc(x.you ? 'You' : x.n)}" data-from="round" data-key="${key}">${esc(x.you ? ME_NAME : x.n)}</span><span class="tn-grp">G${x.g}</span><small>${x.you ? 'Index '+Number(e.index).toFixed(1)+(pts ? ' · +'+(pts.You||0)+' pts ('+myTot+' total)' : '') : 'HC '+x.h+' · '+esc(x.st)+(pts ? ' · +'+(pts[x.n]||0)+' pts ('+monthTotalThrough(x.n, r)+' total)' : '')}</small></td><td class="tn-n ${cls(x.vs)}">${fmt(x.vs)}</td><td class="tn-n">${x.gross}</td></tr>`).join('');
+    const rows = board.map(x=>`<tr class="${x.you?'tn-you':''}"><td>${esc(x.pos)}</td><td class="tn-name"><span class="tn-plink" data-tn-act="player" data-name="${esc(x.you ? 'You' : x.n)}" data-from="round" data-key="${key}">${esc(x.you ? ME_NAME : x.n)}</span><span class="tn-grp">G${x.g}</span><small>${x.you ? 'HC '+Number(e.index).toFixed(1)+(pts ? ' · +'+(pts.You||0)+' pts ('+myTot+' total)' : '') : 'HC '+x.h+' · '+esc(x.st)+(pts ? ' · +'+(pts[x.n]||0)+' pts ('+monthTotalThrough(x.n, r)+' total)' : '')}</small></td><td class="tn-n ${cls(x.vs)}">${fmt(x.vs)}</td><td class="tn-n">${x.gross}</td></tr>`).join('');
     return `<div class="tn-saved" data-key="${key}">
       <h4 class="tn-hole" style="margin:10px 0 2px;display:flex;align-items:center;gap:6px;">${e.tier==='major' ? '' : bgaImg(24)}<span class="tn-evlink" data-tn-act="eventhist" data-ev="${esc(e.tier==='major' ? majorNameFor(r) : 'series:'+seriesName(r.course))}" data-from="round" data-key="${key}">${e.tier==='major' ? majorIcon(majorNameFor(r), 30)+esc(majorNameFor(r)) : esc(eventName(r))}</span></h4>
       <p class="idx-note" style="margin:0 0 8px;">${e.tier==='major' ? 'Major' : esc(tl)+' event'} · Finished ${esc(ordinal(me.pos))}/${e.board.length} · Par ${e.target}</p>
@@ -556,7 +556,7 @@
       const c = typeof x==='string' ? x.localeCompare(y) : x-y;
       return (c*dir) || totW(b.win)-totW(a.win) || b.win.major-a.win.major || (ELO[b.name]||0)-(ELO[a.name]||0) || a.name.localeCompare(b.name); });
     const th = (col, label, num) => `<th class="tn-sort${num?' tn-n':''}${tnCareerSort.col===col?' on':''}" data-tn-act="csort" data-col="${col}">${label}${tnCareerSort.col===col ? (tnCareerSort.dir>0?' ▲':' ▼') : ''}</th>`;
-    const body = list.length ? list.map(p=>`<tr class="tn-click${p.you?' tn-you':''}" data-tn-act="player" data-name="${esc(p.name)}"><td class="tn-name">${esc(shortName(p.name))}${p.hc!=null?`<small>HC ${p.hc}</small>`:(p.you?`<small>HC ${Math.round(currentIndex())}</small>`:'')}</td><td class="tn-n">${tot(p.app)}</td><td class="tn-n">${p.win.tour}</td><td class="tn-n">${p.win.major}</td><td class="tn-n"><b>${totW(p.win)}</b></td><td class="tn-n">${ELO[p.name]!=null ? Math.round(ELO[p.name]) : '—'}</td></tr>`).join('')
+    const body = list.length ? list.map(p=>`<tr class="tn-click${p.you?' tn-you':''}" data-tn-act="player" data-name="${esc(p.name)}"><td class="tn-name">${esc(shortName(p.name))}${p.hc!=null?`<small>HC ${p.hc}</small>`:(p.you?`<small>HC ${currentIndex().toFixed(1)}</small>`:'')}</td><td class="tn-n">${tot(p.app)}</td><td class="tn-n">${p.win.tour}</td><td class="tn-n">${p.win.major}</td><td class="tn-n"><b>${totW(p.win)}</b></td><td class="tn-n">${ELO[p.name]!=null ? Math.round(ELO[p.name]) : '—'}</td></tr>`).join('')
       : '<tr><td colspan="7">No BGA events yet.</td></tr>';
     return `      <div id="tnStatsBox">
       <div class="tn-boardwrap"><table class="tn-board tn-career">
@@ -589,7 +589,7 @@
     const hc = name==='You' ? null : (KIDS.find(k=>k.name===name)||{}).hcp;
     document.getElementById('detailMiiRow').innerHTML = '';
     document.getElementById('detailMiiRow').style.display = 'none';
-    document.getElementById('detailTitle').innerHTML = `<span id="courseTitleText" data-name="${esc(name)}">${esc(dispName(name))}</span><span class="crr-rs title-subline">${hc!=null ? 'HC '+hc+' · '+styleOf(name)+' · ' : ''}BGA</span>`;
+    document.getElementById('detailTitle').innerHTML = `<span id="courseTitleText" data-name="${esc(name)}">${esc(dispName(name))}</span><span class="crr-rs title-subline">${hc!=null ? 'HC '+hc+' · '+styleOf(name)+' · ' : name==='You' ? 'HC '+currentIndex().toFixed(1)+' · ' : ''}BGA</span>`;
     document.getElementById('detailTitle').style.marginTop = navStack.length > 0 ? '28px' : '0';
     const wins = t => rowsData.filter(d=>String(d.x.pos)==='1' && (t ? d.r.event.tier===t : true)).length;
     const cupRes = cupMonths().filter(cupDone).map(ym=>{ const x = cupStandings(ym).rows.find(q=>q.name===name); return x ? {ym, x} : null; }).filter(Boolean);
@@ -597,7 +597,7 @@
     const evRows = rowsData.map(d=>({k:d.r.date, html:(()=>{
       const dt = new Date(d.r.date+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'2-digit'});
       const pm = d.r.course.match(/^(.*)\s\(([^)]+)\)$/); // "(18)", "(Back 9)" etc. move next to the date
-      const nm = (pm ? pm[1] : d.r.course).replace(/\s+\b(golf|country)\b.*$/i, '');
+      const nm = (pm ? pm[1] : d.r.course).replace(/\s+\b(golf|country|par\s*3)\b.*$/i, '');
       return `<tr class="tn-click${String(d.x.pos)==='1' ? ' tn-you' : ''}" data-tn-act="openround" data-key="${esc(roundKey(d.r))}"><td class="tn-name tn-rcol">${esc(courseShort(nm))}<small>${dt}</small></td><td class="tn-wrap"><span class="tn-evlink" data-tn-act="eventhist" data-ev="${esc(d.r.event.tier==='major' ? majorNameFor(d.r) : 'series:'+seriesName(d.r.course))}" data-from="player" data-name="${esc(name)}">${d.r.event.tier==='major' ? majorIcon(majorNameFor(d.r), 18)+esc(MAJOR_SHORT[majorNameFor(d.r)]) : esc(eventName(d.r))}</span></td><td class="tn-n">${finBadge(d.x.pos)}</td></tr>`;
     })()}));
     const body = evRows.concat(cupRows).map((o,i)=>({...o,i})).sort((a,b)=>a.k<b.k?1:a.k>b.k?-1:a.i-b.i).map(o=>o.html).join('');
@@ -634,8 +634,57 @@
       const earlier = futures.slice(0,i).filter(x=>!maj(x) && seriesName(x.course)===seriesName(f.course)).length;
       name = nextSeriesName(f.course, Math.max(0, earlier), 'tour'); evKey = 'series:'+seriesName(f.course);
     }
-    return `<p class="note" style="margin:-8px 0 12px;display:flex;align-items:center;gap:6px;"><span class="tn-evlink" data-tn-act="eventhist" data-ev="${esc(evKey)}" data-from="future" data-fid="${esc(f.id)}">${majorIcon(name, 22)}<span>BGA: <strong>${esc(name)}</strong></span></span></p>`;
+    const nameLine = `<p class="note" style="margin:-8px 0 12px;display:flex;align-items:center;gap:6px;"><span class="tn-evlink" data-tn-act="eventhist" data-ev="${esc(evKey)}" data-from="future" data-fid="${esc(f.id)}">${majorIcon(name, 22)}<span>BGA: <strong>${esc(name)}</strong></span></span></p>`;
+    return nameLine + futureFieldHtml(f, maj(f) ? 'major' : 'tour', name, evKey);
   };
+
+  // ---------- Planned round: the expected field, ShedEx points and odds to win ----------
+  // Odds come from simulating the event many times with the field it would draw today (your
+  // current index, the same pool rules and par for the day). You play as an Average-style
+  // golfer at your index. Ties go to the higher HC, then to you, as in real events.
+  // American odds: favorites as -200, others as +800; nearest 10 under 1000, nearest 100 above.
+  function americanOdds(p){
+    if(!(p > 0)) return '—';
+    if(p >= 1) return '—';
+    const v = p > 0.5 ? -100*p/(1-p) : 100*(1-p)/p, a = Math.abs(v);
+    const r = a < 1000 ? Math.round(a/10)*10 : Math.round(a/100)*100;
+    return (v < 0 ? '−' : '+') + r;
+  }
+  function futurePars(f){
+    if(Array.isArray(f.pars) && f.pars.length === f.holes && f.pars.every(p=>p!=null && !isNaN(p))) return f.pars.map(Number);
+    const b = baseName(f.course);
+    const r = [...rounds].filter(x=>baseName(x.course)===b && x.holeDetail && Array.isArray(x.holeDetail.pars) && x.holeDetail.pars.length===f.holes)
+      .sort((a,c)=>new Date(c.date)-new Date(a.date))[0];
+    if(r) return r.holeDetail.pars.map(p=>p||4);
+    const par = parOfFuture(f) || (f.holes===9 ? 36 : 72);
+    return Array.from({length:f.holes},(_,i)=> Math.floor(par/f.holes) + (i < par - Math.floor(par/f.holes)*f.holes ? 1 : 0));
+  }
+  const SIMS = 5000;
+  function futureFieldHtml(f, tier, evName, evKey){
+    if(isNaN(f.rating) || isNaN(f.slope) || !(f.holes===9 || f.holes===18)) return '';
+    const idx = currentIndex();
+    const play = buildPlay({name:f.course, holes:f.holes, rating:f.rating, slope:f.slope, pars:futurePars(f)});
+    const target = targetFor(play, idx);
+    const kids = pickKids(tier, idx).map(n=>KIDS.find(k=>k.name===n));
+    const players = kids.map(k=>({name:k.name, hcp:k.hcp, hc:k.hcp})).concat([{name:'You', hcp:idx, hc:idx, style:'Average', you:true}]);
+    const wins = players.map(()=>0), r = rng(hash(String(f.id)+'|'+idx.toFixed(1)+'|'+tier));
+    for(let s=0; s<SIMS; s++){
+      let best = -1, bt = Infinity;
+      players.forEach((p,i)=>{ const t = simulate(p, play, r, target).reduce((a,b)=>a+b,0);
+        if(t < bt || (t === bt && (p.hc > players[best].hc || (p.hc === players[best].hc && p.you)))){ bt = t; best = i; } });
+      wins[best]++;
+    }
+    let cup = {}; try{ cupStandings(ymOf(f.date)).rows.forEach(x=>{ cup[x.name] = x.pts; }); }catch(e){}
+    const rows = players.map((p,i)=>({p, w:wins[i]})).sort((a,b)=>b.w-a.w || (a.p.you?-1:b.p.you?1:0) || b.p.hc-a.p.hc);
+    const body = rows.map(({p,w})=>`<tr class="tn-click${p.you?' tn-you':''}" data-tn-act="player" data-name="${esc(p.name)}" data-from="future" data-fid="${esc(f.id)}">
+      <td class="tn-name">${esc(p.you ? ME_NAME : shortName(p.name))}<small>HC ${p.you ? idx.toFixed(1) : p.hc}${p.you ? '' : ' · '+esc(styleOf(p.name))}</small></td>
+      <td class="tn-n">${cup[p.name] || 0}</td><td class="tn-n"><b>${americanOdds(w/SIMS)}</b></td></tr>`).join('');
+    return `<h4 class="tn-shelf-h" style="margin:4px 0 6px;">BGA field</h4>
+      <div class="tn-boardwrap" style="margin-bottom:6px;"><table class="tn-board">
+        <thead><tr><th>Player</th><th class="tn-n">ShedEx</th><th class="tn-n">Odds</th></tr></thead>
+        <tbody>${body}</tbody></table></div>
+      <p class="idx-note" style="margin:0 0 14px;">${players.length} players · Par ${sum(target,target.length)} · ShedEx = ${ymLabel(ymOf(f.date))} points so far · odds from ${SIMS.toLocaleString('en-US')} simulated rounds</p>`;
+  }
 
   function detailTitle(t, sub){
     document.getElementById('detailMiiRow').innerHTML = '';
@@ -756,7 +805,7 @@
     document.getElementById('detailMiiRow').style.display = 'none';
     document.getElementById('detailTitle').innerHTML = `<span class="tn-titlelogo">${majorIcon(CUP, 60)}</span><span id="courseTitleText">${CUP}</span><span class="crr-rs title-subline">${ymLabel(ym)} · ${done ? 'Final' : 'In progress'}</span>`;
     document.getElementById('detailTitle').style.marginTop = navStack.length > 0 ? '28px' : '0';
-    const stand = rows.map(x=>`<tr class="tn-click${x.you?' tn-you':''}" data-tn-act="player" data-name="${esc(x.name)}" data-from="cup" data-ym="${ym}"><td>${esc(x.label)}</td><td class="tn-name">${x.you ? '<b>'+ME_NAME+'</b>' : esc(x.name)}<small>${x.you ? '' : 'HC '+x.h+' · '}${x.ev} event${x.ev===1?'':'s'}${x.wins ? ' · '+x.wins+' win'+(x.wins===1?'':'s') : ''}</small></td><td class="tn-n"><b>${x.pts}</b></td></tr>`).join('');
+    const stand = rows.map(x=>`<tr class="tn-click${x.you?' tn-you':''}" data-tn-act="player" data-name="${esc(x.name)}" data-from="cup" data-ym="${ym}"><td>${esc(x.label)}</td><td class="tn-name">${x.you ? '<b>'+ME_NAME+'</b>' : esc(x.name)}<small>HC ${x.you ? currentIndex().toFixed(1) : x.h} · ${x.ev} event${x.ev===1?'':'s'}${x.wins ? ' · '+x.wins+' win'+(x.wins===1?'':'s') : ''}</small></td><td class="tn-n"><b>${x.pts}</b></td></tr>`).join('');
     const evList = evs.slice().reverse().map(r=>{ const me = rankBoard(r.event).find(x=>x.you) || {}, isM = r.event.tier==='major';
       const dt = new Date(r.date+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'});
       return `<tr class="tn-click" data-tn-act="openround" data-from="cup" data-ym="${ym}" data-key="${esc(roundKey(r))}"><td class="tn-name tn-wrap">${isM ? majorIcon(majorNameFor(r), 18) : ''}${esc(eventName(r))}<small>${dt} · ${esc(courseShort(r.course))}</small></td><td class="tn-n">${me.pos ? finBadge(me.pos) : '—'}</td><td class="tn-n">${placePts(me.pos)}</td></tr>`; }).join('');
@@ -935,6 +984,7 @@
       if(from === 'cup'){ const ym = btn.dataset.ym; navStack.push(()=>openCup(ym)); }
       else if(from === 'round'){ const rr = findRound(btn.dataset.key); navStack.push(()=>{ window.tnOpenEventTab = true; openDetail(rounds.indexOf(rr)); }); }
       else if(from === 'allevents') navStack.push(()=>openAllEvents());
+      else if(from === 'future'){ const fid = btn.dataset.fid; navStack.push(()=>openFutureRoundDetail(fid)); }
       else if(from === 'event'){ const e2 = btn.dataset.ev, v2 = btn.dataset.view; navStack.push(()=>openEventHistory(e2, v2)); }
       else navStack.push(()=>openCareerResults());
       openPlayerDetail(name); return; }
