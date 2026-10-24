@@ -273,3 +273,8 @@ html.app .round-detail-strip .cell .num{color:var(--ink) !important;}
 .rc-hidebiz input{width:18px;height:18px;accent-color:var(--green);}
 #detailBody.hide-biz .rc-biz{display:none !important;}
 
+
+/* Record Book: player column stays put while the stats scroll sideways */
+.rb-stick{position:sticky;left:0;z-index:1;background:#fff;box-shadow:1px 0 0 var(--line);}
+th.rb-stick{z-index:2;}
+tr.tn-you .rb-stick{background:#fff8e1;}
