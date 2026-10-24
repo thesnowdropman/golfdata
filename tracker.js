@@ -2058,7 +2058,7 @@ function openDetail(idx){
   let body = `<p class="note" style="margin:2px 0 0;">${dateFmt} · ${r.holes}-hole round</p>`;
   // Scorecard and Backyard Open tabs sit above everything; Backyard Open shows only the standings
   const tnEvTab = !!window.tnOpenEventTab; window.tnOpenEventTab = false;
-  body += `<div class="view-toggle tn-tabs rc-biz" style="display:flex;margin:12px 0 4px;"><button type="button" class="view-toggle-btn${tnEvTab?'':' active'}" data-tn-act="tab" data-tab="card">Scorecard</button><button type="button" class="view-toggle-btn${tnEvTab?' active':''}" data-tn-act="tab" data-tab="event">${r.event && Array.isArray(r.event.board) && r.event.tier!=='club' ? 'BGA Tour' : 'BGA Match Play'}</button></div>`;
+  body += `<div class="view-toggle tn-tabs rc-biz" style="display:flex;margin:12px 0 4px;"><button type="button" class="view-toggle-btn${tnEvTab?'':' active'}" data-tn-act="tab" data-tab="card">Scorecard</button><button type="button" class="view-toggle-btn${tnEvTab?' active':''}" data-tn-act="tab" data-tab="event">${r.event && Array.isArray(r.event.board) ? 'BGA Tour' : 'BGA'}</button></div>`;
   body += `<div data-tn-pane="card"${tnEvTab?' hidden':''}>`;
   if(expAtTimeForCard !== null){
     body += `<div class="strip round-detail-strip" style="margin:10px 0 0;">

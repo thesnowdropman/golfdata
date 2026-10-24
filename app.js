@@ -369,7 +369,7 @@
       const d = new Date(r.date+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'});
       latest = `<div class="app-sec-h"><h2>Latest Event</h2><span class="app-cap">${d}</span></div>
         <div class="lb">
-          <button type="button" class="lb-head" data-bga="round" data-key="${esc(roundKey(r))}">${r.event.tier==='major' ? B.majorIcon(name, 40) : B.bgaImg(30)}<span><b>${esc(name)}</b><small>${esc(courseName(r.course))} · ${r.event.tier==='major'?'Major':r.event.tier==='club'?'Match Play':'Tour'} · Par ${r.event.target}</small></span></button>
+          <button type="button" class="lb-head" data-bga="round" data-key="${esc(roundKey(r))}">${r.event.tier==='major' ? B.majorIcon(name, 40) : B.bgaImg(30)}<span><b>${esc(name)}</b><small>${esc(courseName(r.course))} · ${r.event.tier==='major'?'Major':'Tour'} · Par ${r.event.target}</small></span></button>
           <div class="lb-cols"><span>Pos</span><span>Player</span><span>To Par</span><span>Tot</span></div>
           ${rowsFor(top)}
           ${me && !top.includes(me) ? `<div class="lb-cut">· · · ${b.indexOf(me) - 5 > 0 ? (b.indexOf(me) - 5)+' more · · ·' : ''}</div>${rowsFor([me])}` : ''}
@@ -396,10 +396,9 @@
     page.innerHTML = `
       <div class="bga-hero"><img src="bga.png" alt="Backyard Golf Association" onerror="this.remove()"></div>
       <div class="bga-tiles">
-        <div><b>${won('tour') + won('major') + won('club')}</b><span>Wins</span></div>
+        <div><b>${won('tour') + won('major')}</b><span>Wins</span></div>
         <div><b>${won('major')}</b><span>Majors</span></div>
         <div><b>${won('tour')}</b><span>Tour</span></div>
-        <div><b>${won('club')}</b><span>Match</span></div>
       </div>
       <div class="bga-menu">
         <button type="button" data-bga="allevents">All Events<span>›</span></button>
