@@ -632,6 +632,7 @@
     if(idx !== -1){ window.tnOpenEventTab = true; openDetail(idx); }
   }
   function indexBefore(r){
+    try{ const hi = whsHiAt(r); if(hi != null) return hi; }catch(e){}
     try{ const k = roundNumberOf[roundKey(r)]; if(k > 1 && trend[k-2]) return trend[k-2].index; }catch(e){}
     return currentIndex();
   }
@@ -995,19 +996,32 @@
     return {changed:changed.length, skipped, total:list.length};
   }
 
-  // One-time switch from Qualifiers to Match Play: any saved 'club' event that isn't a
-  // bracket yet is redrawn as one (same seed and index, Tour pool), so every device that
-  // opens the app lands on the same bracket. Runs at load and after every recompute (synced
-  // rounds can arrive later); the guard stops it re-entering through its own recompute.
+  // Keeps every saved event in step with the rest of the site, after every recompute:
+  //  - old Qualifiers (stroke boards saved as 'club') are redrawn as Match Play brackets
+  //  - an event's Par for the day must equal the round's Exp. score, so any event whose index
+  //    isn't the USGA index the site uses for that round (start of that day), or whose par no
+  //    longer matches Exp. (e.g. rating/slope fixed later), is rebuilt with that index.
+  // The same seed is kept, so the draw only changes as much as the new index requires, and
+  // every device lands on the same result. The guard stops it re-entering via its own recompute.
   let migrating = false;
+  function eventIndexFor(r){ const hi = typeof whsHiAt === 'function' ? whsHiAt(r) : null; return hi != null ? hi : null; }
+  function needsSync(r){
+    const e = r.event; if(!e || !Array.isArray(e.board)) return false;
+    if(e.tier === 'club' && !isMatch(e)) return true;
+    if(!hasCard(r) && !isMatch(e)) return false; // can't replay a stroke event without hole scores
+    const hi = eventIndexFor(r); if(hi == null) return false;
+    let exp = null; try{ exp = expScoreAtTimeOf(r); }catch(err){}
+    return Number(e.index) !== hi || (exp != null && e.target !== exp);
+  }
   function migrateMatches(){
     if(migrating || typeof rounds === 'undefined' || !Array.isArray(rounds)) return 0;
-    const old = rounds.filter(r=>r.event && r.event.tier==='club' && !isMatch(r.event) && Array.isArray(r.event.board));
+    const old = rounds.filter(needsSync).sort(evOrder);
     if(!old.length) return 0;
     migrating = true;
     try{
-      old.forEach(r=>{ const e = r.event;
-        r.event = makeEvent(r, 'club', e.seed != null ? e.seed : hash(roundKey(r)), e.index != null ? e.index : indexBefore(r)); });
+      old.forEach(r=>{ const e = r.event, hi = eventIndexFor(r);
+        const tier = e.tier;
+        r.event = makeEvent(r, tier, e.seed != null ? e.seed : hash(roundKey(r)), hi != null ? hi : (e.index != null ? e.index : indexBefore(r))); });
       const fromBase = old.filter(r => addedRounds.indexOf(r) === -1);
       fromBase.forEach(r=>{
         [roundKey(r), `${r.date}|${r.course}|${r.score}`, `${r.date}|${r.course}|${r.score}|b${baseRounds.indexOf(r)}`].forEach(k=>{ if(!deletedKeys.includes(k)) deletedKeys.push(k); });
@@ -1015,7 +1029,7 @@
       });
       persistAdded(); if(fromBase.length) persistDeleted();
       rebuildRoundsArray(); try{ recompute(); }catch(e){ console.warn(e); }
-    } catch(e){ console.warn('Match play redraw failed', e); }
+    } catch(e){ console.warn('BGA event sync failed', e); }
     finally { migrating = false; }
     return old.length;
   }
