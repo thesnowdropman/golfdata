@@ -7,10 +7,11 @@
   const TN_KEY = 'anges-golf-tournament';
   const KIDS = ["Marky Dubois","Gretchen Hasselhoff","Reese Worthington","Kimmy Eckman","Ricky Johnson","Maria Luna","Ronny Dobbs","Lisa Crocket","Jorge Garcia","Dmitri Petrovich","Amir Khan","Billy Jean Blackwood","Ernie Steele","Annie Frazier","Sydney Webber","Ashley Webber","Stephanie Morgan","Jocinda Smith","Vicki Kawaguchi","Dante Robinson","Mikey Thomas","Angela Delvecchio","Tony Delvecchio","Sally Dobbs","Pete Wheeler","Kenny Kawaguchi","Luanne Lui","Keisha Phillips","Achmed Khan","Pablo Sanchez"].map((n,i)=>({name:n,hcp:42-i}));
   const POOLS = [KIDS.filter(k=>k.hcp>=31), KIDS.filter(k=>k.hcp>=26&&k.hcp<=30), KIDS.filter(k=>k.hcp<=25)];
-  // Event level is set by the round: first time on a 9-hole course = Club, any later
-  // 9-hole round there = Tour, every 18-hole round = Major. HC = your index, rounded.
+  // Event level is set by the round: first time on a 9-hole course = Match (match play
+  // bracket; stored as tier 'club'), any later 9-hole round there = Tour, every 18-hole
+  // round = Major. HC = your index, rounded.
   const TIERS = {
-    club: {label:'Qualifier',  why:'First round at this course', better:0, worse:0},
+    club: {label:'Match',  why:'First round at this course · match play bracket', better:2, worse:Infinity},
     tour: {label:'Tour',  why:'You have played this course before', better:2, worse:Infinity},
     major:{label:'Major', why:'18-hole round', better:2, worse:Infinity}
   };
@@ -38,7 +39,7 @@
   const bgaImg = px => `<img src="${BGA_SRC}" alt="" class="tn-bga" decoding="sync" style="height:${px}px;width:auto" onerror="this.replaceWith(document.createTextNode('🏆'))">`;
   const majorIcon = (name, px) => !MAJOR_ICONS[name] ? '' : !MAJOR_ICON_RATIO[name] ? `<img src="${MAJOR_ICONS[name]}" alt="" class="tn-micon" decoding="sync" height="${px}" style="height:${px}px;width:auto">` : `<img src="${MAJOR_ICONS[name]}" alt="" class="tn-micon" decoding="sync" width="${Math.round(px*(MAJOR_ICON_RATIO[name]||1))}" height="${px}" style="height:${px}px;width:${Math.round(px*(MAJOR_ICON_RATIO[name]||1))}px">`;
   // ---------- ShedEx Cup: monthly points race ----------
-  // Tour and Major events earn points (Qualifiers don't). Ties share the place's points.
+  // Tour, Match and Major events all earn points. Ties share the place's points.
   const PTS = [15,12,10,9,8,7,6,5,4,3,2,1];
   const ymOf = d => String(d).slice(0,7);
   const nowYM = () => { const t = new Date(); return t.getFullYear()+'-'+String(t.getMonth()+1).padStart(2,'0'); };
@@ -47,8 +48,8 @@
   const ymLabel = (ym, short) => { const d = new Date(ym+'-01T00:00:00'); return short ? MON[d.getMonth()]+" ’"+String(d.getFullYear()).slice(2) : d.toLocaleDateString('en-US',{month:'long',year:'numeric'}); };
   const placePts = pos => PTS[parseInt(String(pos).replace('T',''),10)-1] || 0;
   const evOrder = (a,b) => (typeof chronoCmp === 'function' ? chronoCmp(a,b) : new Date(a.date)-new Date(b.date)) || (a.event.seed||0)-(b.event.seed||0);
-  function pointEvents(){ return rounds.filter(r=>r.event && Array.isArray(r.event.board) && r.event.tier!=='club').sort(evOrder); }
-  function eventPts(r){ const o = {}; if(!r.event || r.event.tier==='club') return o; rankBoard(r.event).forEach(x=>{ o[x.you?'You':x.n] = placePts(x.pos); }); return o; }
+  function pointEvents(){ return rounds.filter(r=>r.event && Array.isArray(r.event.board)).sort(evOrder); }
+  function eventPts(r){ const o = {}; if(!r.event) return o; rankBoard(r.event).forEach(x=>{ o[x.you?'You':x.n] = placePts(x.pos); }); return o; }
   function monthTotalThrough(name, r){ const ym = ymOf(r.date); let t = 0;
     for(const e of pointEvents()){ if(ymOf(e.date)!==ym) continue; t += eventPts(e)[name]||0; if(e===r) break; } return t; }
   function cupMonths(){ return [...new Set(pointEvents().map(r=>ymOf(r.date)))].sort().reverse(); }
@@ -83,15 +84,15 @@
   }
   function seriesRounds(name){ return rounds.filter(r=>r.event && r.event.tier!=='major' && Array.isArray(r.event.board) && seriesName(r.course)===name)
     .sort(evOrder); }
-  // Club events are the course's Qualifier (no numeral); Tour events are numbered among Tour events only
-  function qualifierName(course){ return seriesName(course).replace(/\s+(Open|Invitational)$/, '') + ' Qualifier'; }
+  // Match events are the course's Match Play (no numeral); Tour events are numbered among Tour events only
+  function matchName(course){ return seriesName(course).replace(/\s+(Open|Invitational)$/, '') + ' Match Play'; }
   function tourRounds(nm){ return seriesRounds(nm).filter(r=>r.event.tier==='tour'); }
-  function eventName(r){ if(r.event.tier==='major') return majorNameFor(r); if(r.event.tier==='club') return qualifierName(r.course);
+  function eventName(r){ if(r.event.tier==='major') return majorNameFor(r); if(r.event.tier==='club') return matchName(r.course);
     const nm = seriesName(r.course); const i = tourRounds(nm).indexOf(r); return nm+' '+roman((i<0?0:i)+1); }
-  function nextSeriesName(course, extra, tier){ if(tier==='club') return qualifierName(course); const nm = seriesName(course); return nm+' '+roman(tourRounds(nm).length + 1 + (extra||0)); }
+  function nextSeriesName(course, extra, tier){ if(tier==='club') return matchName(course); const nm = seriesName(course); return nm+' '+roman(tourRounds(nm).length + 1 + (extra||0)); }
   function eventTitle(tier, r){ return tier==='major' ? (r ? majorNameFor(r) : nextMajorName()) : (TIERS[tier] ? TIERS[tier].label+' event' : 'BGA'); }
   // An 18 on a short course (par 59 or under) is always a Tour event: never a Major and never
-  // a Qualifier (only 9s are Qualifiers), named as a numbered Open/Invitational
+  // a Match (only 9s are Matches), named as a numbered Open/Invitational
   const sumPars = a => Array.isArray(a) && a.length && a.every(p => p != null && !isNaN(p)) ? a.reduce((s,p)=>s+Number(p),0) : null;
   function parOfRound(r){ const p = r.holeDetail ? sumPars(r.holeDetail.pars) : null; return p != null ? p : (typeof PAR_BY_COURSE !== 'undefined' ? PAR_BY_COURSE[r.course] : null); }
   function parOfFuture(f){ try{ const p = parForFutureRound(f); if(p != null) return p; }catch(e){} return sumPars(f.pars); }
@@ -102,19 +103,9 @@
     const key = f.name.trim().toLowerCase();
     return rounds.some(r=>r.holes===f.holes && r.course.trim().toLowerCase()===key) ? 'tour' : 'club';
   }
-  // Club is a ladder: it starts with only the worst player (HC 42), and each Club win
-  // adds the next-worst player to later Club fields. A loss keeps the field the same.
-  function clubWins(beforeDate, exclude){
-    return rounds.filter(r => r !== exclude && r.event && r.event.tier === 'club' && Array.isArray(r.event.board)
-      && (!beforeDate || new Date(r.date) < new Date(beforeDate))
-      && String((rankBoard(r.event).find(x=>x.you)||{}).pos) === '1').length;
-  }
+  // Match events draw from the same pool as Tour events
   function pickKids(tier, index, ctx){
-    if(tier === 'club'){
-      const n = Math.min(KIDS.length, 1 + clubWins(ctx && ctx.date, ctx && ctx.round));
-      return KIDS.slice(0, n).map(k=>k.name); // KIDS runs worst (42) to best
-    }
-    const hc = Math.round(index), t = TIERS[tier];
+    const hc = Math.round(index), t = TIERS[tier === 'club' ? 'tour' : tier];
     return KIDS.filter(k => k.hcp >= hc - t.better && k.hcp <= hc + t.worse).map(k=>k.name);
   }
 
@@ -229,6 +220,94 @@
       return {...k, style:styleOf(k.name), group:g+1, scores:simulate(k, state.play, r, state.target)}; });
   }
 
+  // ---------- Match play bracket ----------
+  // Everyone plays every round. Each round is a stretch of holes (about even, extra holes go
+  // to the later rounds). A group is paired off (one threesome when the count is odd); match
+  // winners move on together and everyone else drops into a placement bracket of their own,
+  // so every finishing place is played for. A match is won on holes won (outright low score
+  // on a hole), then fewest strokes in that match, then the higher HC (they tied a better
+  // player); a full tie goes to you. If the holes run out before a group is settled, its
+  // order is: match winners, then 2nd places, then 3rds, each by total strokes then higher HC.
+  function bracketRounds(N){ let r = 0; while(N > 1){ N = Math.floor(N/2); r++; } return Math.max(1, r); }
+  function matchSegments(n, R){ R = Math.min(R, n); const base = Math.floor(n/R), extra = n - base*R, out = []; let h = 0;
+    for(let i=0;i<R;i++){ const len = base + (i >= R-extra ? 1 : 0); out.push([h, h+len]); h += len; } return out; }
+  const youLast = (x,y) => (y.you?1:0)-(x.you?1:0);
+  function playMatch(ps, range, upto){
+    const [a, b] = range, end = Math.min(b, upto), won = ps.map(()=>0), str = ps.map(()=>0);
+    for(let h=a; h<end; h++){ const sc = ps.map(p=>p.scores[h]), lo = Math.min(...sc);
+      if(sc.filter(x=>x===lo).length === 1) won[sc.indexOf(lo)]++; sc.forEach((x,i)=>str[i]+=x); }
+    const o = ps.map((p,i)=>i).sort((i,j)=> won[j]-won[i] || str[i]-str[j] || ps[j].hc-ps[i].hc || youLast(ps[i],ps[j]));
+    return {ps, won, str, o, done: upto >= b, thru: Math.max(0, end-a), len: b-a};
+  }
+  function groupLabel(start, size, last){
+    if(start === 1) return last && size <= 3 ? 'Final' : 'Championship';
+    if(size <= 3 && last) return ordinal(start)+' place match';
+    return 'Places '+start+'–'+(start+size-1);
+  }
+  // players: [{name, hc, you, st, scores}]. upto = holes played so far.
+  function matchBracket(players, n, seed, upto){
+    const R = bracketRounds(players.length), ranges = matchSegments(n, R);
+    const segs = ranges.map(r=>({range:r, matches:[]}));
+    const tot = p => sum(p.scores, upto);
+    const tb = (x,y) => tot(x)-tot(y) || y.hc-x.hc || youLast(x,y);
+    function resolve(group, si, start, path){
+      if(group.length === 1) return group.slice();
+      if(si >= segs.length) return group.slice().sort(tb);
+      const last = si === segs.length-1, r = rng(hash(seed+':'+path));
+      const g = group.slice();
+      for(let i=g.length-1;i>0;i--){ const j=Math.floor(r()*(i+1)); [g[i],g[j]]=[g[j],g[i]]; }
+      const k = Math.floor(g.length/2), sets = [];
+      for(let i=0;i<k;i++) sets.push(g.splice(0, i===k-1 && g.length===3 ? 3 : 2));
+      const label = groupLabel(start, group.length, last);
+      const res = sets.map(ps=>{ const m = playMatch(ps, segs[si].range, upto); m.label = label; m.start = start; segs[si].matches.push(m); return m; });
+      if(!res.every(m=>m.done)) return null;
+      if(group.length <= 3) return res[0].o.map(i=>res[0].ps[i]);
+      if(last){ const out = []; for(let p=0;p<3;p++) out.push(...res.map(m=>m.ps[m.o[p]]).filter(Boolean).sort(tb)); return out; }
+      const W = res.map(m=>m.ps[m.o[0]]), L = res.flatMap(m=>m.o.slice(1).map(i=>m.ps[i]));
+      const a = resolve(W, si+1, start, path+'W'), b = resolve(L, si+1, start+W.length, path+'L');
+      return a && b ? a.concat(b) : null;
+    }
+    const order = resolve(players, 0, 1, 'R');
+    return {segs, order};
+  }
+  function matchPlayers(S, F){
+    return F.map(p=>({name:p.name, hc:p.hcp, st:p.style, scores:p.scores}))
+      .concat([{name:'You', you:true, hc:Number(S.index), st:null, scores:S.mine}]);
+  }
+  function matchBracketOf(S, F, upto){ return matchBracket(matchPlayers(S, F), S.play.holes.length, S.seed, upto); }
+  // Saved form: final board plus every match (names, holes won, strokes, finishing order)
+  function matchEventFrom(S, F){
+    const n = S.play.holes.length, B = matchBracketOf(S, F, n), tgt = sum(S.target, n);
+    return {tier:'club', fmt:'match', target:tgt, index:S.index, seed:S.seed,
+      board: B.order.map((p,i)=>({n:p.name, you:!!p.you, pos:String(i+1), h:p.you?null:p.hc, st:p.st, gross:sum(p.scores,n), vs:sum(p.scores,n)-tgt})),
+      bracket: B.segs.map(s=>({r:s.range, m:s.matches.map(m=>({l:m.label, p:m.ps.map(p=>p.name), w:m.won, s:m.str, o:m.o}))}))};
+  }
+  const isMatch = e => !!e && e.fmt === 'match';
+  const mpName = n => n === 'You' ? ME_SHORT : shortName(n);
+  // One match as a little card: winner first in bold, holes won on the right
+  function matchCard(m, opts){
+    opts = opts || {};
+    const rows = m.o.map((i,k)=>{ const nm = m.p[i], you = nm==='You';
+      return `<div class="mp-p${k===0 && opts.done!==false ? ' win' : ''}${you?' me':''}">${opts.link ? `<span class="tn-plink" data-tn-act="player" data-name="${esc(nm)}"${opts.link}>${esc(mpName(nm))}</span>` : esc(mpName(nm))}<small>${m.s[i]}</small><b>${m.w[i]}</b></div>`; }).join('');
+    return `<div class="mp-m${m.p.includes('You')?' mine':''}">${opts.status ? `<div class="mp-st">${opts.status}</div>` : ''}${rows}</div>`;
+  }
+  // Every round of a saved (or live) bracket
+  function bracketHtml(br, opts){
+    return br.map((s,i)=>{ const groups = {};
+      s.m.forEach(m=>{ (groups[m.l] = groups[m.l] || []).push(m); });
+      return `<div class="mp-round"><h5>${i===br.length-1 ? 'Final round' : 'Round '+(i+1)} <small>Holes ${s.r[0]+1}${s.r[1]-s.r[0]>1 ? '–'+s.r[1] : ''}</small></h5>
+        ${Object.entries(groups).map(([l,ms])=>`<div class="mp-grp"><span class="mp-gl">${esc(l)}</span>${ms.map(m=>matchCard(m, opts)).join('')}</div>`).join('')}</div>`;
+    }).join('');
+  }
+  // A live match's score from your side: "2 UP", "1 DN", "AS" (threesomes list holes won)
+  function liveStatus(m){
+    const yi = m.ps.findIndex(p=>p.you); if(yi < 0) return '';
+    if(m.ps.length === 2){ const d = m.won[yi] - m.won[1-yi]; return d === 0 ? 'AS' : Math.abs(d)+(d>0?' UP':' DN'); }
+    const lead = Math.max(...m.won), mine = m.won[yi];
+    return mine === lead ? (m.won.filter(w=>w===lead).length>1 ? 'Tied' : 'Leading') : (lead-mine)+' back';
+  }
+  const toSaved = m => ({l:m.label, p:m.ps.map(p=>p.name), w:m.won, s:m.str, o:m.o});
+
   // ---------- Saved progress (this device only) ----------
   let T = null, field = [];
   function load(){ try{ const s = JSON.parse(localStorage.getItem(TN_KEY)||'null'); if(s && s.play && s.seed && s.form) return s; }catch(e){} return null; }
@@ -254,6 +333,7 @@
   }
   // Re-rank a saved board with the current tiebreak rule
   function rankBoard(e){
+    if(isMatch(e)) return e.board.map(x=>({...x})); // bracket order is final, no re-rank
     const myHc = Number(e.index); // your exact index breaks ties, e.g. 38.6 loses to a 39
     const rows = e.board.map(x=>({...x, hc: x.you ? myHc : x.h}));
     rankRows(rows).forEach(r=>{ r.pos = r.label; delete r.label; delete r.hc; });
@@ -268,10 +348,26 @@
     return live.concat(rows.filter(r=>r.thru===0).sort((a,b)=>a.group-b.group).map(r=>({...r,label:'–'})));
   }
 
+  // Live match play: the bracket so far, the round you're in, and your match in it
+  function liveMatch(mine){
+    const n = T.play.holes.length, B = matchBracketOf(T, field, mine);
+    let si = B.segs.findIndex(s=>mine < s.range[1]); if(si < 0) si = B.segs.length-1;
+    const my = B.segs[si].matches.find(m=>m.ps.some(p=>p.you)) || null;
+    const place = B.order ? B.order.findIndex(p=>p.you)+1 : null;
+    return {B, si, my, n, place};
+  }
+
   // ---------- Pieces inside Add a Round ----------
   function refreshAddBlock(){
     const banner = $('tnResumeBanner'), start = $('tnStartBlock');
-    if(T){
+    if(T && T.tier === 'club'){
+      const L = liveMatch(T.mine.length), mine = T.mine.length, done = mine === L.n;
+      banner.innerHTML = `<div><b>${done ? 'Match play finished' : 'Match play in progress'}</b><span>${esc(T.form.name)} · ${done ? 'finished '+ordinal(L.place)+' · '+sum(T.mine,L.n) : mine ? 'Round '+(L.si+1)+' · '+(L.my ? liveStatus(L.my)+(L.my.thru ? ' thru '+L.my.thru : '') : '') : 'on the first tee'}</span></div>
+        <button class="btn" type="button" id="tnResumeBtn">${done ? 'Post Round' : 'Resume'}</button>`;
+      banner.style.display = 'flex';
+      start.style.display = 'none';
+      $('tnResumeBtn').onclick = () => done ? postRound() : openLive();
+    } else if(T){
       const n = T.play.holes.length, mine = T.mine.length, me = standings(mine).find(r=>r.you);
       banner.innerHTML = `<div><b>${mine===n ? 'Event finished' : 'Event in progress'}</b><span>${esc(T.form.name)} · ${mine===n ? 'finished '+ordinal(me.label)+' · '+me.gross : mine ? 'thru '+mine+' · '+me.label+' ('+fmt(me.vs)+')' : 'on the first tee'}</span></div>
         <button class="btn" type="button" id="tnResumeBtn">${mine===n ? 'Post Round' : 'Resume'}</button>`;
@@ -303,15 +399,20 @@
     overlay.classList.add('open');
   }
   function renderSetup(){
-    { const h = overlay.querySelector('h3'); if(h) h.innerHTML = bgaImg(22) + 'BGA Tour'; }
     const {form:f, play, index, target, tier, picks} = draft;
+    { const h = overlay.querySelector('h3'); if(h) h.innerHTML = bgaImg(22) + (tier==='club' ? 'BGA Match Play' : 'BGA Tour'); }
     const hs = picks.map(n=>KIDS.find(k=>k.name===n).hcp);
     const sizes = groupSizes(picks.length+1);
+    let fieldLine;
+    if(tier === 'club'){
+      const N = picks.length+1, segs = matchSegments(f.holes, bracketRounds(N));
+      fieldLine = `<span>${N}-player bracket (${picks.length} opponents, HC ${Math.min(...hs)}${picks.length>1?' to '+Math.max(...hs):''}) · ${segs.length} round${segs.length===1?'':'s'}: ${segs.map(s=>s[1]-s[0]>1 ? (s[0]+1)+'–'+s[1] : String(s[1])).join(', ')}</span>
+        <span>Losers drop into a placement bracket, so every place is played for. Ties: strokes in the match, then higher HC.</span>`;
+    } else fieldLine = `<span>${picks.length} opponent${picks.length===1?'':'s'}, HC ${Math.min(...hs)}${picks.length>1?' to '+Math.max(...hs):''} · your HC ${Math.round(index)} · ${sizes.length} group${sizes.length===1?'':'s'}${sizes.length>1?' ('+sizes.join('-')+')':''}, you're in the last</span>`;
     body.innerHTML = `
       <p class="idx-note" style="margin:0 0 12px;">${esc(f.name)} · ${f.holes} holes · Par ${play.par}</p>
-      <div class="tn-event"><b>${esc(tier==='major' ? eventTitle(tier) : nextSeriesName(f.name, 0, tier))}</b><span>${tier==='major' ? 'Major' : tier==='club' ? 'Qualifier' : TIERS[tier].label+' event'} · ${TIERS[tier].why}</span>
-        ${tier==='club' ? `<span>Qualifier ladder: ${clubWins()} Qualifier win${clubWins()===1?'':'s'} so far. Win to add the next player.</span>` : ''}
-        <span>${picks.length} opponent${picks.length===1?'':'s'}, HC ${Math.min(...hs)}${picks.length>1?' to '+Math.max(...hs):''} · your HC ${Math.round(index)} · ${sizes.length} group${sizes.length===1?'':'s'}${sizes.length>1?' ('+sizes.join('-')+')':''}, you're in the last</span></div>
+      <div class="tn-event"><b>${esc(tier==='major' ? eventTitle(tier) : nextSeriesName(f.name, 0, tier))}</b><span>${tier==='major' ? 'Major' : TIERS[tier].label+' event'} · ${TIERS[tier].why}</span>
+        ${fieldLine}</div>
       <div class="tn-readout">
         <div><span class="tn-big">${sum(target,target.length)}</span><span class="tn-cap">Your Par</span></div>
         <p>Rating ${f.rating.toFixed(1)} / slope ${f.slope} · index ${index.toFixed(1)}</p>
@@ -341,7 +442,69 @@
       tr.addEventListener('transitionend', ()=>{ tr.style.transition=''; tr.style.zIndex=''; tr.style.position=''; }, {once:true});
     });
   }
+  function renderLiveMatch(){
+    { const h = overlay.querySelector('h3'); if(h) h.innerHTML = bgaImg(22) + 'BGA Match Play'; }
+    const holes = T.play.holes, mine = T.mine.length, L = liveMatch(mine), n = L.n, done = mine === n;
+    const h = holes[mine], seg = L.B.segs[L.si], my = L.my;
+    // What just happened: the round you finished on the last hole entered
+    let news = '';
+    if(mine > 0 && !done && L.si > 0 && mine === seg.range[0]){
+      const prev = L.B.segs[L.si-1].matches.find(m=>m.ps.some(p=>p.you));
+      if(prev){ const wonIt = prev.ps[prev.o[0]].you, opp = prev.ps.filter(p=>!p.you).map(p=>mpName(p.name)).join(' & ');
+        news = `<p class="mp-news ${wonIt?'up':'dn'}">${wonIt ? 'Won' : 'Lost'} vs ${esc(opp)} · now playing in the ${esc(my ? my.label : '')} bracket</p>`; }
+    }
+    let head;
+    if(done){
+      head = `<h4 class="tn-hole">${L.place===1 ? 'You win the Match Play!' : 'Finished '+ordinal(L.place)+' of '+L.B.order.length}<small>gross ${sum(T.mine,n)} · Par ${sum(T.target,n)}</small></h4>`;
+    } else {
+      head = `<h4 class="tn-hole">Hole ${h.no}<small>Par ${T.target[mine]} (Course Par ${h.par})${h.y?' · '+h.y+' yds':''}${h.si!=null?' · SI '+h.si:''}</small></h4>`;
+    }
+    const names = {'-2':'eagle','-1':'birdie','0':'Par','1':'bogey','2':'double','3':'triple'};
+    const pad = done ? '' : `<div class="tn-pad">${Array.from({length:10},(_,i)=>2+i).map(s=>`<button type="button" data-s="${s}">${s}<em>${names[s-h.par]||''}</em></button>`).join('')}</div>`;
+    const card = `<div class="tn-card">${holes.map((hh,i)=>`<div class="${i===mine?'cur':''}"><i>${hh.no}</i>${T.mine[i]??'·'}<s>${T.target[i]}</s></div>`).join('')}</div>`;
+    const segTxt = s => 'Holes '+(s.range[0]+1)+(s.range[1]-s.range[0]>1 ? '–'+s.range[1] : '');
+    // Your match, hole by hole
+    let mineBox = '';
+    if(my && !done){
+      const hrow = Array.from({length:my.len},(_,k)=>seg.range[0]+k);
+      mineBox = `<div class="mp-live"><div class="mp-live-h"><b>${L.si===L.B.segs.length-1 ? 'Final round' : 'Round '+(L.si+1)} · ${esc(my.label)}</b><span>${segTxt(seg)}</span></div>
+        <table class="mp-holes"><thead><tr><th></th>${hrow.map(x=>`<th>${x+1}</th>`).join('')}<th>Won</th></tr></thead><tbody>
+        ${my.ps.map((p,pi)=>`<tr class="${p.you?'me':''}"><td>${esc(p.you ? ME_SHORT : mpName(p.name))}${p.you ? '' : `<small>HC ${p.hc}</small>`}</td>${hrow.map(x=>{ if(x >= mine) return '<td>·</td>';
+          const sc = my.ps.map(q=>q.scores[x]), lo = Math.min(...sc), win = sc[pi]===lo && sc.filter(v=>v===lo).length===1;
+          return `<td class="${win?'w':''}">${p.scores[x]}</td>`; }).join('')}<td><b>${my.won[pi]}</b></td></tr>`).join('')}
+        </tbody></table><p class="mp-stat">${liveStatus(my)}${my.thru ? ' thru '+my.thru+' of '+my.len : ' · on the tee'}</p></div>`;
+    }
+    // The rest of this round, as it stands
+    const others = done ? '' : seg.matches.filter(m=>m!==my).map(m=>matchCard(toSaved(m), {done:m.done})).join('');
+    const finished = L.B.segs.filter(s=>s.matches.length && s.matches.every(m=>m.done)).map(s=>({r:s.range, m:s.matches.map(toSaved)}));
+    let board = '';
+    if(done){
+      board = `<div class="tn-boardwrap"><table class="tn-board"><thead><tr><th>Pos</th><th>Player</th><th class="tn-n">Gross</th></tr></thead><tbody>
+        ${L.B.order.map((p,i)=>`<tr class="${p.you?'tn-you':''}"><td>${i+1}</td><td class="tn-name">${esc(p.you ? ME_NAME : shortName(p.name))}<small>${p.you ? 'Index '+Number(T.index).toFixed(1) : 'HC '+p.hc+' · '+esc(p.st)}</small></td><td class="tn-n">${sum(p.scores,n)}</td></tr>`).join('')}</tbody></table></div>`;
+    }
+    body.innerHTML = `
+      <p class="idx-note" style="margin:0 0 10px;">${esc(T.form.name)} · ${esc(T.majorName || nextSeriesName(T.form.name, 0, 'club'))} · ${L.B.segs.length} rounds · ${matchPlayers(T, field).length} players</p>
+      <div class="strip" style="margin:0 0 14px;">
+        <div class="cell"><div class="num">${done ? ordinal(L.place) : (L.si+1)+'/'+L.B.segs.length}</div><div class="lbl">${done ? 'Finish' : 'Round'}</div></div>
+        <div class="cell flag"><div class="num">${done ? fmt(sum(T.mine,n)-sum(T.target,n)) : my ? liveStatus(my) : '–'}</div><div class="lbl">${done ? 'To Par' : 'Match'}</div></div>
+        <div class="cell"><div class="num" style="font-size:16px">${done ? sum(T.mine,n) : my ? esc(my.label.replace('Places ','')) : '–'}</div><div class="lbl">${done ? 'Gross' : 'Playing for'}</div></div>
+      </div>
+      ${news}${head}${pad}${card}
+      <div class="tn-row">${done ? '<button class="btn" id="tnPost" type="button">Post Round to History</button>' : ''}</div>
+      ${mineBox}${board}
+      ${others ? `<h4 class="tn-shelf-h" style="margin-top:14px;">Other matches this round</h4><div class="mp-grid">${others}</div>` : ''}
+      ${finished.length ? `<h4 class="tn-shelf-h" style="margin-top:14px;">Bracket</h4>${bracketHtml(finished)}` : ''}
+      <div class="tn-row">
+        ${mine ? '<button class="btn secondary" id="tnUndo" type="button">Undo last hole</button>' : ''}
+        ${done ? '' : `<button class="btn secondary" id="tnQuit" type="button">${confirmQuit ? 'Tap again to abandon' : 'Abandon event'}</button>`}
+      </div>`;
+    body.querySelectorAll('[data-s]').forEach(b=>b.onclick=()=>{ T.mine.push(+b.dataset.s); confirmQuit=false; save(); renderLive(); refreshAddBlock(); try{ triggerHaptic(); }catch(e){} });
+    const u = $('tnUndo'); if(u) u.onclick = ()=>{ T.mine.pop(); save(); renderLive(); refreshAddBlock(); };
+    const q = $('tnQuit'); if(q) q.onclick = ()=>{ if(!confirmQuit){ confirmQuit=true; renderLive(); return; } T=null; field=[]; confirmQuit=false; save(); refreshAddBlock(); overlay.classList.remove('open'); };
+    const p = $('tnPost'); if(p) p.onclick = postRound;
+  }
   function renderLive(){
+    if(T.tier === 'club') return renderLiveMatch();
     // Title: BGA logo, plus the Major's logo during a Major
     { const h = overlay.querySelector('h3'); if(h){ const mn = T.tier === 'major' ? (T.majorName || nextMajorName()) : null;
       h.innerHTML = bgaImg(22) + (mn && MAJOR_ICONS[mn] ? majorIcon(mn, 26) : '') + 'BGA Tour'; } }
@@ -435,8 +598,9 @@
         if(r && r.holeDetail && r.course.trim().toLowerCase() === T.form.name.trim().toLowerCase() && r.holeDetail.scores.length === n){
           // Use the scores actually saved, in case any were changed on the Add a Round form
           T.mine = r.holeDetail.scores.slice();
-          const rows = standings(n);
-          r.event = {tier:T.tier, target:sum(T.target,n), index:T.index, seed:T.seed,
+          const rows = T.tier === 'club' ? null : standings(n);
+          if(T.tier === 'club') r.event = matchEventFrom(T, field);
+          else r.event = {tier:T.tier, target:sum(T.target,n), index:T.index, seed:T.seed,
             board: rows.map(x=>{ const p = field.find(f=>f.name===x.name);
               return {n:x.name, you:!!x.you, pos:x.label, h:p?p.hcp:null, st:p?p.style:null, g:x.group, gross:x.gross, vs:x.vs}; })};
           persistAdded();
@@ -478,11 +642,22 @@
     return rounds.some(x => x !== r && x.holes === r.holes && x.course.trim().toLowerCase() === key && new Date(x.date) < d) ? 'tour' : 'club';
   }
   const hasCard = r => r.holeDetail && Array.isArray(r.holeDetail.scores) && r.holeDetail.scores.length === r.holes && Array.isArray(r.holeDetail.pars);
+  // Rounds without hole scores (only old Qualifiers can need this): spread the gross score
+  // evenly over the holes so the match bracket can still be played out
+  function cardOf(r){
+    if(hasCard(r)) return r.holeDetail;
+    const n = r.holes, g = parseInt(String(r.score), 10), par = parOfRound(r) || (n===9 ? 36 : 72);
+    const pars = Array.from({length:n},(_,i)=> Math.floor(par/n) + (i < par - Math.floor(par/n)*n ? 1 : 0));
+    const over = (isNaN(g) ? par : g) - par, base = Math.floor(over/n), rem = over - base*n;
+    return {pars, scores: pars.map((p,i)=> p + base + (i < rem ? 1 : 0))};
+  }
   function makeEvent(r, tier, seed, index){
-    const f = {name:r.course, holes:r.holes, rating:r.rating, slope:r.slope, pars:r.holeDetail.pars.map(p=>p||4)};
-    const S = {form:f, play:buildPlay(f), index, tier, picks:pickKids(tier, index, {date:r.date, round:r}), seed, mine:r.holeDetail.scores.slice()};
+    const c = cardOf(r);
+    const f = {name:r.course, holes:r.holes, rating:r.rating, slope:r.slope, pars:c.pars.map(p=>p||4)};
+    const S = {form:f, play:buildPlay(f), index, tier, picks:pickKids(tier, index, {date:r.date, round:r}), seed, mine:c.scores.slice()};
     S.target = targetFor(S.play, index);
     const F = buildField(S), n = r.holes;
+    if(tier === 'club') return matchEventFrom(S, F);
     const rows = standings(n, S, F);
     return {tier, target:sum(S.target,n), index, seed,
       board: rows.map(x=>{ const p = F.find(q=>q.name===x.name); return {n:x.name, you:!!x.you, pos:x.label, h:p?p.hcp:null, st:p?p.style:null, g:x.group, gross:x.gross, vs:x.vs}; })};
@@ -500,11 +675,30 @@
     const board = rankBoard(e);
     const me = board.find(x=>x.you) || {};
     const tl = TIERS[e.tier] ? TIERS[e.tier].label : 'Backyard';
-    const pts = e.tier!=='club' ? eventPts(r) : null, myTot = pts ? monthTotalThrough('You', r) : 0;
+    const pts = eventPts(r), myTot = monthTotalThrough('You', r);
+    if(isMatch(e)){
+      // Match record per player (W-L), from the saved bracket
+      const rec = {}; (e.bracket||[]).forEach(s=>s.m.forEach(m=>m.p.forEach((nm,i)=>{ const o = rec[nm] || (rec[nm] = [0,0]); o[m.o[0]===i ? 0 : 1]++; })));
+      const link = ` data-from="round" data-key="${key}"`;
+      const rowsM = board.map(x=>{ const nm = x.you ? 'You' : x.n, w = rec[nm] || [0,0];
+        return `<tr class="${x.you?'tn-you':''}"><td>${esc(x.pos)}</td><td class="tn-name"><span class="tn-plink" data-tn-act="player" data-name="${esc(nm)}"${link}>${esc(x.you ? ME_NAME : x.n)}</span><small>${x.you ? 'Index '+Number(e.index).toFixed(1) : 'HC '+x.h+' · '+esc(x.st)} · +${pts[nm]||0} pts (${monthTotalThrough(nm, r)} total)</small></td><td class="tn-n">${w[0]}–${w[1]}</td><td class="tn-n">${x.gross}</td></tr>`; }).join('');
+      return `<div class="tn-saved" data-key="${key}">
+        <h4 class="tn-hole" style="margin:10px 0 2px;display:flex;align-items:center;gap:6px;">${bgaImg(24)}<span class="tn-evlink" data-tn-act="eventhist" data-ev="${esc('series:'+seriesName(r.course))}" data-from="round" data-key="${key}">${esc(eventName(r))}</span></h4>
+        <p class="idx-note" style="margin:0 0 8px;">Match play · Finished ${esc(ordinal(me.pos))}/${e.board.length} · ${(e.bracket||[]).length} rounds</p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">${hasCard(r) ? `<button class="modal-edit" type="button" data-tn-act="editevent" data-key="${key}">Edit event</button>` : ''}${editBtn}</div>
+        <div class="tn-editor"></div>
+        <div data-tn-board${tnCardOpen ? '' : ' hidden'}>
+        <div class="tn-boardwrap"><table class="tn-board">
+          <thead><tr><th>Pos</th><th>Player</th><th class="tn-n">W–L</th><th class="tn-n">Gross</th></tr></thead>
+          <tbody>${rowsM}</tbody></table></div>
+        <h4 class="tn-shelf-h" style="margin-top:14px;">Bracket</h4>
+        ${bracketHtml(e.bracket||[], {link})}
+        <p class="idx-note" style="margin:6px 0 0;">Each match: strokes in small type, holes won on the right. Winner in bold.</p></div></div>`;
+    }
     const rows = board.map(x=>`<tr class="${x.you?'tn-you':''}"><td>${esc(x.pos)}</td><td class="tn-name"><span class="tn-plink" data-tn-act="player" data-name="${esc(x.you ? 'You' : x.n)}" data-from="round" data-key="${key}">${esc(x.you ? ME_NAME : x.n)}</span><span class="tn-grp">G${x.g}</span><small>${x.you ? 'Index '+Number(e.index).toFixed(1)+(pts ? ' · +'+(pts.You||0)+' pts ('+myTot+' total)' : '') : 'HC '+x.h+' · '+esc(x.st)+(pts ? ' · +'+(pts[x.n]||0)+' pts ('+monthTotalThrough(x.n, r)+' total)' : '')}</small></td><td class="tn-n ${cls(x.vs)}">${fmt(x.vs)}</td><td class="tn-n">${x.gross}</td></tr>`).join('');
     return `<div class="tn-saved" data-key="${key}">
       <h4 class="tn-hole" style="margin:10px 0 2px;display:flex;align-items:center;gap:6px;">${e.tier==='major' ? '' : bgaImg(24)}<span class="tn-evlink" data-tn-act="eventhist" data-ev="${esc(e.tier==='major' ? majorNameFor(r) : 'series:'+seriesName(r.course))}" data-from="round" data-key="${key}">${e.tier==='major' ? majorIcon(majorNameFor(r), 30)+esc(majorNameFor(r)) : esc(eventName(r))}</span></h4>
-      <p class="idx-note" style="margin:0 0 8px;">${e.tier==='major' ? 'Major' : e.tier==='club' ? 'Qualifier' : esc(tl)+' event'} · Finished ${esc(ordinal(me.pos))}/${e.board.length} · Par ${e.target}</p>
+      <p class="idx-note" style="margin:0 0 8px;">${e.tier==='major' ? 'Major' : e.tier==='club' ? 'Match' : esc(tl)+' event'} · Finished ${esc(ordinal(me.pos))}/${e.board.length} · Par ${e.target}</p>
       <div style="display:flex;gap:8px;flex-wrap:wrap;">${hasCard(r) ? `<button class="modal-edit" type="button" data-tn-act="editevent" data-key="${key}">Edit event</button>` : ''}${editBtn}</div>
       <div class="tn-editor"></div>
       <div class="tn-boardwrap" data-tn-board${tnCardOpen ? '' : ' hidden'}><table class="tn-board">
@@ -544,7 +738,7 @@
       const p = get(x.you ? 'You' : x.n, !!x.you, x.you ? null : x.h);
       if(p.app[t] == null) return; p.app[t]++; if(String(x.pos)==='1') p.win[t]++; }); });
     const tot = o => o.club + o.tour + o.major;
-    const totW = o => o.tour + o.major; // Club wins don't count toward total wins
+    const totW = o => o.club + o.tour + o.major; // Match, Tour and Major wins all count
     // Sortable: tap a header. Default is total wins, most first.
     const KEY = {player:p=>p.you?'':p.name.split(/\s+/).pop()+' '+p.name, apps:p=>tot(p.app), club:p=>p.win.club, tour:p=>p.win.tour, major:p=>p.win.major, wins:p=>totW(p.win), elo:p=>ELO[p.name]!=null?ELO[p.name]:-1};
     const kf = KEY[tnCareerSort.col] || KEY.wins, dir = tnCareerSort.dir;
@@ -556,14 +750,14 @@
       : '<tr><td colspan="7">No BGA events yet.</td></tr>';
     return `      <div id="tnStatsBox">
       <div class="tn-boardwrap"><table class="tn-board tn-career">
-        <thead><tr>${th('player','Player')}${th('apps','Apps',1)}${th('club','Qual.',1)}${th('tour','Tour',1)}${th('major','Major',1)}${th('wins','Wins',1)}${th('elo','Elo',1)}</tr></thead>
+        <thead><tr>${th('player','Player')}${th('apps','Apps',1)}${th('club','Match',1)}${th('tour','Tour',1)}${th('major','Major',1)}${th('wins','Wins',1)}${th('elo','Elo',1)}</tr></thead>
         <tbody>${body}</tbody></table></div>
-      <p class="idx-note" style="margin:6px 0 12px;">Qual., Tour and Major columns are wins. Total wins count Tour and Major only. Elo starts at 1500 and moves with every head-to-head finish. Tap a player for their round-by-round finishes.</p></div>`;
+      <p class="idx-note" style="margin:6px 0 12px;">Match, Tour and Major columns are wins. Elo starts at 1500 and moves with every head-to-head finish. Tap a player for their round-by-round finishes.</p></div>`;
   };
 
   let tnStatsOpen = false, tnCardOpen = true;
   const TIER_LBL = t => TIERS[t] ? TIERS[t].label : '—';
-  // ShedEx points per event (Tour and Major events; Qualifiers earn none) and its rank among everyone
+  // ShedEx points per event (every event) and its rank among everyone
   function avgLine(name){
     const T = {};
     pointEvents().forEach(r => { const pts = eventPts(r); rankBoard(r.event).forEach(x => { const n = x.you ? 'You' : x.n; (T[n] = T[n] || []).push(pts[n] || 0); }); });
@@ -587,7 +781,7 @@
     document.getElementById('detailMiiRow').style.display = 'none';
     document.getElementById('detailTitle').innerHTML = `<span id="courseTitleText" data-name="${esc(name)}">${esc(dispName(name))}</span><span class="crr-rs title-subline">${hc!=null ? 'HC '+hc+' · '+styleOf(name)+' · ' : ''}BGA</span>`;
     document.getElementById('detailTitle').style.marginTop = navStack.length > 0 ? '28px' : '0';
-    const wins = t => rowsData.filter(d=>String(d.x.pos)==='1' && (t ? d.r.event.tier===t : d.r.event.tier!=='club')).length;
+    const wins = t => rowsData.filter(d=>String(d.x.pos)==='1' && (t ? d.r.event.tier===t : true)).length;
     const cupRes = cupMonths().filter(cupDone).map(ym=>{ const x = cupStandings(ym).rows.find(q=>q.name===name); return x ? {ym, x} : null; }).filter(Boolean);
     const cupRows = cupRes.map(c=>({k:c.ym+'-99', html:`<tr class="tn-click${c.x.pos===1 ? ' tn-you' : ''}" data-tn-act="cup" data-ym="${c.ym}" data-from="player" data-name="${esc(name)}"><td class="tn-name tn-rcol">${ymLabel(c.ym, true)}</td><td class="tn-wrap"><span class="tn-evlink">${majorIcon(CUP, 18)}${CUP}</span></td><td class="tn-n">${finBadge(c.x.label)}</td></tr>`}));
     const evRows = rowsData.map(d=>({k:d.r.date, html:(()=>{
@@ -602,11 +796,12 @@
     const wonMajor = {}; rowsData.forEach(d=>{ if(d.r.event.tier==='major' && String(d.x.pos)==='1'){ const m = eventName(d.r); wonMajor[m] = (wonMajor[m]||0)+1; } });
     const shelf = `<div class="tn-shelf">${MAJORS.map(m=>`<div class="tn-tro${wonMajor[m]?' won':''}" data-tn-act="eventhist" data-ev="${esc(m)}" data-from="player" data-name="${esc(name)}">${majorIcon(m, 34)}<b>${wonMajor[m]||0}</b><span>${esc((SHELF_LBL[m]||MAJOR_SHORT[m]).replace(/^The /,''))}</span></div>`).join('')}
       <div class="tn-tro tn-tour${wins('tour')?' won':''}">${bgaImg(26)}<b>${wins('tour')}</b><span>Tour wins</span></div>
+      <div class="tn-tro tn-tour${wins('club')?' won':''}">${bgaImg(26)}<b>${wins('club')}</b><span>Match wins</span></div>
       <div class="tn-tro${cupW?' won':''}" data-tn-act="cup" data-from="player" data-name="${esc(name)}">${majorIcon(CUP, 34)}<b>${cupW}</b><span>ShedEx Cup</span></div></div>`;
     document.getElementById('detailBody').innerHTML = `
       ${avgLine(name)}
       <h4 class="tn-shelf-h">Trophy shelf</h4>${shelf}
-      <p class="note" style="margin:2px 0 12px;">${rowsData.length} appearances · ${wins()} wins (Tour ${wins('tour')}, Major ${wins('major')}) · Qualifier wins ${wins('club')}${cupW ? ' · ShedEx Cups '+cupW : ''}</p>
+      <p class="note" style="margin:2px 0 12px;">${rowsData.length} appearances · ${wins()} wins (Tour ${wins('tour')}, Match ${wins('club')}, Major ${wins('major')})${cupW ? ' · ShedEx Cups '+cupW : ''}</p>
       <div class="tn-boardwrap"><table class="tn-board">
         <thead><tr><th>Round</th><th>Event</th><th class="tn-n">Finish</th></tr></thead>
         <tbody>${body || '<tr><td colspan="3">No appearances yet.</td></tr>'}</tbody></table></div>
@@ -627,11 +822,11 @@
       name = MAJORS[(majorRounds().length + prior) % MAJORS.length]; evKey = name;
     } else {
       const played = f.holes === 18 || rounds.some(r=>r.holes===f.holes && r.course.trim().toLowerCase()===key) || futures.slice(0,i).some(x=>!maj(x) && x.course.trim().toLowerCase()===key);
-      // Earlier planned rounds in this series that will be Tour events (not the course's Qualifier)
-      const willQualify = x => x.holes === 9 && !rounds.some(r=>r.holes===9 && r.course.trim().toLowerCase()===x.course.trim().toLowerCase())
+      // Earlier planned rounds in this series that will be Tour events (not the course's Match Play)
+      const willMatch = x => x.holes === 9 && !rounds.some(r=>r.holes===9 && r.course.trim().toLowerCase()===x.course.trim().toLowerCase())
         && !futures.slice(0, futures.indexOf(x)).some(y=>y.holes===9 && y.course.trim().toLowerCase()===x.course.trim().toLowerCase());
-      const earlier = futures.slice(0,i).filter(x=>!maj(x) && seriesName(x.course)===seriesName(f.course) && !willQualify(x)).length;
-      name = played ? nextSeriesName(f.course, Math.max(0, earlier), 'tour') : qualifierName(f.course); evKey = 'series:'+seriesName(f.course);
+      const earlier = futures.slice(0,i).filter(x=>!maj(x) && seriesName(x.course)===seriesName(f.course) && !willMatch(x)).length;
+      name = played ? nextSeriesName(f.course, Math.max(0, earlier), 'tour') : matchName(f.course); evKey = 'series:'+seriesName(f.course);
     }
     return `<p class="note" style="margin:-8px 0 12px;display:flex;align-items:center;gap:6px;"><span class="tn-evlink" data-tn-act="eventhist" data-ev="${esc(evKey)}" data-from="future" data-fid="${esc(f.id)}">${majorIcon(name, 22)}<span>BGA: <strong>${esc(name)}</strong></span></span></p>`;
   };
@@ -651,13 +846,11 @@
     const myPos = r => String((rankBoard(r.event).find(x=>x.you)||{}).pos);
     const won = t => evs.filter(r=>r.event.tier===t && myPos(r)==='1').length;
     const played = t => evs.filter(r=>r.event.tier===t).length;
-    const ladder = 1 + won('club');
     detailTitle('BGA', `${evs.length} event${evs.length===1?'':'s'} played`);
     document.getElementById('detailTitle').insertAdjacentHTML('afterbegin', `<span class="tn-titlelogo">${bgaImg(60)}</span>`);
     const stat = (n, l) => `<div class="cell"><div class="num">${n}</div><div class="lbl">${l}</div></div>`;
     showDetail(`
-      <div class="strip" style="margin:6px 0 14px;">${stat(won('club'), 'Qualifier Wins')}${stat(won('tour'), 'Tour Wins')}${stat(won('major'), 'Majors')}</div>
-      <p class="note" style="margin:0 0 14px;">Next Qualifier field: ${Math.min(30, ladder)} opponent${ladder===1?'':'s'}</p>
+      <div class="strip" style="margin:6px 0 14px;">${stat(won('club'), 'Match Wins')}${stat(won('tour'), 'Tour Wins')}${stat(won('major'), 'Majors')}</div>
       <div class="tn-hubmenu">
         <button type="button" class="btn" data-tn-act="allevents">Show All Events</button>
         <button type="button" class="btn" data-tn-act="career">Career Results</button>
@@ -669,7 +862,7 @@
     detailTitle('Career Results', 'BGA');
     showDetail(window.tnStatsHtml() + hubLink());
   }
-  // Every course's Qualifier and Opens, grouped
+  // Every course's Match Play and Opens, grouped
   function openSeriesList(){
     const evs = rounds.filter(r=>r.event && r.event.tier!=='major' && Array.isArray(r.event.board));
     const S = {};
@@ -678,7 +871,7 @@
       const mine = list.filter(r=>String((rankBoard(r.event).find(x=>x.you)||{}).pos)==='1').length;
       return `<tr class="tn-click" data-tn-act="eventhist" data-ev="${esc('series:'+n)}" data-from="serieslist"><td class="tn-name tn-wrap">${esc(n)}</td><td class="tn-n">${list.length}</td><td class="tn-n">${mine}</td></tr>`;
     }).join('');
-    detailTitle('Course Events', 'Qualifiers and Opens');
+    detailTitle('Course Events', 'Match Play and Opens');
     showDetail(`<div class="tn-boardwrap"><table class="tn-board"><thead><tr><th>Event</th><th class="tn-n">Played</th><th class="tn-n">Your wins</th></tr></thead>
       <tbody>${rows || '<tr><td colspan="3">No course events yet.</td></tr>'}</tbody></table></div>` + hubLink());
   }
@@ -721,7 +914,7 @@
     const isMajor = MAJORS.includes(ev), all = isMajor && view === 'all', series = ev.startsWith('series:') ? ev.slice(7) : null;
     const list = (all ? majorRounds() : isMajor ? majorRounds().filter(r=>majorNameFor(r)===ev) : series ? seriesRounds(series) : rounds.filter(r=>r.event && r.event.tier===ev && Array.isArray(r.event.board)))
       .slice().sort((a,b)=>evOrder(b,a));
-    const title = all ? 'All Majors' : isMajor ? ev : series ? series : ev==='club' ? 'Qualifiers' : (TIERS[ev] ? TIERS[ev].label+' events' : 'BGA');
+    const title = all ? 'All Majors' : isMajor ? ev : series ? series : ev==='club' ? 'Matches' : (TIERS[ev] ? TIERS[ev].label+' events' : 'BGA');
     document.getElementById('detailMiiRow').innerHTML = '';
     document.getElementById('detailMiiRow').style.display = 'none';
     const logo = isMajor && !all && MAJOR_ICONS[ev] ? `<span class="tn-titlelogo">${majorIcon(ev, 60)}</span>` : '';
@@ -767,19 +960,18 @@
       <p class="note" style="margin:2px 0 8px;">${evs.length} points event${evs.length===1?'':'s'} in ${ymLabel(ym)}${done ? '' : ' so far. The Cup is decided when the month ends.'}</p>
       <div class="tn-boardwrap"><table class="tn-board">
         <thead><tr><th>Pos</th><th>Player</th><th class="tn-n">Pts</th></tr></thead>
-        <tbody>${stand || '<tr><td colspan="3">No Tour or Major events this month yet.</td></tr>'}</tbody></table></div>
+        <tbody>${stand || '<tr><td colspan="3">No events this month yet.</td></tr>'}</tbody></table></div>
       ${evList ? `<h4 class="tn-shelf-h" style="margin-top:16px;">Events</h4><div class="tn-boardwrap"><table class="tn-board"><thead><tr><th>Event</th><th class="tn-n">You</th><th class="tn-n">Pts</th></tr></thead><tbody>${evList}</tbody></table></div>` : ''}
       <h4 class="tn-shelf-h" style="margin-top:16px;">Every ShedEx Cup</h4>
       <div class="tn-boardwrap"><table class="tn-board"><thead><tr><th>Month</th><th>Winner</th><th class="tn-n">You</th></tr></thead><tbody>${all || '<tr><td colspan="3">None yet.</td></tr>'}</tbody></table></div>
-      <p class="idx-note" style="margin:6px 0 0;">Tour and Major events earn points (Qualifiers don't): 1st 15, 2nd 12, 3rd 10, then 9 down to 1 for 12th. Ties share the place's points. Level on points goes to the higher HC, and if that's level too, to you.</p>${hubLink()}`;
+      <p class="idx-note" style="margin:6px 0 0;">Every event earns points (Matches by final bracket place): 1st 15, 2nd 12, 3rd 10, then 9 down to 1 for 12th. Ties share the place's points. Level on points goes to the higher HC, and if that's level too, to you.</p>${hubLink()}`;
     detailOverlay.classList.add('open'); detailOverlay.scrollTop = 0;
     try{ fitCourseTitle(); }catch(e){}
     updateBackButton();
   }
 
   // Rebuild saved BGA events with the USGA index each round was played at: same seed and
-  // level, so the field and targets follow the index. Oldest first, so the Qualifier ladder
-  // sees the updated results of earlier events. Rounds built into the file are saved as
+  // level, so the field and targets follow the index. Oldest first. Rounds built into the file are saved as
   // synced copies, the same way editing one works.
   function recalcEvents(){
     const list = rounds.filter(r=>r.event && Array.isArray(r.event.board)).sort(evOrder);
@@ -802,6 +994,33 @@
     rebuildRoundsArray(); try{ recompute(); }catch(e){ console.warn(e); }
     return {changed:changed.length, skipped, total:list.length};
   }
+
+  // One-time switch from Qualifiers to Match Play: any saved 'club' event that isn't a
+  // bracket yet is redrawn as one (same seed and index, Tour pool), so every device that
+  // opens the app lands on the same bracket. Runs at load and after every recompute (synced
+  // rounds can arrive later); the guard stops it re-entering through its own recompute.
+  let migrating = false;
+  function migrateMatches(){
+    if(migrating || typeof rounds === 'undefined' || !Array.isArray(rounds)) return 0;
+    const old = rounds.filter(r=>r.event && r.event.tier==='club' && !isMatch(r.event) && Array.isArray(r.event.board));
+    if(!old.length) return 0;
+    migrating = true;
+    try{
+      old.forEach(r=>{ const e = r.event;
+        r.event = makeEvent(r, 'club', e.seed != null ? e.seed : hash(roundKey(r)), e.index != null ? e.index : indexBefore(r)); });
+      const fromBase = old.filter(r => addedRounds.indexOf(r) === -1);
+      fromBase.forEach(r=>{
+        [roundKey(r), `${r.date}|${r.course}|${r.score}`, `${r.date}|${r.course}|${r.score}|b${baseRounds.indexOf(r)}`].forEach(k=>{ if(!deletedKeys.includes(k)) deletedKeys.push(k); });
+        addedRounds.push(JSON.parse(JSON.stringify(r)));
+      });
+      persistAdded(); if(fromBase.length) persistDeleted();
+      rebuildRoundsArray(); try{ recompute(); }catch(e){ console.warn(e); }
+    } catch(e){ console.warn('Match play redraw failed', e); }
+    finally { migrating = false; }
+    return old.length;
+  }
+  { const baseRe = window.recompute;
+    if(typeof baseRe === 'function') window.recompute = function(){ const out = baseRe.apply(this, arguments); try{ migrateMatches(); }catch(e){ console.warn(e); } return out; }; }
 
   function findRound(key){ return rounds.find(x => roundKey(x) === key); }
 
@@ -937,6 +1156,7 @@
   $('backyardOpenLink').addEventListener('click', ()=>{ navStack = []; openBackyardHub(); detailOverlay.scrollTop = 0; });
   $('addRoundBtn').addEventListener('click', ()=>{ posting = false; refreshAddBlock(); });
   $('tnClose').addEventListener('click', ()=>overlay.classList.remove('open'));
+  try{ migrateMatches(); }catch(e){ console.warn(e); }
   refreshAddBlock();
   // Read-only helpers for the app shell (app.js) so the BGA tab can draw itself inline
   window.BGA = { ME_NAME, ME_SHORT, KIDS, MAJORS, MAJOR_SHORT, TIERS, rankBoard, eventName, eloRatings, bgaImg, majorIcon,
@@ -945,7 +1165,7 @@
     openAllEvents: () => { navStack = []; openAllEvents(); detailOverlay.scrollTop = 0; },
     openCareer: () => { navStack = []; openCareerResults(); detailOverlay.scrollTop = 0; },
     openSeries: () => { navStack = []; openSeriesList(); detailOverlay.scrollTop = 0; },
-    recalcEvents,
+    recalcEvents, migrateMatches, isMatch,
     openCup: (ym) => { navStack = []; openCup(ym); detailOverlay.scrollTop = 0; },
     openMajors: (name) => { navStack = []; openEventHistory(name || MAJORS[0], name ? undefined : 'all'); detailOverlay.scrollTop = 0; },
     openPlayer: (name) => { navStack = []; openPlayerDetail(name); },
