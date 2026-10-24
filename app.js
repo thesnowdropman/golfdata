@@ -405,7 +405,6 @@
         <button type="button" data-bga="majors">All Majors<span>›</span></button>
         <button type="button" data-bga="cup">ShedEx Cup<span>›</span></button>
         <button type="button" data-bga="career">Career Results<span>›</span></button>
-        <button type="button" data-bga="recordbook">Record Book<span>›</span></button>
       </div>
       ${latest}
       <div class="app-sec-h"><h2>Majors</h2><span class="app-cap">Your wins</span></div>
@@ -425,7 +424,6 @@
     else if(a === 'allevents') BGA.openAllEvents();
     else if(a === 'cup') BGA.openCup();
     else if(a === 'career') BGA.openCareer();
-    else if(a === 'recordbook') BGA.openRecordBook();
     else if(a === 'majors') BGA.openMajors();
     else if(a === 'series') BGA.openSeries();
   });

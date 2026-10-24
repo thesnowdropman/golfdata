@@ -4216,7 +4216,7 @@ function openFutureRoundDetail(id){
     <button class="view-toggle-btn" id="futureViewScorecardBtn" type="button">Scorecard</button>
   </div>`;
   body += `<div id="futureHourlyWeather"></div>`;
-  body += `<div id="futureScorecardView" style="display:none;">${scorecardHtml}</div>`;
+  body += `<div id="futureScorecardView" style="display:none;">${scorecardHtml}${typeof window.tnFutureFieldHtml === 'function' ? '<div style="margin-top:16px">'+window.tnFutureFieldHtml(f)+'</div>' : ''}</div>`;
 
   body += `<div style="text-align:center;margin-top:14px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
     <button class="btn" id="enterScoreBtn" type="button">Enter Score</button>

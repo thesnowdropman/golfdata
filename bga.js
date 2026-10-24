@@ -722,77 +722,9 @@
       <div class="tn-hubmenu">
         <button type="button" class="btn" data-tn-act="allevents">Show All Events</button>
         <button type="button" class="btn" data-tn-act="career">Career Results</button>
-        <button type="button" class="btn" data-tn-act="recordbook">Record Book</button>
         <button type="button" class="btn" data-tn-act="majorshub">All Majors</button>
         <button type="button" class="btn" data-tn-act="serieslist">Course Events</button>
       </div>`);
-  }
-  // ---------- Record Book: per-player averages and bests across every BGA event ----------
-  //  Course par: gross minus the course's par. Event par: gross minus the event's Par for the day.
-  //  HC: gross minus that player's own expected score (their HC through the course's rating/slope;
-  //  yours uses the index the event was played at). Pts: ShedEx points per appearance.
-  //  xPts: points expected from that field, from simulating each event 400 times
-  //  (same field, par and tiebreaks; you play as an Average-style golfer at your index).
-  const XP_SIMS = 400, xpCache = {};
-  function expectedPts(r){
-    const e = r.event, ck = roundKey(r)+'|'+e.seed+'|'+e.index+'|'+e.board.length;
-    if(xpCache[ck]) return xpCache[ck];
-    const c = cardOf(r);
-    const play = buildPlay({name:r.course, holes:r.holes, rating:r.rating, slope:r.slope, pars:c.pars.map(p=>p||4)});
-    const target = targetFor(play, Number(e.index));
-    const players = e.board.map(x=>x.you ? {name:'You', hcp:Number(e.index), hc:Number(e.index), style:'Average', you:true} : {name:x.n, hcp:x.h, hc:x.h, style:x.st && STYLES[x.st] ? x.st : undefined});
-    const tot = players.map(()=>0), rr = rng(hash(ck));
-    for(let k=0;k<XP_SIMS;k++){
-      const res = players.map((p,i)=>({i, p, t:simulate(p, play, rr, target).reduce((a,b)=>a+b,0)}));
-      res.sort((a,b)=>a.t-b.t || b.p.hc-a.p.hc || (b.p.you?1:0)-(a.p.you?1:0));
-      res.forEach((x,place)=>{ tot[x.i] += PTS[place] || 0; });
-    }
-    const out = {}; players.forEach((p,i)=>{ out[p.name] = tot[i]/XP_SIMS; });
-    return xpCache[ck] = out;
-  }
-  let rbSort = {col:'apps', dir:-1};
-  function recordBookRows(){
-    const P = {};
-    rounds.filter(r=>r.event && Array.isArray(r.event.board)).forEach(r=>{
-      const e = r.event, par = parOfRound(r), pts = eventPts(r); let xp = {};
-      try{ xp = expectedPts(r); }catch(err){ console.warn(err); }
-      e.board.forEach(x=>{
-        const nm = x.you ? 'You' : x.n, hc = x.you ? Number(e.index) : Number(x.h);
-        const o = P[nm] || (P[nm] = {name:nm, you:!!x.you, h:x.you ? null : x.h, apps:0, cp:[], ep:[], hp:[], pts:0, xp:0, xpN:0});
-        o.apps++;
-        if(par != null) o.cp.push(x.gross - par);
-        o.ep.push(x.vs);
-        o.hp.push(x.gross - expected(hc, {holes:{length:r.holes}, slope:r.slope, rating:r.rating}));
-        o.pts += pts[nm] || 0;
-        if(xp[nm] != null){ o.xp += xp[nm]; o.xpN++; }
-      });
-    });
-    const avg = a => a.length ? a.reduce((t,v)=>t+v,0)/a.length : null, min = a => a.length ? Math.min(...a) : null;
-    return Object.values(P).map(o=>{ const ppa = o.pts/o.apps, xpa = o.xpN ? o.xp/o.xpN : null;
-      return {...o, cpAvg:avg(o.cp), cpBest:min(o.cp), epAvg:avg(o.ep), epBest:min(o.ep), hpAvg:avg(o.hp), hpBest:min(o.hp), ppa, xpa, diff: xpa != null ? ppa - xpa : null}; });
-  }
-  function openRecordBook(){
-    const rows = recordBookRows();
-    const sg = (v, d) => v == null ? '—' : (Math.abs(v) < (d ? 0.05 : 0.5) ? 'E' : (v > 0 ? '+' : '−') + Math.abs(v).toFixed(d));
-    const nn = (v, d) => v == null ? '—' : v.toFixed(d);
-    const pm = v => v == null ? '—' : (Math.abs(v) < 0.05 ? '0.0' : (v > 0 ? '+' : '−') + Math.abs(v).toFixed(1));
-    const COLS = [
-      ['apps','Apps', o=>o.apps, o=>o.apps, -1],
-      ['cpAvg','CP', o=>o.cpAvg, o=>sg(o.cpAvg,1), 1], ['cpBest','Best CP', o=>o.cpBest, o=>sg(o.cpBest,0), 1],
-      ['epAvg','EP', o=>o.epAvg, o=>sg(o.epAvg,1), 1], ['epBest','Best EP', o=>o.epBest, o=>sg(o.epBest,0), 1],
-      ['hpAvg','HC', o=>o.hpAvg, o=>sg(o.hpAvg,1), 1], ['hpBest','Best HC', o=>o.hpBest, o=>sg(o.hpBest,1), 1],
-      ['ppa','Pts', o=>o.ppa, o=>nn(o.ppa,1), -1], ['xpa','xPts', o=>o.xpa, o=>nn(o.xpa,1), -1], ['diff','+/−', o=>o.diff, o=>pm(o.diff), -1]];
-    const col = COLS.find(c=>c[0]===rbSort.col) || COLS[0];
-    const val = o => { const v = col[2](o); return v == null ? (rbSort.dir < 0 ? -Infinity : Infinity) : v; };
-    rows.sort((a,b)=> (val(a)-val(b))*rbSort.dir || b.apps-a.apps || a.name.localeCompare(b.name));
-    const th = c => `<th class="tn-sort tn-n${rbSort.col===c[0]?' on':''}" data-tn-act="rbsort" data-col="${c[0]}" data-dir="${c[4]}" style="white-space:nowrap">${c[1]}${rbSort.col===c[0] ? (rbSort.dir>0?' ▲':' ▼') : ''}</th>`;
-    const body = rows.map(o=>`<tr class="tn-click${o.you?' tn-you':''}" data-tn-act="player" data-name="${esc(o.name)}" data-from="recordbook"><td class="tn-name rb-stick">${esc(shortName(o.name))}<small>HC ${o.you ? currentIndex().toFixed(1) : o.h}</small></td>${COLS.map(c=>`<td class="tn-n" style="white-space:nowrap">${c[3](o)}</td>`).join('')}</tr>`).join('');
-    detailTitle('Record Book', 'BGA');
-    showDetail(`<div class="tn-boardwrap" style="overflow-x:auto;-webkit-overflow-scrolling:touch;"><table class="tn-board" style="min-width:640px;">
-      <thead><tr><th class="rb-stick">Player</th>${COLS.map(th).join('')}</tr></thead>
-      <tbody>${body || `<tr><td colspan="${COLS.length+1}">No BGA events yet.</td></tr>`}</tbody></table></div>
-      <p class="idx-note" style="margin:6px 0 0;">Swipe sideways for more. Tap a header to sort. Averages are per appearance; "Best" is the single best event.<br>
-      <b>CP</b> score to course par · <b>EP</b> score to event par (par for the day) · <b>HC</b> score to that player's own expected score from their HC · <b>Pts</b> ShedEx points per appearance · <b>xPts</b> points expected from the fields they played (each event simulated ${XP_SIMS} times) · <b>+/−</b> Pts minus xPts (above zero = beating expectations).</p>${hubLink()}`);
   }
   function openCareerResults(){
     detailTitle('Career Results', 'BGA');
@@ -1067,18 +999,12 @@
       else if(from === 'round'){ const rr = findRound(btn.dataset.key); navStack.push(()=>{ window.tnOpenEventTab = true; openDetail(rounds.indexOf(rr)); }); }
       else if(from === 'allevents') navStack.push(()=>openAllEvents());
       else if(from === 'future'){ const fid = btn.dataset.fid; navStack.push(()=>openFutureRoundDetail(fid)); }
-      else if(from === 'recordbook') navStack.push(()=>openRecordBook());
       else if(from === 'event'){ const e2 = btn.dataset.ev, v2 = btn.dataset.view; navStack.push(()=>openEventHistory(e2, v2)); }
       else navStack.push(()=>openCareerResults());
       openPlayerDetail(name); return; }
     if(act0 === 'csort'){ const c = btn.dataset.col;
       tnCareerSort = tnCareerSort.col===c ? {col:c, dir:-tnCareerSort.dir} : {col:c, dir: c==='player' ? 1 : -1};
       const y = detailOverlay.scrollTop; openCareerResults(); detailOverlay.scrollTop = y; return; }
-    if(act0 === 'rbsort'){ const c = btn.dataset.col;
-      rbSort = rbSort.col===c ? {col:c, dir:-rbSort.dir} : {col:c, dir:Number(btn.dataset.dir)||-1};
-      const y = detailOverlay.scrollTop, sx = (document.querySelector('#detailBody .tn-boardwrap')||{}).scrollLeft || 0;
-      openRecordBook(); detailOverlay.scrollTop = y; const w = document.querySelector('#detailBody .tn-boardwrap'); if(w) w.scrollLeft = sx; return; }
-    if(act0 === 'recordbook'){ navStack.push(()=>openBackyardHub()); openRecordBook(); return; }
     if(act0 === 'hub'){ navStack = []; openBackyardHub(); return; }
     if(act0 === 'career'){ navStack.push(()=>openBackyardHub()); openCareerResults(); return; }
     if(act0 === 'serieslist'){ navStack.push(()=>openBackyardHub()); openSeriesList(); return; }
@@ -1122,7 +1048,6 @@
     openHub: () => { navStack = []; openBackyardHub(); detailOverlay.scrollTop = 0; },
     openAllEvents: () => { navStack = []; openAllEvents(); detailOverlay.scrollTop = 0; },
     openCareer: () => { navStack = []; openCareerResults(); detailOverlay.scrollTop = 0; },
-    openRecordBook: () => { navStack = []; openRecordBook(); detailOverlay.scrollTop = 0; },
     openSeries: () => { navStack = []; openSeriesList(); detailOverlay.scrollTop = 0; },
     recalcEvents, syncEvents,
     openCup: (ym) => { navStack = []; openCup(ym); detailOverlay.scrollTop = 0; },
