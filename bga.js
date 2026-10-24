@@ -642,13 +642,14 @@
   // Odds come from simulating the event many times with the field it would draw today (your
   // current index, the same pool rules and par for the day). You play as an Average-style
   // golfer at your index. Ties go to the higher HC, then to you, as in real events.
-  // American odds: favorites as -200, others as +800; nearest 10 under 1000, nearest 100 above.
-  function americanOdds(p){
-    if(!(p > 0)) return '—';
-    if(p >= 1) return '—';
-    const v = p > 0.5 ? -100*p/(1-p) : 100*(1-p)/p, a = Math.abs(v);
-    const r = a < 1000 ? Math.round(a/10)*10 : Math.round(a/100)*100;
-    return (v < 0 ? '−' : '+') + r;
+  // American odds: favorites as -200, others as +800. Anyone with no wins in the sims is shown
+  // at double the longest odds of a player who did win.
+  // Keeps two significant digits: 3 digits to the nearest 10, 4 to the nearest 100, 5 to the
+  // nearest 1000, and so on. Raw odds value: negative for favorites, positive otherwise.
+  function oddsValue(p){ return p > 0.5 ? -100*p/(1-p) : 100*(1-p)/p; }
+  function fmtOdds(v){
+    const a = Math.abs(v), step = Math.pow(10, Math.max(0, Math.floor(Math.log10(a)) + 1 - 2));
+    return (v < 0 ? '−' : '+') + Math.round(a/step)*step;
   }
   function futurePars(f){
     if(Array.isArray(f.pars) && f.pars.length === f.holes && f.pars.every(p=>p!=null && !isNaN(p))) return f.pars.map(Number);
@@ -675,10 +676,15 @@
       wins[best]++;
     }
     let cup = {}; try{ cupStandings(ymOf(f.date)).rows.forEach(x=>{ cup[x.name] = x.pts; }); }catch(e){}
+    // Points back from the month's leader (whole standings, not just this field): 86 (L), 83 (-3)
+    const lead = Math.max(0, ...Object.values(cup));
+    const shedTxt = pts => lead > 0 ? `${pts} <small>(${pts === lead ? 'L' : '−'+(lead-pts)})</small>` : String(pts);
+    const minW = Math.min(...wins.filter(w=>w>0));
+    const oddsFor = w => w >= SIMS ? '—' : fmtOdds(w > 0 ? oddsValue(w/SIMS) : 2*oddsValue(minW/SIMS));
     const rows = players.map((p,i)=>({p, w:wins[i]})).sort((a,b)=>b.w-a.w || (a.p.you?-1:b.p.you?1:0) || b.p.hc-a.p.hc);
     const body = rows.map(({p,w})=>`<tr class="tn-click${p.you?' tn-you':''}" data-tn-act="player" data-name="${esc(p.name)}" data-from="future" data-fid="${esc(f.id)}">
       <td class="tn-name">${esc(p.you ? ME_NAME : shortName(p.name))}<small>HC ${p.you ? idx.toFixed(1) : p.hc}${p.you ? '' : ' · '+esc(styleOf(p.name))}</small></td>
-      <td class="tn-n">${cup[p.name] || 0}</td><td class="tn-n"><b>${americanOdds(w/SIMS)}</b></td></tr>`).join('');
+      <td class="tn-n" style="white-space:nowrap">${shedTxt(cup[p.name] || 0)}</td><td class="tn-n"><b>${oddsFor(w)}</b></td></tr>`).join('');
     return `<h4 class="tn-shelf-h" style="margin:4px 0 6px;">BGA field</h4>
       <div class="tn-boardwrap" style="margin-bottom:6px;"><table class="tn-board">
         <thead><tr><th>Player</th><th class="tn-n">ShedEx</th><th class="tn-n">Odds</th></tr></thead>
