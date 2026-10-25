@@ -448,7 +448,7 @@
   // ---------- Past rounds: backfill / edit Backyard Open, edit round ----------
   // Rounds built into the file can't be changed in place, so an edited one is saved as a
   // synced copy and the original is retired the same way Delete retires it.
-  function commitRound(r, mutate){
+  function commitRound(r, mutate, onCard){
     const inAdded = addedRounds.indexOf(r) !== -1;
     if(inAdded){ mutate(r); persistAdded(); }
     else {
@@ -463,7 +463,7 @@
     }
     rebuildRoundsArray(); try{ recompute(); }catch(e){ console.warn(e); }
     const idx = rounds.indexOf(r);
-    if(idx !== -1){ window.tnOpenEventTab = true; openDetail(idx); }
+    if(idx !== -1){ window.tnOpenEventTab = !onCard; openDetail(idx); }
   }
   function indexBefore(r){
     try{ const hi = whsHiAt(r); if(hi != null) return hi; }catch(e){}
@@ -950,13 +950,16 @@
     draw();
   }
 
-  function roundEditor(box, r){
+  // onCard: opened from the round card's own Edit round button, so reopen on the Scorecard tab
+  function roundEditor(box, r, onCard){
     const card = hasCard(r);
     box.innerHTML = `<div class="tn-edit">
       <label class="tn-lbl" for="tnEditDate">Date</label>
       <input id="tnEditDate" type="date" value="${esc(r.date)}">
       ${card ? `<label class="tn-lbl">Hole scores</label>
-      <div class="tn-edit-holes">${r.holeDetail.scores.map((s,i)=>`<label><i>${i+1}</i><small>Par ${r.holeDetail.pars[i]}</small><input type="number" inputmode="numeric" min="1" max="15" data-h="${i}" value="${s}"></label>`).join('')}</div>` : '<p class="idx-note" style="margin:0;">No hole-by-hole scores on this round, so only the date can change.</p>'}
+      <div class="tn-edit-holes">${r.holeDetail.scores.map((s,i)=>`<label><i>${i+1}</i><small>Par ${r.holeDetail.pars[i]}</small><input type="number" inputmode="numeric" min="1" max="15" data-h="${i}" value="${s}"></label>`).join('')}</div>` : `<label class="tn-lbl" for="tnEditGross">Score</label>
+      <input id="tnEditGross" type="number" inputmode="numeric" min="1" max="200" value="${esc(parseInt(String(r.score),10) || '')}">
+      <p class="idx-note" style="margin:0;">No hole-by-hole scores on this round, so only the total can change.</p>`}
       ${r.event ? '<p class="idx-note" style="margin:0;">Changing scores updates your line on the BGA leaderboard. The field stays the same.</p>' : ''}
       <p class="idx-note" id="tnRoundMsg" style="margin:0;"></p>
       <div class="tn-row" style="margin:0;"><button class="btn" type="button" id="tnRoundSave">Save changes</button><button class="btn secondary" type="button" id="tnRoundCancel">Cancel</button></div></div>`;
@@ -964,7 +967,8 @@
     $('tnRoundSave').onclick = () => {
       const date = $('tnEditDate').value;
       const scores = card ? Array.from(box.querySelectorAll('[data-h]')).map(i=>parseInt(i.value,10)) : null;
-      if(!date || (scores && scores.some(v=>isNaN(v) || v<1))){ $('tnRoundMsg').textContent = 'Enter a date and a score for every hole.'; $('tnRoundMsg').classList.add('tn-err'); return; }
+      const grossIn = card ? null : parseInt($('tnEditGross').value, 10);
+      if(!date || (scores && scores.some(v=>isNaN(v) || v<1)) || (!card && !(grossIn > 0))){ $('tnRoundMsg').textContent = card ? 'Enter a date and a score for every hole.' : 'Enter a date and a score.'; $('tnRoundMsg').classList.add('tn-err'); return; }
       const idxAt = indexBefore(r);
       commitRound(r, x => {
         x.date = date;
@@ -977,8 +981,16 @@
           if(x.event && x.event.seed != null) x.event = makeEvent(x, x.event.tier, x.event.seed, x.event.index);
           else if(x.event){ const me = x.event.board.find(b=>b.you); if(me){ me.gross = gross; me.vs = gross - x.event.target; }
             x.event.board = rankBoard(x.event); }
+        } else if(!card && grossIn !== parseInt(String(x.score),10)){
+          // Total only: keep the score's letter suffix, recompute the differential the same way
+          x.score = String(x.score).match(/^\d+/) ? String(x.score).replace(/^\d+/, grossIn) : grossIn + (x.holes===9 ? 'Ni' : 'A');
+          const raw = (grossIn - x.rating) * 113 / x.slope;
+          x.diff = Math.round((x.holes===9 ? raw + idxAt/2 : raw) * 10) / 10;
+          if(x.event && x.event.seed != null) x.event = makeEvent(x, x.event.tier, x.event.seed, x.event.index);
+          else if(x.event){ const me = x.event.board.find(b=>b.you); if(me){ me.gross = grossIn; me.vs = grossIn - x.event.target; }
+            x.event.board = rankBoard(x.event); }
         }
-      });
+      }, onCard);
     };
   }
 
@@ -1036,6 +1048,8 @@
     }
   });
 
+  // Round card's Edit round button (tracker.js) opens the same editor in its own box
+  window.tnEditRound = (box, r) => { box.innerHTML ? (box.innerHTML = '') : roundEditor(box, r, true); };
   $('tnStartBtn').addEventListener('click', openSetup);
   $('backyardOpenLink').addEventListener('click', ()=>{ navStack = []; openBackyardHub(); detailOverlay.scrollTop = 0; });
   $('addRoundBtn').addEventListener('click', ()=>{ posting = false; refreshAddBlock(); });

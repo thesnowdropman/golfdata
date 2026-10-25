@@ -2091,8 +2091,10 @@ function openDetail(idx){
   body += buildSingleRoundScorecardHtml(r) + `</div>`;
   body += `<div data-tn-pane="event"${tnEvTab?'':' hidden'}>` + (typeof window.tnEventHtml === 'function' ? window.tnEventHtml(r) : '') + `</div>`;
 
-  body += `<div style="text-align:center;margin-top:14px;display:flex;gap:10px;justify-content:center;">
+  body += `<div id="rcEditBox" style="margin-top:12px;"></div>`;
+  body += `<div style="text-align:center;margin-top:14px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
     <button class="btn" id="roundCourseRecordBtn" type="button">Course Record</button>
+    <button class="btn" id="rcEditRoundBtn" type="button">Edit round</button>
     <button class="btn danger" id="deleteRoundBtn" type="button">Delete this round</button>
   </div>
   <label class="rc-hidebiz"><input type="checkbox" id="rcHideBiz"${roundCardHideBiz ? ' checked' : ''}> Hide Business</label>`;
@@ -2139,6 +2141,8 @@ function openDetail(idx){
     });
   });
 
+  { const eb = document.getElementById('rcEditRoundBtn');
+    if(eb) eb.onclick = () => { if(typeof window.tnEditRound === 'function'){ const box = document.getElementById('rcEditBox'); window.tnEditRound(box, r); if(box.innerHTML) box.scrollIntoView({behavior:'smooth', block:'nearest'}); } }; }
   const delBtn = document.getElementById('deleteRoundBtn');
   delBtn.addEventListener('click', function onDeleteClick(){
     if(delBtn.dataset.armed === '1'){

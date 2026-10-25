@@ -166,7 +166,7 @@ html.app-loading body{visibility:hidden;}
 /* Round card stat boxes: smaller, one line */
 html.app .round-detail-strip .cell .num{font-size:19px;white-space:nowrap;}
 /* Normal-case buttons on the round card */
-html.app #roundCourseRecordBtn, html.app #deleteRoundBtn{text-transform:none;letter-spacing:.01em;}
+html.app #roundCourseRecordBtn, html.app #rcEditRoundBtn, html.app #deleteRoundBtn{text-transform:none;letter-spacing:.01em;}
 /* 9 / 18 hole badges in the score record */
 .rec-h{display:inline-block;min-width:18px;text-align:center;font:700 10.5px/1 var(--font-body);border-radius:4px;padding:2px 4px;margin-right:6px;vertical-align:1px;}
 .rec-h.h9{background:var(--green2);color:#fff;}
