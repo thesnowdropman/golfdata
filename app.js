@@ -332,10 +332,12 @@
     if(typeof rounds === 'undefined' || !rounds.length) return;
     const last20 = [...rounds].sort((a,b)=>chronoCmp(b,a)).slice(0,20);
     const avg = last20.reduce((s,r)=>s+r.diff,0)/last20.length;
-    // Best 9 / Best 18 by score to the course's real par (lowest over par wins)
+    // Best 9 / Best 18 by score to the course's real par (lowest over par wins); Best 18 needs par 70+
     const bestToPar = holes => { let best = null;
       rounds.filter(r=>r.holes===holes).forEach(r => { const g = gross(r), par = (typeof PAR_BY_COURSE !== 'undefined') ? PAR_BY_COURSE[r.course] : null;
-        if(isNaN(g) || par == null) return; const tp = g - par; if(!best || tp < best.tp || (tp === best.tp && g < best.g)) best = {tp, g}; });
+        if(isNaN(g) || par == null) return;
+        if(holes === 18 && par < 70) return; // Best 18 counts full-length courses only (par 70+)
+        const tp = g - par; if(!best || tp < best.tp || (tp === best.tp && g < best.g)) best = {tp, g}; });
       return best; };
     const fmtTP = b => !b ? '—' : (b.tp === 0 ? 'E' : (b.tp > 0 ? '+' : '') + b.tp);
     const best9 = bestToPar(9), best18 = bestToPar(18);

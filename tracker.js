@@ -434,6 +434,23 @@ function computeRoundBadges(r){
     badges.push({icon: '🔟', label: `Round #${roundNum} logged`});
   }
 
+  // Strokin' / Holy Land -- this round carried your career totals past a round number:
+  // every 500th stroke, every 100th hole (counted in date order across all rounds)
+  {
+    let strokesBefore = 0, holesBefore = 0;
+    for(const x of [...rounds].sort(chronoCmp)){
+      if(roundKey(x) === roundKey(r)) break;
+      const sx = scoreOf(x); if(!isNaN(sx)) strokesBefore += sx; holesBefore += x.holes;
+    }
+    const sr = scoreOf(r);
+    if(!isNaN(sr)){
+      const hit = Math.floor((strokesBefore + sr)/500) * 500;
+      if(hit > strokesBefore) badges.push({icon: '🏌️', label: `Strokin': Career stroke #${hit.toLocaleString('en-US')}`});
+    }
+    const hitH = Math.floor((holesBefore + r.holes)/100) * 100;
+    if(hitH > holesBefore) badges.push({icon: '⛳️', label: `Holy Land: Career hole #${hitH.toLocaleString('en-US')}`});
+  }
+
   // Debut win -- first-ever round at this course, and it beat the expected score
   if(roundNum != null){
     const roundsAtCourse = rounds.filter(x => x.course.trim().toLowerCase() === r.course.trim().toLowerCase());
@@ -602,6 +619,8 @@ const BADGE_CATALOG = [
   {icon: '🌖', name: 'Eris', desc: 'Score the same number on 5 consecutive holes'},
   {icon: '🃏', name: 'Straight Flush', desc: '5 consecutive holes score 5 unique, consecutive numbers'},
   {icon: '🔟', name: 'Milestone', desc: 'Round #10, #25, #50, or #100 logged, ever'},
+  {icon: '🏌️', name: "Strokin'", desc: 'Your 500th, 1,000th, 1,500th... career stroke'},
+  {icon: '⛳️', name: 'Holy Land', desc: 'Your 100th, 200th, 300th... career hole played'},
   {icon: '🐣', name: 'Hatched', desc: 'Debut round at a new course that beat the expected score'},
   {icon: '🧭', name: 'Explorer', desc: 'Your 5th, 10th, 15th... distinct course played'},
   {icon: '🥱', name: 'Siesta', desc: 'Finish holes 16-18 at +7 or worse'},
@@ -2262,10 +2281,13 @@ function renderScorecardChunks(numHoles, pars, rows){
 function computeAllStatsSummary(){
   const allWithHoles = rounds.filter(r => r.holeDetail);
 
+  // Best 18 (best score on each hole) only uses full-length courses: course par 70+
+  // (a 9-hole round counts at double its par, so a 35+ nine qualifies)
+  const coursePar70 = r => { const p = r.holeDetail.pars.reduce((t,x)=>t+(Number(x)||0),0); return (r.holes === 9 ? p*2 : p) >= 70; };
   const bestPars = [];
   const bestScores = [];
   for(let h = 0; h < 18; h++){
-    const candidates = allWithHoles.filter(r => r.holeDetail.scores.length > h);
+    const candidates = allWithHoles.filter(r => r.holeDetail.scores.length > h && coursePar70(r));
     if(candidates.length === 0){
       bestPars.push(null);
       bestScores.push(null);
@@ -2280,7 +2302,7 @@ function computeAllStatsSummary(){
   const totalHolesPlayed = rounds.reduce((s,r) => s + r.holes, 0);
   const totalStrokes = rounds.reduce((s,r) => s + scoreOf(r), 0);
 
-  const dist = {birdie:0, par:0, bogey:0, double:0, triple:0, quad:0, quint:0, other:0};
+  const dist = {birdie:0, par:0, bogey:0, double:0, triple:0, other:0}; // triple = triple bogey or worse
   let totalHolesWithDetail = 0;
   allWithHoles.forEach(r => {
     r.holeDetail.scores.forEach((s,i) => {
@@ -2290,10 +2312,8 @@ function computeAllStatsSummary(){
       else if(diff === 0) dist.par++;
       else if(diff === 1) dist.bogey++;
       else if(diff === 2) dist.double++;
-      else if(diff === 3) dist.triple++;
-      else if(diff === 4) dist.quad++;
-      else if(diff === 5) dist.quint++;
-      else dist.other++;
+      else if(diff >= 3) dist.triple++;
+      else dist.other++; // eagle or better
     });
   });
 
@@ -2420,11 +2440,10 @@ function openAllStatsDetail(){
 
   const distList = [
     ['Birdies', s.dist.birdie], ['Pars', s.dist.par], ['Bogeys', s.dist.bogey],
-    ['Double bogeys', s.dist.double], ['Triple bogeys', s.dist.triple],
-    ['Quadruple bogeys', s.dist.quad], ['Quintuple bogeys', s.dist.quint],
+    ['Double bogeys', s.dist.double], ['Triple bogey or worse', s.dist.triple],
   ];
   const distHtml = distList.map(([label,count]) => `<p class="note" style="margin:2px 0;">${label}: <strong>${count}</strong></p>`).join('');
-  const otherLine = s.dist.other > 0 ? `<p class="note" style="margin:2px 0;">Other (eagle or better / worse than quintuple): <strong>${s.dist.other}</strong></p>` : '';
+  const otherLine = s.dist.other > 0 ? `<p class="note" style="margin:2px 0;">Eagle or better: <strong>${s.dist.other}</strong></p>` : '';
 
   let body = `
     <p class="note" style="margin:2px 0 2px;"><strong>Total holes played:</strong> ${s.totalHolesPlayed}</p>
