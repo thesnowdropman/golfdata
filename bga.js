@@ -530,25 +530,32 @@
 
   // Backyard Open totals for All Stats. Each saved event keeps the index you played it at
   // (event.index), so wins can later be split into HC bands.
-  // Elo: everyone starts at 1500; after each event (in date order) every pair in the field
+  // Elo: everyone starts from their HC (see eloSeed); after each event (in date order) every pair in the field
   // is scored head to head (better finish = win, same place = draw), K = 32 split across the field.
+  // Starting Elo: the league averages 1500. A new player starts 25 points above 1500 for
+  // every stroke of HC better than the league's average HC (all 30 BGA players), and 25
+  // below for every stroke worse. Your start uses your index at your first event.
+  const ELO_PER_STROKE = 25, LEAGUE_HC = KIDS.reduce((t,k)=>t+k.hcp,0)/KIDS.length;
+  const eloSeed = hc => 1500 + ELO_PER_STROKE*(LEAGUE_HC - hc);
   function eloRatings(){
-    const R = {}, peak = {};
+    const R = {}, peak = {}, hist = {}; let evN = 0;
     const evs = rounds.filter(r=>r.event && Array.isArray(r.event.board))
       .sort(evOrder);
     evs.forEach(r=>{
-      const b = rankBoard(r.event).map(x=>({n: x.you ? 'You' : x.n, p: parseInt(String(x.pos).replace('T',''),10)}));
+      const b = rankBoard(r.event).map(x=>({n: x.you ? 'You' : x.n, p: parseInt(String(x.pos).replace('T',''),10), hc: x.you ? Number(r.event.index) : Number(x.h)}));
       const N = b.length; if(N < 2) return;
-      b.forEach(x=>{ if(R[x.n] == null) R[x.n] = 1500; });
+      b.forEach(x=>{ if(R[x.n] == null) R[x.n] = isNaN(x.hc) ? 1500 : eloSeed(x.hc); });
       const d = {}; b.forEach(x=>d[x.n]=0);
       for(let i=0;i<N;i++) for(let j=i+1;j<N;j++){
         const A=b[i], B=b[j], ea = 1/(1+Math.pow(10,(R[B.n]-R[A.n])/400));
         const sa = A.p < B.p ? 1 : A.p > B.p ? 0 : 0.5, k = 32/(N-1);
         d[A.n] += k*(sa-ea); d[B.n] -= k*(sa-ea);
       }
-      b.forEach(x=>{ R[x.n] += d[x.n]; peak[x.n] = Math.max(peak[x.n]||0, R[x.n]); });
+      evN++;
+      b.forEach(x=>{ R[x.n] += d[x.n]; peak[x.n] = Math.max(peak[x.n]||0, R[x.n]);
+        (hist[x.n] = hist[x.n] || [[evN-1, R[x.n] - d[x.n]]]).push([evN, R[x.n]]); });
     });
-    return {R, peak};
+    return {R, peak, hist, evN};
   }
   let tnCareerSort = {col:'wins', dir:-1};
   window.tnStatsHtml = function(){
@@ -574,7 +581,7 @@
       <div class="tn-boardwrap"><table class="tn-board tn-career">
         <thead><tr>${th('player','Player')}${th('apps','Apps',1)}${th('tour','Tour',1)}${th('major','Major',1)}${th('wins','Wins',1)}${th('elo','Elo',1)}</tr></thead>
         <tbody>${body}</tbody></table></div>
-      <p class="idx-note" style="margin:6px 0 12px;">Tour and Major columns are wins. Elo starts at 1500 and moves with every head-to-head finish. Tap a player for their round-by-round finishes.</p></div>`;
+      <p class="idx-note" style="margin:6px 0 12px;">Tour and Major columns are wins. Elo: league average is 1500; players start 25 points higher per stroke of HC better than the league average (25 lower per stroke worse), then move with every head-to-head finish. Tap a player for their round-by-round finishes.</p></div>`;
   };
 
   let tnStatsOpen = false, tnCardOpen = true;
@@ -594,6 +601,51 @@
   function finBadge(pos){ const p = parseInt(String(pos).replace('T',''),10);
     const c = p===1 ? 'f1' : p===2 ? 'f2' : p===3 ? 'f3' : p<=5 ? 'f4' : p<=7 ? 'f6' : p<=9 ? 'f8' : p<=12 ? 'f10' : 'fx';
     return `<span class="tn-fin ${c}">${esc(ordinal(pos))}</span>`; }
+  // Elo over time: x = BGA event number (every event, in date order), y = rating. Each
+  // player's line starts at their HC-based seed just before their first event. Dashed line at 1500 (league average).
+  let eloShowAll = false;
+  function eloChartHtml(name){
+    const E = eloRatings(), mine = E.hist[name];
+    if(!mine || mine.length < 2) return '';
+    const W = 340, H = 170, L = 34, Rm = eloShowAll ? 34 : 8, T = 8, B = 20;
+    const lines = eloShowAll ? Object.entries(E.hist) : [[name, mine]];
+    const ys = lines.flatMap(([,h])=>h.map(p=>p[1])).concat([1500]);
+    let lo = Math.floor(Math.min(...ys)/50)*50, hi = Math.ceil(Math.max(...ys)/50)*50; if(hi === lo) hi = lo + 50;
+    const x0 = eloShowAll ? 0 : mine[0][0], x1 = Math.max(x0+1, eloShowAll ? E.evN : mine[mine.length-1][0]);
+    const X = v => L + (v - x0)/(x1 - x0)*(W - L - Rm), Y = v => T + (1 - (v - lo)/(hi - lo))*(H - T - B);
+    const path = h => h.filter(p=>p[0] >= x0).map((p,i)=>(i?'L':'M')+X(p[0]).toFixed(1)+' '+Y(p[1]).toFixed(1)).join('');
+    const step = (hi - lo) > 300 ? 100 : 50;
+    let grid = '';
+    for(let g = lo; g <= hi; g += step) grid += `<line x1="${L}" x2="${W-Rm}" y1="${Y(g).toFixed(1)}" y2="${Y(g).toFixed(1)}" stroke="#e4e2dc" stroke-width="1"/><text x="${L-4}" y="${Y(g).toFixed(1)}" font-size="9.5" fill="#6b7682" text-anchor="end" dominant-baseline="middle">${g}</text>`;
+    const others = eloShowAll ? lines.filter(([n])=>n!==name).map(([,h])=>`<path d="${path(h)}" fill="none" stroke="#9aa3ad" stroke-opacity=".35" stroke-width="1.2"/>`).join('') : '';
+    // Others labeled at the end of their line by initials + HC ("LC35"); labels in the right
+    // margin are nudged apart so they don't stack on top of each other
+    let tags = '';
+    if(eloShowAll){
+      const tagOf = n => { if(n === 'You') return 'You'; const p = n.trim().split(/\s+/), k = KIDS.find(q=>q.name===n);
+        return p[0][0] + p[p.length-1][0] + (k ? k.hcp : ''); };
+      const ends = lines.filter(([n])=>n!==name).map(([n,h])=>{ const e = h[h.length-1]; return {t:tagOf(n), x:X(e[0]), y:Y(e[1]), edge: e[0] === x1}; });
+      const edge = ends.filter(e=>e.edge).sort((a,b)=>a.y-b.y);
+      for(let i=1;i<edge.length;i++) if(edge[i].y - edge[i-1].y < 8.5) edge[i].y = edge[i-1].y + 8.5;
+      const over = edge.length ? edge[edge.length-1].y - (H - B) : 0;
+      if(over > 0) edge.forEach(e=>{ e.y -= over; });
+      tags = ends.map(e=>`<text x="${(e.x+2).toFixed(1)}" y="${e.y.toFixed(1)}" font-size="7.5" fill="#6b7682" dominant-baseline="middle">${esc(e.t)}</text>`).join('');
+    }
+    const last = mine[mine.length-1];
+    return `<h4 class="tn-shelf-h">Elo over time</h4>
+      <div class="app-card" style="padding:8px 6px 4px;margin:0 0 6px;">
+        <svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block" role="img" aria-label="Elo rating over time">
+          ${grid}
+          <line x1="${L}" x2="${W-Rm}" y1="${Y(1500).toFixed(1)}" y2="${Y(1500).toFixed(1)}" stroke="#c9a227" stroke-width="1.5" stroke-dasharray="5 4"/>
+          ${others}${tags}
+          <path d="${path(mine)}" fill="none" stroke="#1f5a3a" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+          <circle cx="${X(last[0]).toFixed(1)}" cy="${Y(last[1]).toFixed(1)}" r="4" fill="#1f5a3a"/>
+          <text x="${L}" y="${H-5}" font-size="9.5" fill="#6b7682">${eloShowAll ? 'Event 1' : 'Debut'}</text>
+          <text x="${W-Rm}" y="${H-5}" font-size="9.5" fill="#6b7682" text-anchor="end">Now · ${Math.round(last[1])}</text>
+        </svg>
+      </div>
+      <label class="rc-hidebiz" style="justify-content:flex-start;margin:0 2px 14px;"><input type="checkbox" data-tn-act="eloall"${eloShowAll?' checked':''}> Show all players</label>`;
+  }
   function openPlayerDetail(name){
     const rowsData = rounds.filter(r=>r.event && Array.isArray(r.event.board))
       .map(r=>{ const x = rankBoard(r.event).find(b => name==='You' ? b.you : (!b.you && b.n===name)); return x ? {r, x, size:r.event.board.length} : null; })
@@ -633,6 +685,7 @@
       <div class="tn-tro${cupW?' won':''}" data-tn-act="cup" data-from="player" data-name="${esc(name)}">${majorIcon(CUP, 34)}<b>${cupW}${cupLead ? '*' : ''}</b><span>ShedEx Cup</span></div></div>`;
     document.getElementById('detailBody').innerHTML = `
       ${avgLine(name)}
+      ${eloChartHtml(name)}
       <h4 class="tn-shelf-h">Trophy shelf</h4>${shelf}${cupLead ? `<p class="note" style="margin:-8px 0 12px;">*${esc(cupLead)}</p>` : ''}
       <p class="note" style="margin:2px 0 12px;">${rowsData.length} appearances · ${wins()} wins (Tour ${wins('tour')}, Major ${wins('major')})${cupW ? ' · ShedEx Cups '+cupW : ''}</p>
       <div class="tn-boardwrap"><table class="tn-board">
@@ -1039,6 +1092,8 @@
     if(act0 === 'csort'){ const c = btn.dataset.col;
       tnCareerSort = tnCareerSort.col===c ? {col:c, dir:-tnCareerSort.dir} : {col:c, dir: c==='player' ? 1 : -1};
       const y = detailOverlay.scrollTop; openCareerResults(); detailOverlay.scrollTop = y; return; }
+    if(act0 === 'eloall'){ eloShowAll = btn.checked; const tEl = document.getElementById('courseTitleText'), y = detailOverlay.scrollTop;
+      openPlayerDetail(tEl.dataset.name || 'You'); detailOverlay.scrollTop = y; return; }
     if(act0 === 'hub'){ navStack = []; openBackyardHub(); return; }
     if(act0 === 'career'){ navStack.push(()=>openBackyardHub()); openCareerResults(); return; }
     if(act0 === 'serieslist'){ navStack.push(()=>openBackyardHub()); openSeriesList(); return; }
