@@ -40,11 +40,20 @@
   // ---------- ShedEx Cup: monthly points race ----------
   // Tour and Major events both earn points. Ties share the place's points.
   const PTS = [15,12,10,9,8,7,6,5,4,3,2,1];
-  const ymOf = d => String(d).slice(0,7);
+  // Cup periods: Jan–Mar is one Cup and Oct–Dec is one Cup; April through September each
+  // month is its own Cup. A period is keyed by its first month ('2026-01', '2026-04', ...
+  // '2026-10'), so keys still sort in date order.
+  const ymOf = d => { const y = String(d).slice(0,4), m = +String(d).slice(5,7);
+    return y + '-' + String(m <= 3 ? 1 : m >= 10 ? 10 : m).padStart(2,'0'); };
   const nowYM = () => { const t = new Date(); return t.getFullYear()+'-'+String(t.getMonth()+1).padStart(2,'0'); };
-  const cupDone = ym => ym < nowYM();
+  const cupEnd = ym => { const m = +ym.slice(5,7); return ym.slice(0,4)+'-'+String(m===1 ? 3 : m===10 ? 12 : m).padStart(2,'0'); };
+  const cupDone = ym => cupEnd(ym) < nowYM();
+  const MON_FULL = ['January','February','March','April','May','June','July','August','September','October','November','December'];
   const MON = ['Jan','Feb','Mar','Apr','May','June','July','Aug','Sept','Oct','Nov','Dec'];
-  const ymLabel = (ym, short) => { const d = new Date(ym+'-01T00:00:00'); return short ? MON[d.getMonth()]+" ’"+String(d.getFullYear()).slice(2) : d.toLocaleDateString('en-US',{month:'long',year:'numeric'}); };
+  const ymLabel = (ym, short) => { const y = ym.slice(0,4), m = +ym.slice(5,7), yr = short ? " ’"+y.slice(2) : ' '+y;
+    if(m === 1) return 'Jan–Mar' + yr;
+    if(m === 10) return 'Oct–Dec' + yr;
+    const d = new Date(ym+'-01T00:00:00'); return short ? MON[d.getMonth()]+yr : d.toLocaleDateString('en-US',{month:'long',year:'numeric'}); };
   const placePts = pos => PTS[parseInt(String(pos).replace('T',''),10)-1] || 0;
   const evOrder = (a,b) => (typeof chronoCmp === 'function' ? chronoCmp(a,b) : new Date(a.date)-new Date(b.date)) || (a.event.seed||0)-(b.event.seed||0);
   function pointEvents(){ return rounds.filter(r=>r.event && Array.isArray(r.event.board)).sort(evOrder); }
@@ -596,7 +605,7 @@
     document.getElementById('detailTitle').style.marginTop = navStack.length > 0 ? '28px' : '0';
     const wins = t => rowsData.filter(d=>String(d.x.pos)==='1' && (t ? d.r.event.tier===t : true)).length;
     const cupRes = cupMonths().filter(cupDone).map(ym=>{ const x = cupStandings(ym).rows.find(q=>q.name===name); return x ? {ym, x} : null; }).filter(Boolean);
-    const cupRows = cupRes.map(c=>({k:c.ym+'-99', html:`<tr class="tn-click${c.x.pos===1 ? ' tn-you' : ''}" data-tn-act="cup" data-ym="${c.ym}" data-from="player" data-name="${esc(name)}"><td class="tn-name tn-rcol">${ymLabel(c.ym, true)}</td><td class="tn-wrap"><span class="tn-evlink">${majorIcon(CUP, 18)}${CUP}</span></td><td class="tn-n">${finBadge(c.x.label)}</td></tr>`}));
+    const cupRows = cupRes.map(c=>({k:cupEnd(c.ym)+'-99', html:`<tr class="tn-click${c.x.pos===1 ? ' tn-you' : ''}" data-tn-act="cup" data-ym="${c.ym}" data-from="player" data-name="${esc(name)}"><td class="tn-name tn-rcol">${ymLabel(c.ym, true)}</td><td class="tn-wrap"><span class="tn-evlink">${majorIcon(CUP, 18)}${CUP}</span></td><td class="tn-n">${finBadge(c.x.label)}</td></tr>`}));
     const evRows = rowsData.map(d=>({k:d.r.date, html:(()=>{
       const dt = new Date(d.r.date+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'2-digit'});
       const pm = d.r.course.match(/^(.*)\s\(([^)]+)\)$/); // "(18)", "(Back 9)" etc. move next to the date
@@ -605,14 +614,26 @@
     })()}));
     const body = evRows.concat(cupRows).map((o,i)=>({...o,i})).sort((a,b)=>a.k<b.k?1:a.k>b.k?-1:a.i-b.i).map(o=>o.html).join('');
     const cupW = cupRes.filter(c=>c.x.pos===1).length;
+    // Leading (or tied for the lead in) the ShedEx Cup that's in progress right now
+    let cupLead = '';
+    { const cur = ymOf(todayISO()), st = cupStandings(cur).rows, me = st.find(q=>q.name===name);
+      const m = +cur.slice(5,7), per = m===1 ? 'Jan–Mar' : m===10 ? 'Oct–Dec' : MON_FULL[m-1];
+      const top = st.length ? Math.max(...st.map(q=>q.pts)) : 0;
+      if(me && top > 0 && me.pts === top){
+        const others = st.filter(q=>q.name!==name && q.pts===top);
+        if(others.length) cupLead = `Tied for ${per} ShedEx Cup (${others.map(q=>q.you ? ME_SHORT : shortName(q.name)).join(', ')})`;
+        else { const rest = st.filter(q=>q.name!==name), second = Math.max(0, ...rest.map(q=>q.pts)), by = top - second;
+          const chasers = rest.filter(q=>q.pts===second).map(q=>q.you ? ME_SHORT : shortName(q.name));
+          cupLead = `Leads ${per} ShedEx Cup by ${by} pt${by===1?'':'s'}${chasers.length ? ' ('+chasers.join(', ')+')' : ''}`; }
+      } }
     // Trophy shelf: one slot per Major (with how many times won), plus Tour wins
     const wonMajor = {}; rowsData.forEach(d=>{ if(d.r.event.tier==='major' && String(d.x.pos)==='1'){ const m = eventName(d.r); wonMajor[m] = (wonMajor[m]||0)+1; } });
     const shelf = `<div class="tn-shelf">${MAJORS.map(m=>`<div class="tn-tro${wonMajor[m]?' won':''}" data-tn-act="eventhist" data-ev="${esc(m)}" data-from="player" data-name="${esc(name)}">${majorIcon(m, 34)}<b>${wonMajor[m]||0}</b><span>${esc((SHELF_LBL[m]||MAJOR_SHORT[m]).replace(/^The /,''))}</span></div>`).join('')}
       <div class="tn-tro tn-tour${wins('tour')?' won':''}">${bgaImg(26)}<b>${wins('tour')}</b><span>Tour wins</span></div>
-      <div class="tn-tro${cupW?' won':''}" data-tn-act="cup" data-from="player" data-name="${esc(name)}">${majorIcon(CUP, 34)}<b>${cupW}</b><span>ShedEx Cup</span></div></div>`;
+      <div class="tn-tro${cupW?' won':''}" data-tn-act="cup" data-from="player" data-name="${esc(name)}">${majorIcon(CUP, 34)}<b>${cupW}${cupLead ? '*' : ''}</b><span>ShedEx Cup</span></div></div>`;
     document.getElementById('detailBody').innerHTML = `
       ${avgLine(name)}
-      <h4 class="tn-shelf-h">Trophy shelf</h4>${shelf}
+      <h4 class="tn-shelf-h">Trophy shelf</h4>${shelf}${cupLead ? `<p class="note" style="margin:-8px 0 12px;">*${esc(cupLead)}</p>` : ''}
       <p class="note" style="margin:2px 0 12px;">${rowsData.length} appearances · ${wins()} wins (Tour ${wins('tour')}, Major ${wins('major')})${cupW ? ' · ShedEx Cups '+cupW : ''}</p>
       <div class="tn-boardwrap"><table class="tn-board">
         <thead><tr><th>Round</th><th>Event</th><th class="tn-n">Finish</th></tr></thead>
@@ -812,7 +833,7 @@
 
   // ShedEx Cup page: one month's standings (current month while it's in progress), its events, every Cup
   function openCup(ym){
-    const months = cupMonths(); ym = ym || months[0] || nowYM();
+    const months = cupMonths(); ym = ym || months[0] || ymOf(todayISO());
     const {rows, evs} = cupStandings(ym), done = cupDone(ym);
     document.getElementById('detailMiiRow').innerHTML = '';
     document.getElementById('detailMiiRow').style.display = 'none';
@@ -825,13 +846,14 @@
     const all = months.map(m=>{ const s = cupStandings(m), w = s.rows[0], me = s.rows.find(x=>x.you);
       return `<tr class="tn-click${m===ym?' tn-you':''}" data-tn-act="cup" data-ym="${m}" data-from="cuppage"><td class="tn-name">${ymLabel(m)}<small>${cupDone(m) ? 'Final' : 'In progress'}</small></td><td class="tn-name tn-nowrap">${w ? (w.you ? '<b>'+ME_SHORT+'</b>' : esc(shortName(w.name))) : '—'}<small>${w ? '('+w.pts+' pts)' : ''}</small></td><td class="tn-n">${me ? finBadge(me.label) : '—'}</td></tr>`; }).join('');
     document.getElementById('detailBody').innerHTML = `
-      <p class="note" style="margin:2px 0 8px;">${evs.length} points event${evs.length===1?'':'s'} in ${ymLabel(ym)}${done ? '' : ' so far. The Cup is decided when the month ends.'}</p>
+      <h4 class="tn-shelf-h" style="margin-top:4px;">Every ShedEx Cup</h4>
+      <div class="tn-boardwrap"><table class="tn-board"><thead><tr><th>Period</th><th>Winner</th><th class="tn-n">You</th></tr></thead><tbody>${all || '<tr><td colspan="3">None yet.</td></tr>'}</tbody></table></div>
+      <h4 class="tn-shelf-h" style="margin-top:16px;">${done ? ymLabel(ym)+' Standings' : 'Current Standings'}</h4>
+      <p class="note" style="margin:2px 0 8px;">${evs.length} points event${evs.length===1?'':'s'} in ${ymLabel(ym)}${done ? '' : ' so far. The Cup is decided when the period ends.'}</p>
       <div class="tn-boardwrap"><table class="tn-board">
         <thead><tr><th>Pos</th><th>Player</th><th class="tn-n">Pts</th></tr></thead>
-        <tbody>${stand || '<tr><td colspan="3">No events this month yet.</td></tr>'}</tbody></table></div>
+        <tbody>${stand || '<tr><td colspan="3">No events this period yet.</td></tr>'}</tbody></table></div>
       ${evList ? `<h4 class="tn-shelf-h" style="margin-top:16px;">Events</h4><div class="tn-boardwrap"><table class="tn-board"><thead><tr><th>Event</th><th class="tn-n">You</th><th class="tn-n">Pts</th></tr></thead><tbody>${evList}</tbody></table></div>` : ''}
-      <h4 class="tn-shelf-h" style="margin-top:16px;">Every ShedEx Cup</h4>
-      <div class="tn-boardwrap"><table class="tn-board"><thead><tr><th>Month</th><th>Winner</th><th class="tn-n">You</th></tr></thead><tbody>${all || '<tr><td colspan="3">None yet.</td></tr>'}</tbody></table></div>
       <p class="idx-note" style="margin:6px 0 0;">Every event earns points: 1st 15, 2nd 12, 3rd 10, then 9 down to 1 for 12th. Ties share the place's points. Level on points goes to the higher HC, and if that's level too, to you.</p>${hubLink()}`;
     detailOverlay.classList.add('open'); detailOverlay.scrollTop = 0;
     try{ fitCourseTitle(); }catch(e){}
