@@ -532,19 +532,26 @@
   // (event.index), so wins can later be split into HC bands.
   // Elo: everyone starts from their HC (see eloSeed); after each event (in date order) every pair in the field
   // is scored head to head (better finish = win, same place = draw), K = 32 split across the field.
-  // Starting Elo: the league averages 1500. A new player starts 25 points above 1500 for
-  // every stroke of HC better than the league's average HC (all 30 BGA players), and 25
-  // below for every stroke worse. Your start uses your index at your first event.
-  const ELO_PER_STROKE = 25, LEAGUE_HC = KIDS.reduce((t,k)=>t+k.hcp,0)/KIDS.length;
-  const eloSeed = hc => 1500 + ELO_PER_STROKE*(LEAGUE_HC - hc);
+  // Starting Elo: the active field (everyone who has played at least one BGA event) averages
+  // 1500. Each player starts 25 points above 1500 for every stroke of HC better than the
+  // active field's average HC, and 25 below for every stroke worse. Your HC here is your
+  // index at your first event. Elo moves are zero-sum, so the active field's average stays
+  // exactly 1500; when a new player debuts the average HC shifts and every rating is redone.
+  const ELO_PER_STROKE = 25;
   function eloRatings(){
     const R = {}, peak = {}, hist = {}; let evN = 0;
     const evs = rounds.filter(r=>r.event && Array.isArray(r.event.board))
       .sort(evOrder);
+    // Each player's starting HC (first appearance), and the active field's average of those
+    const firstHc = {};
+    evs.forEach(r=>{ if(r.event.board.length < 2) return; r.event.board.forEach(x=>{ const n = x.you ? 'You' : x.n, h = x.you ? Number(r.event.index) : Number(x.h);
+      if(firstHc[n] == null && !isNaN(h)) firstHc[n] = h; }); });
+    const hcs = Object.values(firstHc), activeHc = hcs.length ? hcs.reduce((t,v)=>t+v,0)/hcs.length : 0;
+    const eloSeed = hc => 1500 + ELO_PER_STROKE*(activeHc - hc);
     evs.forEach(r=>{
-      const b = rankBoard(r.event).map(x=>({n: x.you ? 'You' : x.n, p: parseInt(String(x.pos).replace('T',''),10), hc: x.you ? Number(r.event.index) : Number(x.h)}));
+      const b = rankBoard(r.event).map(x=>({n: x.you ? 'You' : x.n, p: parseInt(String(x.pos).replace('T',''),10), hc: firstHc[x.you ? 'You' : x.n]}));
       const N = b.length; if(N < 2) return;
-      b.forEach(x=>{ if(R[x.n] == null) R[x.n] = isNaN(x.hc) ? 1500 : eloSeed(x.hc); });
+      b.forEach(x=>{ if(R[x.n] == null) R[x.n] = x.hc == null || isNaN(x.hc) ? 1500 : eloSeed(x.hc); });
       const d = {}; b.forEach(x=>d[x.n]=0);
       for(let i=0;i<N;i++) for(let j=i+1;j<N;j++){
         const A=b[i], B=b[j], ea = 1/(1+Math.pow(10,(R[B.n]-R[A.n])/400));
@@ -555,7 +562,7 @@
       b.forEach(x=>{ R[x.n] += d[x.n]; peak[x.n] = Math.max(peak[x.n]||0, R[x.n]);
         (hist[x.n] = hist[x.n] || [[evN-1, R[x.n] - d[x.n]]]).push([evN, R[x.n]]); });
     });
-    return {R, peak, hist, evN};
+    return {R, peak, hist, evN, activeHc};
   }
   let tnCareerSort = {col:'wins', dir:-1};
   window.tnStatsHtml = function(){
@@ -581,7 +588,7 @@
       <div class="tn-boardwrap"><table class="tn-board tn-career">
         <thead><tr>${th('player','Player')}${th('apps','Apps',1)}${th('tour','Tour',1)}${th('major','Major',1)}${th('wins','Wins',1)}${th('elo','Elo',1)}</tr></thead>
         <tbody>${body}</tbody></table></div>
-      <p class="idx-note" style="margin:6px 0 12px;">Tour and Major columns are wins. Elo: league average is 1500; players start 25 points higher per stroke of HC better than the league average (25 lower per stroke worse), then move with every head-to-head finish. Tap a player for their round-by-round finishes.</p></div>`;
+      <p class="idx-note" style="margin:6px 0 12px;">Tour and Major columns are wins. Elo: the active field (everyone who has played) averages 1500; players start 25 points higher per stroke of HC better than the active field's average HC (25 lower per stroke worse), then move with every head-to-head finish. Tap a player for their round-by-round finishes.</p></div>`;
   };
 
   let tnStatsOpen = false, tnCardOpen = true;
@@ -602,7 +609,7 @@
     const c = p===1 ? 'f1' : p===2 ? 'f2' : p===3 ? 'f3' : p<=5 ? 'f4' : p<=7 ? 'f6' : p<=9 ? 'f8' : p<=12 ? 'f10' : 'fx';
     return `<span class="tn-fin ${c}">${esc(ordinal(pos))}</span>`; }
   // Elo over time: x = BGA event number (every event, in date order), y = rating. Each
-  // player's line starts at their HC-based seed just before their first event. Dashed line at 1500 (league average).
+  // player's line starts at their HC-based seed just before their first event. Dashed line at 1500 (active field average).
   let eloShowAll = false;
   function eloChartHtml(name){
     const E = eloRatings(), mine = E.hist[name];
